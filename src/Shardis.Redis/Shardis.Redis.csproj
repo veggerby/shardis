@@ -6,6 +6,19 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>Shardis.Redis</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>YourName</Authors>
+    <Description>Shardis is a lightweight, domain-driven sharding framework for .NET applications.</Description>
+    <PackageTags>sharding, redis, .NET, framework</PackageTags>
+    <RepositoryUrl>https://github.com/veggerby/shardis</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <OutputPath>$(OutputPath)</OutputPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="StackExchange.Redis" Version="2.6.66" />
   </ItemGroup>
