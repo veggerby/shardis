@@ -39,7 +39,7 @@ jobs:
         run: dotnet build --no-restore
       - name: Package NuGet
         run: dotnet pack --configuration Release --output ${{ env.NuGetDirectory }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: nuget
           if-no-files-found: error
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ build, test ]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: nuget
           path: ${{ env.NuGetDirectory }}
