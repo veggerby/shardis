@@ -5,6 +5,8 @@
 **Shardis** is a lightweight, scalable sharding framework for .NET designed to help developers partition and route aggregates across multiple databases cleanly and efficiently.
 Built for domain-driven systems, event sourcing architectures, and multi-tenant platforms, Shardis ensures that data routing remains deterministic, maintainable, and completely decoupled from business logic.
 
+![Shardis](https://img.shields.io/badge/Shardis-Shard%20Routing%20for%20.NET-blueviolet?style=flat-square)
+
 ---
 
 ## ✨ Features
