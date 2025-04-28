@@ -53,9 +53,9 @@ using Shardis.Persistence;
 // Define available shards
 var shards = new[]
 {
-    new Shard("shard-001", "postgres://user:pass@host1/db"),
-    new Shard("shard-002", "postgres://user:pass@host2/db"),
-    new Shard("shard-003", "postgres://user:pass@host3/db")
+    new SimpleShard(new("shard-001"), "postgres://user:pass@host1/db"),
+    new SimpleShard(new("shard-002"), "postgres://user:pass@host2/db"),
+    new SimpleShard(new("shard-003"), "postgres://user:pass@host3/db")
 };
 
 // Initialize the shard router
