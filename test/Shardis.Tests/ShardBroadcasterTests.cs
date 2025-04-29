@@ -1,7 +1,7 @@
 using NSubstitute;
 using FluentAssertions;
 using Shardis.Model;
-using Shardis.Routing;
+using Shardis.Querying;
 
 namespace Shardis.Tests;
 

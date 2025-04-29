@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 using Shardis.Model;
 
-namespace Shardis.Routing;
+namespace Shardis.Querying;
 
 /// <summary>
 /// Provides an implementation of the <see cref="IShardBroadcaster{TSession}"/> interface for querying all shards in parallel.
@@ -22,26 +22,29 @@ public class ShardBroadcaster<TShard, TSession> : IShardBroadcaster<TSession> wh
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxDegreeOfParallelism"/> is less than or equal to zero.</exception>
     public ShardBroadcaster(IEnumerable<TShard> shards, int maxDegreeOfParallelism = 20)
     {
-        _shards = shards ?? throw new ArgumentNullException(nameof(shards));
-        _maxDegreeOfParallelism = maxDegreeOfParallelism > 0 ? maxDegreeOfParallelism : throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "Max degree of parallelism must be greater than zero.");
+        ArgumentNullException.ThrowIfNull(shards, nameof(shards));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxDegreeOfParallelism, nameof(maxDegreeOfParallelism));
+
+        _shards = shards;
+        _maxDegreeOfParallelism = maxDegreeOfParallelism;
     }
 
     /// <inheritdoc/>
     public async Task<IEnumerable<TResult>> QueryAllShardsAsync<TResult>(Func<TSession, Task<IEnumerable<TResult>>> query, CancellationToken cancellationToken = default)
     {
-        if (query == null)
-        {
-            throw new ArgumentNullException(nameof(query));
-        }
+        ArgumentNullException.ThrowIfNull(query, nameof(query));
 
         var results = new ConcurrentBag<TResult>();
 
-        await Parallel.ForEachAsync(_shards, new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism, CancellationToken = cancellationToken }, async (shard, ct) =>
+        var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism, CancellationToken = cancellationToken };
+
+        await Parallel.ForEachAsync(_shards, options, async (shard, ct) =>
         {
             var session = shard.CreateSession();
             var partialResults = await query(session).ConfigureAwait(false);
             foreach (var result in partialResults)
             {
+                ct.ThrowIfCancellationRequested();
                 results.Add(result);
             }
         }).ConfigureAwait(false);

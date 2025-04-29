@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-using Shardis.Routing;
+using Shardis.Querying;
 
 namespace SampleWorker;
 

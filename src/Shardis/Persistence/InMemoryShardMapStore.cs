@@ -10,7 +10,7 @@ public class InMemoryShardMapStore : IShardMapStore
     /// <summary>
     /// Stores the key-to-shard assignments in memory.
     /// </summary>
-    private readonly Dictionary<ShardKey, ShardId> _assignments = new();
+    private readonly Dictionary<ShardKey, ShardId> _assignments = [];
 
     /// <summary>
     /// Attempts to retrieve the shard ID for a given shard key.

@@ -1,13 +1,10 @@
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+
 using FluentAssertions;
-using NSubstitute;
+
 using Shardis.Model;
-using Shardis.Routing;
-using Xunit;
+using Shardis.Querying;
+using Shardis.Tests.TestHelpers;
 
 namespace Shardis.Tests;
 
@@ -17,11 +14,8 @@ public class ShardStreamBroadcasterTests
     public async Task QueryAllShardsAsync_ShouldAggregateResultsFromAllShards()
     {
         // Arrange
-        var shard1 = Substitute.For<IShard<string>>();
-        var shard2 = Substitute.For<IShard<string>>();
-
-        shard1.CreateSession().Returns("Session1");
-        shard2.CreateSession().Returns("Session2");
+        var shard1 = new TestShard<string>("Shard1", "Session1");
+        var shard2 = new TestShard<string>("Shard2", "Session2");
 
         var shards = new List<IShard<string>> { shard1, shard2 };
         var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards);
@@ -32,51 +26,40 @@ public class ShardStreamBroadcasterTests
         var results = new List<string>();
         await foreach (var result in broadcaster.QueryAllShardsAsync(query))
         {
-            results.Add(result);
+            results.Add(result.Item);
         }
 
         // Assert
-        results.Should().HaveCount(4);
-        results.Should().Contain("Session1-Result1");
-        results.Should().Contain("Session1-Result2");
-        results.Should().Contain("Session2-Result1");
-        results.Should().Contain("Session2-Result2");
-    }
-
-    private async IAsyncEnumerable<string> GetMockedResults(string session)
-    {
-        yield return await Task.FromResult(session + "-Result1");
-        yield return await Task.FromResult(session + "-Result2");
+        results.Should().BeEquivalentTo(
+        [
+            "Session1-Result1",
+            "Session1-Result2",
+            "Session2-Result1",
+            "Session2-Result2"
+        ]);
     }
 
     [Fact]
     public async Task QueryAllShardsAsync_ShouldThrowArgumentNullException_WhenQueryIsNull()
     {
         // Arrange
-        var shard = Substitute.For<IShard<string>>();
+        var shard = new TestShard<string>("Shard1", "Session1");
         var shards = new List<IShard<string>> { shard };
         var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards);
 
         // Act
-        var asyncEnumerable = broadcaster.QueryAllShardsAsync<string>(null!);
-
-        // Assert
         var exception = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
-            await foreach (var _ in asyncEnumerable)
-            {
-                // Should not reach here
-            }
+            await foreach (var _ in broadcaster.QueryAllShardsAsync<string>(null!)) { }
         });
 
+        // Assert
         Assert.Equal("query", exception.ParamName);
     }
-
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenShardsIsNull()
     {
-        // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new ShardStreamBroadcaster<IShard<string>, string>(null!));
     }
 
@@ -84,53 +67,55 @@ public class ShardStreamBroadcasterTests
     public async Task QueryAllShardsAsync_ShouldYieldFastShardResultsBeforeSlowShards()
     {
         // Arrange
-        var fastShard = Substitute.For<IShard<string>>();
-        var slowShard = Substitute.For<IShard<string>>();
-
-        fastShard.CreateSession().Returns("FastSession");
-        slowShard.CreateSession().Returns("SlowSession");
+        var fastShard = new TestShard<string>("ShardFast", "FastSession");
+        var slowShard = new TestShard<string>("ShardSlow", "SlowSession");
 
         var shards = new List<IShard<string>> { fastShard, slowShard };
         var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards);
 
-        async IAsyncEnumerable<string> FastShardQuery(string session)
+        async IAsyncEnumerable<string> FastQuery(string session)
         {
             yield return "FastResult1";
-            await Task.Delay(10); // Small delay to simulate async behavior
+            await Task.Delay(10);
             yield return "FastResult2";
         }
 
-        async IAsyncEnumerable<string> SlowShardQuery(string session)
+        async IAsyncEnumerable<string> SlowQuery(string session)
         {
-            await Task.Delay(500); // Simulate slow shard
+            await Task.Delay(500);
             yield return "SlowResult1";
             await Task.Delay(10);
             yield return "SlowResult2";
         }
 
         Func<string, IAsyncEnumerable<string>> query = session =>
-            session == "FastSession" ? FastShardQuery(session) : SlowShardQuery(session);
+            session == "FastSession" ? FastQuery(session) : SlowQuery(session);
 
-        var yieldedResults = new List<(string Value, long Timestamp)>();
+        var yielded = new List<(string Result, long Timestamp)>();
         var stopwatch = Stopwatch.StartNew();
 
         // Act
         await foreach (var result in broadcaster.QueryAllShardsAsync(query))
         {
-            yieldedResults.Add((result, stopwatch.ElapsedMilliseconds));
+            yielded.Add((result.Item, stopwatch.ElapsedMilliseconds));
         }
 
         stopwatch.Stop();
 
         // Assert
-        yieldedResults.Should().NotBeEmpty();
-        yieldedResults.Should().Contain(r => r.Value.StartsWith("Fast"));
-        yieldedResults.Should().Contain(r => r.Value.StartsWith("Slow"));
+        yielded.Should().Contain(r => r.Result.StartsWith("Fast"));
+        yielded.Should().Contain(r => r.Result.StartsWith("Slow"));
 
-        var firstSlowResult = yieldedResults.First(r => r.Value.StartsWith("Slow"));
-        var lastFastResult = yieldedResults.Last(r => r.Value.StartsWith("Fast"));
+        var firstSlow = yielded.First(r => r.Result.StartsWith("Slow"));
+        var lastFast = yielded.Last(r => r.Result.StartsWith("Fast"));
 
-        // Assert that at least one FastResult arrived before any SlowResult
-        lastFastResult.Timestamp.Should().BeLessThan(firstSlowResult.Timestamp);
+        lastFast.Timestamp.Should().BeLessThan(firstSlow.Timestamp);
+    }
+
+    private async IAsyncEnumerable<string> GetMockedResults(string session)
+    {
+        yield return $"{session}-Result1";
+        await Task.Yield();
+        yield return $"{session}-Result2";
     }
 }
