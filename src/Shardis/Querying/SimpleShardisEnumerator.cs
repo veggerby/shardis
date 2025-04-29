@@ -2,7 +2,7 @@ using Shardis.Model;
 
 namespace Shardis.Querying;
 
-internal class SimpleShardisEnumerator<T> : IShardisEnumerator<T>
+internal class SimpleShardisAsyncEnumerator<T> : IShardisAsyncEnumerator<T>
 {
     private readonly IAsyncEnumerator<T> _inner;
     private readonly ShardId _shardId;
@@ -14,7 +14,7 @@ internal class SimpleShardisEnumerator<T> : IShardisEnumerator<T>
 
     public ShardItem<T> Current { get; private set; } = default!;
 
-    public SimpleShardisEnumerator(ShardId shardId, IAsyncEnumerable<T> source)
+    public SimpleShardisAsyncEnumerator(ShardId shardId, IAsyncEnumerable<T> source)
     {
         _inner = source.GetAsyncEnumerator();
         _shardId = shardId;

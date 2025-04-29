@@ -13,8 +13,8 @@ var shards = new List<ISimpleShard>
 };
 
 // Initialize shard router with in-memory map
-var shardRouter = new DefaultShardRouter<string>(
-    shardMapStore: new InMemoryShardMapStore(),
+var shardRouter = new DefaultShardRouter<string, string>(
+    shardMapStore: new InMemoryShardMapStore<string>(),
     availableShards: shards
 );
 
@@ -34,7 +34,7 @@ Console.WriteLine("Routing users to shards:\n");
 
 foreach (var userId in userIds)
 {
-    var shardKey = new ShardKey(userId);
+    var shardKey = new ShardKey<string>(userId);
     var shard = shardRouter.RouteToShard(shardKey);
 
     Console.WriteLine($"- {userId} routed to {shard.ShardId}");
@@ -44,7 +44,7 @@ Console.WriteLine("Simulating queries on routed shards:\n");
 
 foreach (var userId in userIds)
 {
-    var shardKey = new ShardKey(userId);
+    var shardKey = new ShardKey<string>(userId);
     var shard = shardRouter.RouteToShard(shardKey);
 
     // Simulate a query on the routed shard

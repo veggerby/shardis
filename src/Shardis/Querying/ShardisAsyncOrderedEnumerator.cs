@@ -5,17 +5,17 @@ namespace Shardis.Querying;
 /// <summary>
 /// A globally ordered enumerator that performs a k-way merge across multiple ordered shard streams.
 /// </summary>
-internal sealed class ShardisOrderedEnumerator<T, TKey> : IShardisOrderedEnumerator<T>
+internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrderedEnumerator<T>
     where TKey : IComparable<TKey>
 {
-    private readonly IList<IShardisEnumerator<T>> _streams;
+    private readonly IList<IShardisAsyncEnumerator<T>> _streams;
     private readonly Func<T, TKey> _keySelector;
     private readonly CancellationToken _cancellationToken;
 
-    private IShardisEnumerator<T>? _currentStream;
+    private IShardisAsyncEnumerator<T>? _currentStream;
 
-    public ShardisOrderedEnumerator(
-        IEnumerable<IShardisEnumerator<T>> shardStreams,
+    public ShardisAsyncOrderedEnumerator(
+        IEnumerable<IShardisAsyncEnumerator<T>> shardStreams,
         Func<T, TKey> keySelector,
         CancellationToken cancellationToken = default)
     {

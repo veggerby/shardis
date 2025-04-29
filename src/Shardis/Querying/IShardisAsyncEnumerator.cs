@@ -1,7 +1,6 @@
-using Shardis.Model;
-
 namespace Shardis.Querying;
-public interface IShardisEnumerator<T> : IAsyncEnumerator<ShardItem<T>>
+
+public interface IShardisAsyncEnumerator<T> : IAsyncEnumerator<ShardItem<T>>
 {
     /// <summary>
     /// Returns the total number of shards this enumerator is consuming.

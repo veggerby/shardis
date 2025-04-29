@@ -3,7 +3,7 @@ using Shardis.Querying;
 
 namespace Shardis.Tests.TestHelpers;
 
-public class TestShardisEnumerator<T> : IShardisEnumerator<T>
+public class TestShardisEnumerator<T> : IShardisAsyncEnumerator<T>
 {
     private readonly IEnumerator<T> _source;
     private readonly List<TimeSpan>? _delays;

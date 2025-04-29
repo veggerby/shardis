@@ -21,7 +21,7 @@ public class ShardisOrderedEnumeratorTests
             shardId: "shard2"
         );
 
-        var enumerator = new ShardisOrderedEnumerator<int, int>(
+        var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard1, shard2],
             keySelector: x => x,
             cancellationToken: CancellationToken.None);
@@ -45,7 +45,7 @@ public class ShardisOrderedEnumeratorTests
         var shard1 = new TestShardisEnumerator<int>([], "s1");
         var shard2 = new TestShardisEnumerator<int>([], "s2");
 
-        var enumerator = new ShardisOrderedEnumerator<int, int>(
+        var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard1, shard2],
             keySelector: x => x);
 
@@ -66,7 +66,7 @@ public class ShardisOrderedEnumeratorTests
             shardId: "shard1"
         );
 
-        var enumerator = new ShardisOrderedEnumerator<int, int>(
+        var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard],
             keySelector: x => x);
 
@@ -92,7 +92,7 @@ public class ShardisOrderedEnumeratorTests
         );
 
         using var cts = new CancellationTokenSource();
-        var enumerator = new ShardisOrderedEnumerator<int, int>(
+        var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard],
             keySelector: x => x,
             cancellationToken: cts.Token);

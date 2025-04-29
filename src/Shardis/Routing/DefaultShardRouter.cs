@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+
+using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;
 
@@ -8,7 +10,8 @@ namespace Shardis.Routing;
 /// <summary>
 /// Provides a default shard routing implementation using a simple hash-based strategy.
 /// </summary>
-public class DefaultShardRouter<TSession> : IShardRouter<TSession>
+public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
+    where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>
     /// The list of available shards.
@@ -18,7 +21,8 @@ public class DefaultShardRouter<TSession> : IShardRouter<TSession>
     /// <summary>
     /// The shard map store for managing shard assignments.
     /// </summary>
-    private readonly IShardMapStore _shardMapStore;
+    private readonly IShardMapStore<TKey> _shardMapStore;
+    private readonly IShardKeyHasher<TKey> _shardKeyHasher;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DefaultShardRouter{TSession}"/> class.
@@ -27,15 +31,19 @@ public class DefaultShardRouter<TSession> : IShardRouter<TSession>
     /// <param name="availableShards">The collection of available shards.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardMapStore"/> or <paramref name="availableShards"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="availableShards"/> is empty.</exception>
-    public DefaultShardRouter(IShardMapStore shardMapStore, IEnumerable<IShard<TSession>> availableShards)
+    public DefaultShardRouter(
+        IShardMapStore<TKey> shardMapStore,
+        IEnumerable<IShard<TSession>> availableShards,
+        IShardKeyHasher<TKey>? shardKeyHasher = null)
     {
-        _shardMapStore = shardMapStore ?? throw new ArgumentNullException(nameof(shardMapStore));
-        _availableShards = availableShards?.ToList() ?? throw new ArgumentNullException(nameof(availableShards));
+        ArgumentNullException.ThrowIfNull(shardMapStore, nameof(shardMapStore));
+        ArgumentNullException.ThrowIfNull(availableShards, nameof(availableShards));
 
-        if (!_availableShards.Any())
-        {
-            throw new InvalidOperationException("At least one shard must be available.");
-        }
+        _shardMapStore = shardMapStore;
+        _shardKeyHasher = shardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance;
+        _availableShards = availableShards.ToList();
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_availableShards.Count, nameof(availableShards));
     }
 
     /// <summary>
@@ -44,7 +52,7 @@ public class DefaultShardRouter<TSession> : IShardRouter<TSession>
     /// <param name="shardKey">The shard key representing an aggregate instance.</param>
     /// <returns>The shard that should handle the given key.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardKey"/> is null.</exception>
-    public IShard<TSession> RouteToShard(ShardKey shardKey)
+    public IShard<TSession> RouteToShard(ShardKey<TKey> shardKey)
     {
         if (shardKey.Value == null) throw new ArgumentNullException(nameof(shardKey));
 
@@ -59,8 +67,8 @@ public class DefaultShardRouter<TSession> : IShardRouter<TSession>
         }
 
         // If no assignment exists, hash it and assign
-        var shardIndex = CalculateShardIndex(shardKey.Value, _availableShards.Count);
-        var selectedShard = _availableShards[shardIndex];
+        var shardIndex = CalculateShardIndex(shardKey, _availableShards.Count);
+        var selectedShard = _availableShards[(int)shardIndex];
 
         // Store the assignment
         _shardMapStore.AssignShardToKey(shardKey, selectedShard.ShardId);
@@ -74,17 +82,10 @@ public class DefaultShardRouter<TSession> : IShardRouter<TSession>
     /// <param name="keyValue">The key value to hash.</param>
     /// <param name="shardCount">The total number of available shards.</param>
     /// <returns>The index of the shard.</returns>
-    private static int CalculateShardIndex(string keyValue, int shardCount)
+    private long CalculateShardIndex(ShardKey<TKey> keyValue, int shardCount)
     {
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyValue));
-
-        // Take the first 4 bytes and turn into an int
-        var hashInt = BitConverter.ToInt32(hashBytes, 0);
-
         // Ensure positive integer
-        hashInt = Math.Abs(hashInt);
-
-        return hashInt % shardCount;
+        var hash = _shardKeyHasher.ComputeHash(keyValue);
+        return hash % shardCount;
     }
 }

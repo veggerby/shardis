@@ -5,7 +5,8 @@ namespace Shardis.Migration;
 /// <summary>
 /// Provides a default implementation of the <see cref="IShardMigrator"/> interface for migrating data between shards.
 /// </summary>
-public class DefaultShardMigrator : IShardMigrator
+public class DefaultShardMigrator<TKey, TSession> : IShardMigrator<TKey, TSession>
+    where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>
     /// Migrates data from one shard to another.
@@ -14,7 +15,7 @@ public class DefaultShardMigrator : IShardMigrator
     /// <param name="targetShard">The target shard to which data will be migrated.</param>
     /// <param name="shardKey">The shard key representing the data to migrate.</param>
     /// <returns>A task that represents the asynchronous migration operation.</returns>
-    public async Task MigrateAsync(IShard<string> sourceShard, IShard<string> targetShard, ShardKey shardKey)
+    public async Task MigrateAsync(IShard<TSession> sourceShard, IShard<TSession> targetShard, ShardKey<TKey> shardKey)
     {
         if (sourceShard == null) throw new ArgumentNullException(nameof(sourceShard));
         if (targetShard == null) throw new ArgumentNullException(nameof(targetShard));

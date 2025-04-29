@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+
+using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;
 
@@ -8,10 +10,13 @@ namespace Shardis.Routing;
 /// <summary>
 /// Routes ShardKeys to Shards using consistent hashing, minimizing key movement when shards are added or removed.
 /// </summary>
-public class ConsistentHashShardRouter<TShard, TSession> : IShardRouter<TSession> where TShard : IShard<TSession>
+public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TKey, TSession>
+    where TShard : IShard<TSession>
+    where TKey : notnull, IEquatable<TKey>
 {
-    private readonly SortedDictionary<int, TShard> _ring = [];
-    private readonly IShardMapStore _shardMapStore;
+    private readonly SortedDictionary<uint, TShard> _ring = [];
+    private readonly IShardMapStore<TKey> _shardMapStore;
+    private readonly IShardKeyHasher<TKey> _shardKeyHasher;
     private readonly int _replicationFactor;
     private readonly object _lock = new();
 
@@ -25,20 +30,23 @@ public class ConsistentHashShardRouter<TShard, TSession> : IShardRouter<TSession
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="replicationFactor"/> is less than or equal to zero.</exception>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="availableShards"/> is empty.</exception>
     public ConsistentHashShardRouter(
-        IShardMapStore shardMapStore,
+        IShardMapStore<TKey> shardMapStore,
         IEnumerable<TShard> availableShards,
+        IShardKeyHasher<TKey> shardKeyHasher,
         int replicationFactor = 100)
     {
-        _shardMapStore = shardMapStore ?? throw new ArgumentNullException(nameof(shardMapStore));
-        _replicationFactor = replicationFactor > 0 ? replicationFactor : throw new ArgumentOutOfRangeException(nameof(replicationFactor));
-
+        ArgumentNullException.ThrowIfNull(shardMapStore, nameof(shardMapStore));
         ArgumentNullException.ThrowIfNull(availableShards, nameof(availableShards));
+        ArgumentNullException.ThrowIfNull(shardKeyHasher, nameof(shardKeyHasher));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(replicationFactor, nameof(replicationFactor));
+
+        _shardMapStore = shardMapStore;
+        _shardKeyHasher = shardKeyHasher;
+        _replicationFactor = replicationFactor;
 
         var shardList = availableShards.ToList();
-        if (!shardList.Any())
-        {
-            throw new InvalidOperationException("At least one shard must be provided.");
-        }
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(shardList.Count(), nameof(availableShards));
 
         foreach (var shard in shardList)
         {
@@ -52,7 +60,7 @@ public class ConsistentHashShardRouter<TShard, TSession> : IShardRouter<TSession
     /// <param name="shardKey">The shard key representing an aggregate instance.</param>
     /// <returns>The shard that should handle the given key.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardKey"/> is null.</exception>
-    public IShard<TSession> RouteToShard(ShardKey shardKey)
+    public IShard<TSession> RouteToShard(ShardKey<TKey> shardKey)
     {
         if (shardKey.Value == null) throw new ArgumentNullException(nameof(shardKey));
 
@@ -67,7 +75,7 @@ public class ConsistentHashShardRouter<TShard, TSession> : IShardRouter<TSession
         }
 
         // Otherwise, route via ring
-        var keyHash = Hash(shardKey.Value);
+        var keyHash = _shardKeyHasher.ComputeHash(shardKey);
 
         IShard<TSession> selectedShard;
         lock (_lock) // Ensure thread safety
@@ -100,35 +108,26 @@ public class ConsistentHashShardRouter<TShard, TSession> : IShardRouter<TSession
     /// <param name="shard">The shard to add to the ring.</param>
     private void AddShardToRing(TShard shard)
     {
+        ArgumentNullException.ThrowIfNull(shard, nameof(shard));
+
         lock (_lock)
         {
             for (int i = 0; i < _replicationFactor; i++)
             {
-                var virtualNodeKey = $"{shard.ShardId}-replica-{i}";
-                var hash = Hash(virtualNodeKey);
+                var virtualKey = $"{shard.ShardId}-replica-{i}";
+                var hash = ShardHasher.HashString(virtualKey);
 
-                // Prevent duplicates just in case
+                // Ensure no collision on ring (extremely rare with a good hash)
                 if (!_ring.ContainsKey(hash))
                 {
                     _ring[hash] = shard;
                 }
+                else
+                {
+                    // Optional: log warning or retry with salt
+                    // Could increment i or retry with `-collision-{guid}` suffix if needed
+                }
             }
         }
-    }
-
-    /// <summary>
-    /// Computes a hash value for the given input string.
-    /// </summary>
-    /// <param name="input">The input string to hash.</param>
-    /// <returns>An integer hash value.</returns>
-    private static int Hash(string input)
-    {
-        var bytes = Encoding.UTF8.GetBytes(input);
-        var hashBytes = SHA256.HashData(bytes);
-
-        // Take first 4 bytes for simplicity
-        var intHash = BitConverter.ToInt32(hashBytes, 0);
-
-        return Math.Abs(intHash);
     }
 }

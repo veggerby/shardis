@@ -78,7 +78,7 @@ public static class ShardStreamBroadcasterExtensions
     /// <summary>
     /// Executes a query against all shards and returns a globally ordered merged stream.
     /// </summary>
-    public static async IAsyncEnumerable<T> QueryAndMergeSortedByAsync<TSession, T, TKey>(
+    public static async IAsyncEnumerable<ShardItem<T>> QueryAndMergeSortedByAsync<TSession, T, TKey>(
         this IShardStreamBroadcaster<TSession> broadcaster,
         Func<TSession, IAsyncEnumerable<T>> query,
         Func<T, TKey> keySelector,
@@ -87,12 +87,20 @@ public static class ShardStreamBroadcasterExtensions
     {
         var shardStreams = broadcaster
             .QueryAllShardsAsync(query, cancellationToken)
-            .GroupByShard() // Optional future extension
-            .Values;
+            .GroupByShard()
+            .Select(pair =>
+                new ShardisAsyncShardEnumerator<T>(
+                    pair.Key,
+                    pair.Value.GetAsyncEnumerator(cancellationToken)
+                )
+            )
+            .ToList();
 
-        await foreach (var item in shardStreams.MergeSortedBy(keySelector, cancellationToken))
+        await using var ordered = new ShardisAsyncOrderedEnumerator<T, TKey>(shardStreams, keySelector, cancellationToken);
+
+        while (await ordered.MoveNextAsync())
         {
-            yield return item;
+            yield return ordered.Current;
         }
     }
 
@@ -178,10 +186,10 @@ public static class ShardStreamBroadcasterExtensions
         }
     }
 
-    public static IShardisEnumerator<T> ToShardisEnumerator<T>(
+    public static IShardisAsyncEnumerator<T> ToShardisEnumerator<T>(
         this IAsyncEnumerable<T> source,
         ShardId shardId)
     {
-        return new SimpleShardisEnumerator<T>(shardId, source);
+        return new SimpleShardisAsyncEnumerator<T>(shardId, source);
     }
 }

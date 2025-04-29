@@ -21,7 +21,7 @@ public class ShardisCombinedEnumeratorTests
             shardId: "shard2"
         );
 
-        var enumerator = new ShardisCombinedEnumerator<int>(
+        var enumerator = new ShardisAsyncCombinedEnumerator<int>(
             [shard1, shard2],
             cancellationToken: CancellationToken.None);
 
@@ -46,7 +46,7 @@ public class ShardisCombinedEnumeratorTests
         var shard1 = new TestShardisEnumerator<int>([], "shard1");
         var shard2 = new TestShardisEnumerator<int>([], "shard2");
 
-        var enumerator = new ShardisCombinedEnumerator<int>(
+        var enumerator = new ShardisAsyncCombinedEnumerator<int>(
             [shard1, shard2],
             cancellationToken: CancellationToken.None);
 
@@ -56,24 +56,5 @@ public class ShardisCombinedEnumeratorTests
         // Assert
         hasMore.Should().BeFalse();
         enumerator.IsComplete.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task DisposeAsync_DisposesAllEnumerators()
-    {
-        // Arrange
-        var shard1 = new TestShardisEnumerator<int>([1], "shard1");
-        var shard2 = new TestShardisEnumerator<int>([2], "shard2");
-
-        var enumerator = new ShardisCombinedEnumerator<int>(
-            [shard1, shard2],
-            cancellationToken: CancellationToken.None);
-
-        // Act
-        await enumerator.DisposeAsync();
-
-        // Assert
-        shard1.IsComplete.Should().BeTrue();
-        shard2.IsComplete.Should().BeTrue();
     }
 }

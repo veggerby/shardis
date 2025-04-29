@@ -3,7 +3,7 @@ using Shardis.Model;
 
 namespace Shardis.Querying;
 
-internal sealed class ShardisShardEnumerator<TItem> : IShardisEnumerator<TItem>
+internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerator<TItem>
 {
     private readonly ShardId _shardId;
     private readonly IAsyncEnumerator<TItem> _enumerator;
@@ -14,7 +14,7 @@ internal sealed class ShardisShardEnumerator<TItem> : IShardisEnumerator<TItem>
     public bool IsPrimed { get; private set; } = false;
     public ShardItem<TItem> Current { get; private set; } = default!;
 
-    public ShardisShardEnumerator(ShardId shardId, IAsyncEnumerator<TItem> enumerator)
+    public ShardisAsyncShardEnumerator(ShardId shardId, IAsyncEnumerator<TItem> enumerator)
     {
         ArgumentNullException.ThrowIfNull(shardId, nameof(shardId));
         ArgumentNullException.ThrowIfNull(enumerator, nameof(enumerator));
