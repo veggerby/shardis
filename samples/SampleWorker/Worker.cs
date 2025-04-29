@@ -21,8 +21,8 @@ public class Worker : BackgroundService
 {
     var delays = new Dictionary<string, int[]>
     {
-        { "session-1", new[] { 10, 20, 6000 } },
-        { "session-2", new[] { 1500, 2500, 100, 100, 1000 } }
+        { "session-1", [ 10, 20, 6000 ] },
+        { "session-2", [ 1500, 2500, 100, 100, 1000 ] }
     };
 
     _logger.LogInformation("Worker starting at {time}", DateTimeOffset.Now);

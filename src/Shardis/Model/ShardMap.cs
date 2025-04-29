@@ -3,12 +3,13 @@ namespace Shardis.Model;
 /// <summary>
 /// Represents a mapping between a shard key and a shard ID.
 /// </summary>
-public readonly record struct ShardMap
+public readonly record struct ShardMap<TKey>
+    where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>
     /// Gets the shard key associated with the mapping.
     /// </summary>
-    public ShardKey ShardKey { get; }
+    public ShardKey<TKey> ShardKey { get; }
 
     /// <summary>
     /// Gets the shard ID associated with the mapping.
@@ -20,7 +21,7 @@ public readonly record struct ShardMap
     /// </summary>
     /// <param name="shardKey">The shard key to map.</param>
     /// <param name="shardId">The shard ID to map to.</param>
-    public ShardMap(ShardKey shardKey, ShardId shardId)
+    public ShardMap(ShardKey<TKey> shardKey, ShardId shardId)
     {
         ShardKey = shardKey;
         ShardId = shardId;

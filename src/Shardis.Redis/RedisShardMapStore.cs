@@ -7,7 +7,8 @@ namespace Shardis.Redis;
 /// <summary>
 /// Provides a Redis-backed implementation of the <see cref="IShardMapStore"/> interface.
 /// </summary>
-public class RedisShardMapStore : IShardMapStore
+public class RedisShardMapStore<TKey> : IShardMapStore<TKey>
+    where TKey : notnull, IEquatable<TKey>
 {
     private readonly IDatabase _database;
     private const string ShardMapKeyPrefix = "shardmap:";
@@ -23,7 +24,7 @@ public class RedisShardMapStore : IShardMapStore
     }
 
     /// <inheritdoc/>
-    public bool TryGetShardIdForKey(ShardKey shardKey, out ShardId shardId)
+    public bool TryGetShardIdForKey(ShardKey<TKey> shardKey, out ShardId shardId)
     {
         var redisKey = ShardMapKeyPrefix + shardKey.Value;
         var shardIdValue = _database.StringGet(redisKey);
@@ -39,10 +40,10 @@ public class RedisShardMapStore : IShardMapStore
     }
 
     /// <inheritdoc/>
-    public ShardMap AssignShardToKey(ShardKey shardKey, ShardId shardId)
+    public ShardMap<TKey> AssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId)
     {
         var redisKey = ShardMapKeyPrefix + shardKey.Value;
         _database.StringSet(redisKey, shardId.Value);
-        return new ShardMap(shardKey, shardId);
+        return new ShardMap<TKey>(shardKey, shardId);
     }
 }

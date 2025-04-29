@@ -2,11 +2,11 @@ namespace Shardis.Querying;
 
 internal sealed class ShardStream<TItem> : IAsyncEnumerable<ShardItem<TItem>>
 {
-    private readonly IShardisEnumerator<TItem> _enumerator;
+    private readonly IShardisAsyncEnumerator<TItem> _enumerator;
 
     public int ShardCount => _enumerator.ShardCount;
 
-    public ShardStream(IShardisEnumerator<TItem> enumerator)
+    public ShardStream(IShardisAsyncEnumerator<TItem> enumerator)
     {
         ArgumentNullException.ThrowIfNull(enumerator, nameof(enumerator));
 

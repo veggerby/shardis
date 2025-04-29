@@ -8,16 +8,16 @@ namespace Shardis.Querying;
 /// A streaming enumerator that concurrently merges multiple shard enumerators.
 /// Items are yielded as they arrive (unordered), wrapped in <see cref="ShardItem{T}"/>.
 /// </summary>
-internal sealed class ShardisCombinedEnumerator<TItem> : IShardisEnumerator<TItem>
+internal sealed class ShardisAsyncCombinedEnumerator<TItem> : IShardisAsyncEnumerator<TItem>
 {
-    private readonly List<IShardisEnumerator<TItem>> _shardEnumerators;
+    private readonly List<IShardisAsyncEnumerator<TItem>> _shardEnumerators;
     private readonly CancellationToken _cancellationToken;
 
     private readonly Channel<ShardItem<TItem>> _channel;
     private Task? _backgroundReader;
     private ShardItem<TItem> _current;
 
-    public ShardisCombinedEnumerator(IEnumerable<IShardisEnumerator<TItem>> shardEnumerators, CancellationToken cancellationToken)
+    public ShardisAsyncCombinedEnumerator(IEnumerable<IShardisAsyncEnumerator<TItem>> shardEnumerators, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(shardEnumerators, nameof(shardEnumerators));
 

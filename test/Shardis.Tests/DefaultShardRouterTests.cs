@@ -2,6 +2,7 @@ using FluentAssertions;
 
 using NSubstitute;
 
+using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;
 using Shardis.Routing;
@@ -21,10 +22,10 @@ public class DefaultShardRouterTests
             new SimpleShard(new("shard-003"), "connection-3")
         };
 
-        var shardMapStore = Substitute.For<IShardMapStore>();
-        var router = new DefaultShardRouter<string>(shardMapStore, shards);
+        var shardMapStore = Substitute.For<IShardMapStore<string>>();
+        var router = new DefaultShardRouter<string, string>(shardMapStore, shards, StringShardKeyHasher.Instance);
 
-        var shardKey = new ShardKey("user-123");
+        var shardKey = new ShardKey<string>("user-123");
 
         // Act
         var assignedShard = router.RouteToShard(shardKey);
@@ -45,10 +46,10 @@ public class DefaultShardRouterTests
             new SimpleShard(new("shard-003"), "connection-3")
         };
 
-        var shardMapStore = Substitute.For<IShardMapStore>();
-        var router = new DefaultShardRouter<string>(shardMapStore, shards);
+        var shardMapStore = Substitute.For<IShardMapStore<string>>();
+        var router = new DefaultShardRouter<string, string>(shardMapStore, shards, StringShardKeyHasher.Instance);
 
-        var shardKey = new ShardKey("user-123");
+        var shardKey = new ShardKey<string>("user-123");
 
         // Act
         var firstAssignment = router.RouteToShard(shardKey);
