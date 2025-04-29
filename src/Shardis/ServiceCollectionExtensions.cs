@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shardis.Model;
 using Shardis.Persistence;
+using Shardis.Querying;
 using Shardis.Routing;
 
 namespace Shardis;

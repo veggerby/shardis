@@ -1,4 +1,4 @@
-namespace Shardis.Routing;
+namespace Shardis.Querying;
 
 /// <summary>
 /// Defines the contract for broadcasting queries to all shards and aggregating results.

@@ -1,4 +1,4 @@
-namespace Shardis.Routing;
+namespace Shardis.Querying;
 
 /// <summary>
 /// Defines the contract for broadcasting queries to all shards and aggregating results as asynchronous streams.
@@ -13,5 +13,5 @@ public interface IShardStreamBroadcaster<TSession>
     /// <param name="query">A function that defines the query to execute on each shard session.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>An asynchronous stream containing the aggregated results from all shards.</returns>
-    IAsyncEnumerable<TResult> QueryAllShardsAsync<TResult>(Func<TSession, IAsyncEnumerable<TResult>> query, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<ShardItem<TResult>> QueryAllShardsAsync<TResult>(Func<TSession, IAsyncEnumerable<TResult>> query, CancellationToken cancellationToken = default);
 }
