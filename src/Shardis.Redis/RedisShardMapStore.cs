@@ -1,6 +1,7 @@
-﻿using StackExchange.Redis;
-using Shardis.Model;
+﻿using Shardis.Model;
 using Shardis.Persistence;
+
+using StackExchange.Redis;
 
 namespace Shardis.Redis;
 
@@ -45,5 +46,22 @@ public class RedisShardMapStore<TKey> : IShardMapStore<TKey>
         var redisKey = ShardMapKeyPrefix + shardKey.Value;
         _database.StringSet(redisKey, shardId.Value);
         return new ShardMap<TKey>(shardKey, shardId);
+    }
+
+    /// <inheritdoc />
+    public bool TryAssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId, out ShardMap<TKey> shardMap)
+    {
+        var redisKey = ShardMapKeyPrefix + shardKey.Value;
+        // SET key value NX for compare-and-set semantics
+        var created = _database.StringSet(redisKey, shardId.Value, when: When.NotExists);
+        if (!created)
+        {
+            // Read existing
+            var existing = _database.StringGet(redisKey);
+            shardMap = new ShardMap<TKey>(shardKey, new ShardId(existing!));
+            return false;
+        }
+        shardMap = new ShardMap<TKey>(shardKey, shardId);
+        return true;
     }
 }

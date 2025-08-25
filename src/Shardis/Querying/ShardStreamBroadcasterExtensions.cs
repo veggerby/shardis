@@ -104,20 +104,14 @@ public static class ShardStreamBroadcasterExtensions
         }
     }
 
-    private sealed class ShardEnumeratorWrapper<T, TKey>
+    private sealed class ShardEnumeratorWrapper<T, TKey>(IAsyncEnumerator<T> enumerator, Func<T, TKey> keySelector)
         where TKey : IComparable<TKey>
     {
-        public IAsyncEnumerator<T> Enumerator { get; }
-        public Func<T, TKey> KeySelector { get; }
+        public IAsyncEnumerator<T> Enumerator { get; } = enumerator;
+        public Func<T, TKey> KeySelector { get; } = keySelector;
         public T Current { get; private set; } = default!;
         public TKey CurrentKey => KeySelector(Current);
         public bool HasValue { get; private set; }
-
-        public ShardEnumeratorWrapper(IAsyncEnumerator<T> enumerator, Func<T, TKey> keySelector)
-        {
-            Enumerator = enumerator;
-            KeySelector = keySelector;
-        }
 
         public async Task<bool> MoveNextAsync()
         {
