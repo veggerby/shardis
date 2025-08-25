@@ -17,14 +17,43 @@ public class DefaultShardMigrator<TKey, TSession> : IShardMigrator<TKey, TSessio
     /// <returns>A task that represents the asynchronous migration operation.</returns>
     public async Task MigrateAsync(IShard<TSession> sourceShard, IShard<TSession> targetShard, ShardKey<TKey> shardKey)
     {
-        if (sourceShard == null) throw new ArgumentNullException(nameof(sourceShard));
-        if (targetShard == null) throw new ArgumentNullException(nameof(targetShard));
-        if (shardKey.Value == null) throw new ArgumentNullException(nameof(shardKey));
-
-        // Simulate data migration logic
-        await Task.Run(() =>
+        if (sourceShard == null)
         {
-            Console.WriteLine($"Migrating data for key '{shardKey}' from shard '{sourceShard.ShardId}' to shard '{targetShard.ShardId}'.");
-        });
+            throw new ArgumentNullException(nameof(sourceShard));
+        }
+
+        if (targetShard == null)
+        {
+            throw new ArgumentNullException(nameof(targetShard));
+        }
+
+        if (shardKey.Value == null)
+        {
+            throw new ArgumentNullException(nameof(shardKey));
+        }
+
+        // TODO: Implement actual data copy + reassignment strategy.
+        await Task.CompletedTask;
+    }
+
+    public Task<ShardMigrationPlan<TKey>> PlanAsync(IShard<TSession> sourceShard, IShard<TSession> targetShard, IEnumerable<ShardKey<TKey>> keys)
+    {
+        ArgumentNullException.ThrowIfNull(sourceShard);
+        ArgumentNullException.ThrowIfNull(targetShard);
+        ArgumentNullException.ThrowIfNull(keys);
+        return Task.FromResult(new ShardMigrationPlan<TKey>(sourceShard.ShardId, targetShard.ShardId, keys));
+    }
+
+    public async Task ExecutePlanAsync(ShardMigrationPlan<TKey> plan, Func<ShardKey<TKey>, Task>? perKeyCallback = null)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        foreach (var key in plan.Keys)
+        {
+            // Currently just invokes callback; real impl would copy data + update mapping.
+            if (perKeyCallback != null)
+            {
+                await perKeyCallback(key).ConfigureAwait(false);
+            }
+        }
     }
 }

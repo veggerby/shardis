@@ -1,5 +1,3 @@
-using NSubstitute;
-using FluentAssertions;
 using Shardis.Model;
 using Shardis.Querying;
 
@@ -10,7 +8,7 @@ public class ShardBroadcasterTests
     [Fact]
     public async Task QueryAllShardsAsync_ShouldAggregateResultsFromAllShards()
     {
-        // Arrange
+        // arrange
         var shard1 = Substitute.For<IShard<string>>();
         var shard2 = Substitute.For<IShard<string>>();
 
@@ -22,10 +20,10 @@ public class ShardBroadcasterTests
 
         Func<string, Task<IEnumerable<string>>> query = session => Task.FromResult(new[] { session + "-Result" }.AsEnumerable());
 
-        // Act
+        // act
         var results = await broadcaster.QueryAllShardsAsync(query);
 
-        // Assert
+        // assert
         results.Should().HaveCount(2);
         results.Should().Contain("Session1-Result");
         results.Should().Contain("Session2-Result");
@@ -34,20 +32,33 @@ public class ShardBroadcasterTests
     [Fact]
     public async Task QueryAllShardsAsync_ShouldThrowArgumentNullException_WhenQueryIsNull()
     {
-        // Arrange
+        // arrange
         var shard = Substitute.For<IShard<string>>();
         var shards = new List<IShard<string>> { shard };
         var broadcaster = new ShardBroadcaster<IShard<string>, string>(shards);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => broadcaster.QueryAllShardsAsync<string>(null!));
+        // act & assert
+        Func<Task> invoke = () => broadcaster.QueryAllShardsAsync<string>(null!);
+        var ex = await invoke.Should().ThrowAsync<ArgumentNullException>();
+        ex.Which.ParamName.Should().Be("query");
     }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenShardsIsNull()
     {
-        // Act & Assert
-        Action act = () => new ShardBroadcaster<IShard<string>, string>(null!);
-        act.Should().Throw<ArgumentNullException>();
+        // act & assert
+        Action construct = () => new ShardBroadcaster<IShard<string>, string>(null!);
+        var ex = construct.Should().Throw<ArgumentNullException>();
+        ex.Which.ParamName.Should().Be("shards");
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrow_WhenNoShards()
+    {
+        // act
+        Action act = () => new ShardBroadcaster<IShard<string>, string>(Array.Empty<IShard<string>>());
+
+        // assert
+        act.Should().Throw<ArgumentException>();
     }
 }

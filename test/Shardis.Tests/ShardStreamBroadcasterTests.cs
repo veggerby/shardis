@@ -1,7 +1,5 @@
 using System.Diagnostics;
 
-using FluentAssertions;
-
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Tests.TestHelpers;
@@ -13,7 +11,7 @@ public class ShardStreamBroadcasterTests
     [Fact]
     public async Task QueryAllShardsAsync_ShouldAggregateResultsFromAllShards()
     {
-        // Arrange
+        // arrange
         var shard1 = new TestShard<string>("Shard1", "Session1");
         var shard2 = new TestShard<string>("Shard2", "Session2");
 
@@ -22,51 +20,65 @@ public class ShardStreamBroadcasterTests
 
         Func<string, IAsyncEnumerable<string>> query = session => GetMockedResults(session);
 
-        // Act
+        // act
         var results = new List<string>();
         await foreach (var result in broadcaster.QueryAllShardsAsync(query))
         {
             results.Add(result.Item);
         }
 
-        // Assert
-        results.Should().BeEquivalentTo(
-        [
+        // assert
+        results.Should().BeEquivalentTo(new[]
+                {
             "Session1-Result1",
             "Session1-Result2",
             "Session2-Result1",
             "Session2-Result2"
-        ]);
+        });
     }
 
     [Fact]
     public async Task QueryAllShardsAsync_ShouldThrowArgumentNullException_WhenQueryIsNull()
     {
-        // Arrange
+        // arrange
         var shard = new TestShard<string>("Shard1", "Session1");
         var shards = new List<IShard<string>> { shard };
         var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards);
 
-        // Act
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        // act
+        Func<Task> invoke = async () =>
         {
             await foreach (var _ in broadcaster.QueryAllShardsAsync<string>(null!)) { }
-        });
+        };
+        var ex = await invoke.Should().ThrowAsync<ArgumentNullException>();
+        ex.Which.ParamName.Should().Be("query");
 
-        // Assert
-        Assert.Equal("query", exception.ParamName);
+        // assert (exception type asserted above)
     }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenShardsIsNull()
     {
-        Assert.Throws<ArgumentNullException>(() => new ShardStreamBroadcaster<IShard<string>, string>(null!));
+        // arrange / act / assert
+        Action construct = () => new ShardStreamBroadcaster<IShard<string>, string>(null!);
+        var ex = construct.Should().Throw<ArgumentNullException>();
+        ex.Which.ParamName.Should().Be("shards");
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrow_WhenNoShards()
+    {
+        // act
+        Action act = () => new ShardStreamBroadcaster<IShard<string>, string>(Array.Empty<IShard<string>>());
+
+        // assert
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public async Task QueryAllShardsAsync_ShouldYieldFastShardResultsBeforeSlowShards()
     {
-        // Arrange
+        // arrange
         var fastShard = new TestShard<string>("ShardFast", "FastSession");
         var slowShard = new TestShard<string>("ShardSlow", "SlowSession");
 
@@ -94,7 +106,7 @@ public class ShardStreamBroadcasterTests
         var yielded = new List<(string Result, long Timestamp)>();
         var stopwatch = Stopwatch.StartNew();
 
-        // Act
+        // act
         await foreach (var result in broadcaster.QueryAllShardsAsync(query))
         {
             yielded.Add((result.Item, stopwatch.ElapsedMilliseconds));
@@ -102,7 +114,7 @@ public class ShardStreamBroadcasterTests
 
         stopwatch.Stop();
 
-        // Assert
+        // assert
         yielded.Should().Contain(r => r.Result.StartsWith("Fast"));
         yielded.Should().Contain(r => r.Result.StartsWith("Slow"));
 

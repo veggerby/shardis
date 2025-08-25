@@ -2,10 +2,10 @@ using Shardis.Model;
 
 namespace Shardis.Querying;
 
-internal class SimpleShardisAsyncEnumerator<T> : IShardisAsyncEnumerator<T>
+internal class SimpleShardisAsyncEnumerator<T>(ShardId shardId, IAsyncEnumerable<T> source) : IShardisAsyncEnumerator<T>
 {
-    private readonly IAsyncEnumerator<T> _inner;
-    private readonly ShardId _shardId;
+    private readonly IAsyncEnumerator<T> _inner = source.GetAsyncEnumerator();
+    private readonly ShardId _shardId = shardId;
 
     public int ShardCount => 1;
     public bool IsComplete { get; private set; }
@@ -13,12 +13,6 @@ internal class SimpleShardisAsyncEnumerator<T> : IShardisAsyncEnumerator<T>
     public bool HasValue { get; private set; }
 
     public ShardItem<T> Current { get; private set; } = default!;
-
-    public SimpleShardisAsyncEnumerator(ShardId shardId, IAsyncEnumerable<T> source)
-    {
-        _inner = source.GetAsyncEnumerator();
-        _shardId = shardId;
-    }
 
     public async ValueTask<bool> MoveNextAsync()
     {

@@ -1,5 +1,3 @@
-using Shardis.Model;
-
 namespace Shardis.Querying;
 
 /// <summary>
