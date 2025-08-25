@@ -208,7 +208,7 @@ Run:
 dotnet test
 ```
 
-Assertion policy: the test suite uses a lightweight internal helper set exposed under the `AwesomeAssertions` namespace (see `AssertionExtensions.cs`) to keep assertions deterministic and dependency-light.
+Assertion policy: the test suite relies on the `AwesomeAssertions` NuGet package for fluent, deterministic assertions.
 
 ---
 

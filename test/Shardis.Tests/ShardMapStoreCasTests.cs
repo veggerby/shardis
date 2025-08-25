@@ -1,7 +1,5 @@
-using NSubstitute;
 using Shardis.Model;
 using Shardis.Persistence;
-using Xunit;
 
 namespace Shardis.Tests;
 
@@ -20,8 +18,8 @@ public class ShardMapStoreCasTests
         var created = store.TryAssignShardToKey(key, Shard1, out var map);
 
         // assert
-        Assert.True(created);
-        Assert.Equal(Shard1, map.ShardId);
+        created.Should().BeTrue();
+        map.ShardId.Should().Be(Shard1);
     }
 
     [Fact]
@@ -37,7 +35,7 @@ public class ShardMapStoreCasTests
         var created = store.TryAssignShardToKey(key, other, out var map);
 
         // assert
-        Assert.False(created);
-        Assert.Equal(Shard1, map.ShardId);
+        created.Should().BeFalse();
+        map.ShardId.Should().Be(Shard1);
     }
 }

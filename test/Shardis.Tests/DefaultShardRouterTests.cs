@@ -1,7 +1,3 @@
-using AwesomeAssertions;
-
-using NSubstitute;
-
 using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;
@@ -31,8 +27,8 @@ public class DefaultShardRouterTests
         var assignedShard = router.RouteToShard(shardKey);
 
         // assert
-        assignedShard.ShouldNotBeNull();
-        shards.Contains(assignedShard).ShouldBeTrue();
+        assignedShard.Should().NotBeNull();
+        shards.Should().Contain(assignedShard);
     }
 
     [Fact]
@@ -56,6 +52,6 @@ public class DefaultShardRouterTests
         var secondAssignment = router.RouteToShard(shardKey);
 
         // assert
-        firstAssignment.ShouldBeSameAs(secondAssignment);
+        firstAssignment.Should().BeSameAs(secondAssignment);
     }
 }

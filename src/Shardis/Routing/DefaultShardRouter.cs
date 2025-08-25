@@ -113,8 +113,8 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
         _metrics.RouteMiss(RouterName);
         var shardIndex = CalculateShardIndex(shardKey, _availableShards.Count);
         var selectedShard = _availableShards[(int)shardIndex];
-    // Attempt CAS assignment to avoid overwriting concurrent assignment if races occur
-    _shardMapStore.TryAssignShardToKey(shardKey, selectedShard.ShardId, out _);
+        // Attempt CAS assignment to avoid overwriting concurrent assignment if races occur
+        _shardMapStore.TryAssignShardToKey(shardKey, selectedShard.ShardId, out _);
         _metrics.RouteHit(RouterName, selectedShard.ShardId.Value, false);
         return (selectedShard, false);
     }

@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Shardis.Querying;
 using Shardis.Tests.TestHelpers;
 
@@ -34,8 +32,8 @@ public class ShardisOrderedEnumeratorTests
         }
 
         // assert
-        results.ShouldHaveCount(4);
-        results.Select(r => r.Item).ShouldContainInOrder(1, 2, 3, 4);
+        results.Should().HaveCount(4);
+        results.Select(r => r.Item).Should().ContainInOrder(1, 2, 3, 4);
     }
 
     [Fact]
@@ -53,8 +51,8 @@ public class ShardisOrderedEnumeratorTests
         var hasMore = await enumerator.MoveNextAsync();
 
         // assert
-        hasMore.ShouldBeFalse();
-        enumerator.IsComplete.ShouldBeTrue();
+        hasMore.Should().BeFalse();
+        enumerator.IsComplete.Should().BeTrue();
     }
 
     [Fact]
@@ -78,8 +76,8 @@ public class ShardisOrderedEnumeratorTests
         }
 
         // assert
-        results.ShouldHaveCount(2);
-        results.Select(r => r.Item).ShouldContainInOrder(1, 2);
+        results.Should().HaveCount(2);
+        results.Select(r => r.Item).Should().ContainInOrder(1, 2);
     }
 
     [Fact]
@@ -107,6 +105,6 @@ public class ShardisOrderedEnumeratorTests
                 _ = enumerator.Current;
             }
         };
-        await iterate.ShouldThrowAsync<OperationCanceledException>();
+        await iterate.Should().ThrowAsync<OperationCanceledException>();
     }
 }

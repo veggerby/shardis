@@ -38,9 +38,9 @@ public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
     /// <inheritdoc />
     public bool TryAssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId, out ShardMap<TKey> shardMap)
     {
-    var added = _assignments.TryAdd(shardKey, shardId);
-    var effective = _assignments[shardKey];
-    shardMap = new ShardMap<TKey>(shardKey, effective);
-    return added;
+        var added = _assignments.TryAdd(shardKey, shardId);
+        var effective = _assignments[shardKey];
+        shardMap = new ShardMap<TKey>(shardKey, effective);
+        return added;
     }
 }

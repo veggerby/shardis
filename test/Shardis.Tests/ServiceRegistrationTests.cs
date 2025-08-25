@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Microsoft.Extensions.DependencyInjection;
 
 using Shardis.Hashing;
@@ -29,7 +27,7 @@ public class ServiceRegistrationTests
         var shard = router.RouteToShard(new("user1"));
 
         // assert
-        shard.ShouldNotBeNull();
+        shard.Should().NotBeNull();
     }
 
     [Fact]
@@ -53,7 +51,7 @@ public class ServiceRegistrationTests
         var shard = router.RouteToShard(new("user1"));
 
         // assert
-        shard.ShouldNotBeNull();
+        shard.Should().NotBeNull();
     }
 
     [Fact]
@@ -74,6 +72,6 @@ public class ServiceRegistrationTests
         var resolved = provider.GetRequiredService<IShardMapStore<string>>();
 
         // assert
-        resolved.ShouldBeOfType(customStore.GetType());
+        resolved.Should().BeOfType(customStore.GetType());
     }
 }
