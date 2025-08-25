@@ -1,17 +1,34 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Shardis.Marten</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Jesper Veggerby</Authors>
+    <Description>Shardis is a lightweight, domain-driven sharding framework for .NET applications.</Description>
+    <PackageTags>sharding, martendb, .NET, framework</PackageTags>
+    <RepositoryUrl>https://github.com/veggerby/shardis</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <OutputPath>$(OutputPath)</OutputPath>
+  </PropertyGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Shardis\Shardis.csproj" />
+    <None Include="icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Marten" Version="8.8.2" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shardis\Shardis.csproj" />
+  </ItemGroup>
 
 </Project>

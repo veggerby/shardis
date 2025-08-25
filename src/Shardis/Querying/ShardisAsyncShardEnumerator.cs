@@ -16,7 +16,6 @@ internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerat
 
     public ShardisAsyncShardEnumerator(ShardId shardId, IAsyncEnumerator<TItem> enumerator)
     {
-        ArgumentNullException.ThrowIfNull(shardId, nameof(shardId));
         ArgumentNullException.ThrowIfNull(enumerator, nameof(enumerator));
 
         _shardId = shardId;
