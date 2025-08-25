@@ -32,5 +32,12 @@ public class RingDistributionTests
             (kvp.Value >= (int)(ideal * 0.50)).Should().BeTrue($"Shard {kvp.Key} below expected lower bound: {kvp.Value}");
             kvp.Value.Should().BeLessThan((int)(ideal * 1.55));
         }
+
+        // variance check (coefficient of variation should be within a loose bound)
+        var values = counts.Values.Select(v => (double)v).ToList();
+        var mean = values.Average();
+        var variance = values.Sum(v => Math.Pow(v - mean, 2)) / values.Count;
+        var stdDev = Math.Sqrt(variance);
+        (stdDev / mean).Should().BeLessThan(0.35); // heuristic
     }
 }

@@ -1,7 +1,3 @@
-using AwesomeAssertions;
-
-using NSubstitute;
-
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Querying.Linq;

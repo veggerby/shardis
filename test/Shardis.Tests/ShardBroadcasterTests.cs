@@ -1,5 +1,3 @@
-using NSubstitute;
-
 using Shardis.Model;
 using Shardis.Querying;
 
@@ -40,15 +38,27 @@ public class ShardBroadcasterTests
         var broadcaster = new ShardBroadcaster<IShard<string>, string>(shards);
 
         // act & assert
-        Func<Task> invoke = () => broadcaster.QueryAllShardsAsync<string>(null!);
-        await invoke.Should().ThrowAsync<ArgumentNullException>();
+    Func<Task> invoke = () => broadcaster.QueryAllShardsAsync<string>(null!);
+    var ex = await invoke.Should().ThrowAsync<ArgumentNullException>();
+    ex.Which.ParamName.Should().Be("query");
     }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenShardsIsNull()
     {
         // act & assert
-        Action construct = () => new ShardBroadcaster<IShard<string>, string>(null!);
-        construct.Should().Throw<ArgumentNullException>();
+    Action construct = () => new ShardBroadcaster<IShard<string>, string>(null!);
+    var ex = construct.Should().Throw<ArgumentNullException>();
+    ex.Which.ParamName.Should().Be("shards");
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrow_WhenNoShards()
+    {
+        // act
+        Action act = () => new ShardBroadcaster<IShard<string>, string>(Array.Empty<IShard<string>>());
+
+        // assert
+        act.Should().Throw<ArgumentException>();
     }
 }

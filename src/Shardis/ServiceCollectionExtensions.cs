@@ -36,6 +36,15 @@ public static class ServiceCollectionExtensions
         var options = new ShardisOptions<TShard, TKey, TSession>();
         configure(options);
 
+        if (options.Shards.Count == 0)
+        {
+            throw new ShardisException("At least one shard must be registered.");
+        }
+        if (options.ReplicationFactor <= 0)
+        {
+            throw new ShardisException("ReplicationFactor must be greater than zero.");
+        }
+
         services.AddSingleton<IEnumerable<TShard>>(options.Shards);
         // Register selected router
         if (options.RouterFactory is not null)

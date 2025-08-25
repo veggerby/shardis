@@ -50,7 +50,8 @@ public class ShardStreamBroadcasterTests
         {
             await foreach (var _ in broadcaster.QueryAllShardsAsync<string>(null!)) { }
         };
-        await invoke.Should().ThrowAsync<ArgumentNullException>();
+    var ex = await invoke.Should().ThrowAsync<ArgumentNullException>();
+    ex.Which.ParamName.Should().Be("query");
 
         // assert (exception type asserted above)
     }
@@ -59,8 +60,19 @@ public class ShardStreamBroadcasterTests
     public void Constructor_ShouldThrowArgumentNullException_WhenShardsIsNull()
     {
         // arrange / act / assert
-        Action construct = () => new ShardStreamBroadcaster<IShard<string>, string>(null!);
-        construct.Should().Throw<ArgumentNullException>();
+    Action construct = () => new ShardStreamBroadcaster<IShard<string>, string>(null!);
+    var ex = construct.Should().Throw<ArgumentNullException>();
+    ex.Which.ParamName.Should().Be("shards");
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrow_WhenNoShards()
+    {
+        // act
+        Action act = () => new ShardStreamBroadcaster<IShard<string>, string>(Array.Empty<IShard<string>>());
+
+        // assert
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]

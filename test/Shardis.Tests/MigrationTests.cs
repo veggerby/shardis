@@ -40,4 +40,23 @@ public class MigrationTests
         // assert
         count.Should().Be(3);
     }
+
+    [Fact]
+    public async Task Plan_Should_Handle_Empty_Key_Set()
+    {
+        // arrange
+        var shardA = new SimpleShard(new("A"), "c1");
+        var shardB = new SimpleShard(new("B"), "c2");
+        var migrator = new DefaultShardMigrator<string, string>();
+        var keys = Array.Empty<ShardKey<string>>();
+
+        // act
+        var plan = await migrator.PlanAsync(shardA, shardB, keys);
+        int invoked = 0;
+        await migrator.ExecutePlanAsync(plan, _ => { invoked++; return Task.CompletedTask; });
+
+        // assert
+        plan.Keys.Should().BeEmpty();
+        invoked.Should().Be(0);
+    }
 }

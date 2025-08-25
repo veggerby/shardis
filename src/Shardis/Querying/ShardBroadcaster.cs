@@ -23,6 +23,10 @@ public class ShardBroadcaster<TShard, TSession> : IShardBroadcaster<TSession> wh
     public ShardBroadcaster(IEnumerable<TShard> shards, int maxDegreeOfParallelism = 20)
     {
         ArgumentNullException.ThrowIfNull(shards, nameof(shards));
+        if (!shards.Any())
+        {
+            throw new ArgumentException("Shard collection must not be empty", nameof(shards));
+        }
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxDegreeOfParallelism, nameof(maxDegreeOfParallelism));
 
         _shards = shards;
@@ -34,7 +38,7 @@ public class ShardBroadcaster<TShard, TSession> : IShardBroadcaster<TSession> wh
     {
         ArgumentNullException.ThrowIfNull(query, nameof(query));
 
-        var results = new ConcurrentBag<TResult>();
+    var results = new ConcurrentBag<TResult>();
 
         var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism, CancellationToken = cancellationToken };
 
