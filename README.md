@@ -116,7 +116,7 @@ The following invariants are enforced at startup / construction to fail fast and
 | Invariant | Enforcement Point | Exception |
 |-----------|-------------------|-----------|
 | At least one shard registered | `AddShardis` options validation | `ShardisException` |
-| ReplicationFactor > 0 | `AddShardis` options validation | `ShardisException` |
+| ReplicationFactor > 0 and <= 10,000 | `AddShardis` options validation & router construction | `ShardisException` |
 | Non-empty shard collection for broadcasters | `ShardBroadcaster` / `ShardStreamBroadcaster` constructors | `ArgumentException` |
 | Null shard collection rejected | Broadcaster constructors | `ArgumentNullException` (ParamName = `shards`) |
 | Null query delegate rejected | Broadcaster `QueryAllShardsAsync` methods | `ArgumentNullException` (ParamName = `query`) |
@@ -149,13 +149,30 @@ Override via `opts.ShardKeyHasher` if you need a custom algorithm (e.g. xxHash, 
 
 Variance numbers are approximate and workload dependent; adjust after observing real key distributions.
 
+Replication factor hard cap: values greater than **10,000** are rejected to prevent pathological ring sizes (memory amplification + long rebuild latency).
+
 ### Shard Map Store CAS Semantics
 
-`IShardMapStore<TKey>` provides `TryAssignShardToKey` (atomic compare-and-set). First writer wins; concurrent attempts racing to assign the same key will yield exactly one `true` result. Routers rely on this to avoid duplicate assignments under bursty traffic. Tests stress thousands of concurrent attempts to ensure a single winner.
+`IShardMapStore<TKey>` exposes two atomic primitives:
+
+- `TryAssignShardToKey` (compare-and-set). First writer wins; concurrent attempts racing to assign the same key yield exactly one `true`.
+- `TryGetOrAdd` – fetch an existing assignment or create it without a separate preliminary lookup (eliminates double hashing / allocation patterns in hot routing paths).
+
+Routers rely on these to avoid duplicate assignments under bursty traffic. Tests stress thousands of concurrent attempts to ensure a single winner.
 
 ### Routing Metrics Semantics
 
-Routers emit exactly one `RouteMiss` for the first key assignment followed by `RouteHit(existingAssignment=false)` for the creation and subsequent `RouteHit(existingAssignment=true)` for reads thereafter. Under concurrency the miss remains singular (contention collapses through CAS in the map store). This property allows accurate cardinality / churn tracking without deduplicating events downstream.
+Routers emit exactly one `RouteMiss` for the first key assignment followed by:
+
+1. `RouteHit(existingAssignment=false)` for the initial persisted assignment.
+2. `RouteHit(existingAssignment=true)` for every subsequent route.
+
+Single-miss guarantee (even under extreme concurrency) is enforced via:
+
+- Per-key lock in the Default router collapsing races to a single creator.
+- Miss de-dup dictionary in both routers so even if optimistic creation paths surface multiple contenders, only the first records the miss.
+
+Consistent hash router only records a miss if `TryGetOrAdd` actually created the mapping and it has not yet been recorded for that key.
 
 ### Broadcasting & Streaming
 
@@ -256,6 +273,8 @@ Use these to compare:
 - Default vs FNV-1a ring hashing
 - Fast vs slow shard streaming (see `BroadcasterStreamBenchmarks`) for throughput / fairness analysis
 
+After optimization: routing hot path avoids double hashing (via `TryGetOrAdd`) and maintains constant single miss emission under high contention.
+
 ---
 
 ## 🧪 Testing & Quality
@@ -280,6 +299,7 @@ Assertion policy: the test suite relies on the `AwesomeAssertions` NuGet package
 Additional invariants covered:
 
 - Single route miss under high concurrency
+- Dynamic ring add/remove maintains routing without KeyNotFound or inconsistent assignment
 - Deterministic ordering for duplicate keys in ordered merge
 - Statistical ring distribution bounds (coefficient of variation heuristic)
 - Non-empty broadcaster shard enforcement & null parameter guards
@@ -341,6 +361,8 @@ services.AddShardis<IShard<string>, string, string>(opts =>
 
 The Redis implementation stores assignments as simple string keys under the prefix `shardmap:`. It should be supplemented with persistence / snapshot strategy if you rotate Redis.
 
+Both InMemory and Redis map stores implement `TryGetOrAdd` to minimize the number of hash computations and branch decisions in router hot paths.
+
 ---
 
 ## 📦 Documentation Index
@@ -356,6 +378,8 @@ See `docs/index.md` for a curated set of design and roadmap documents (fluent qu
 - All public APIs are documented with XML docs.
 - Hashing and ring strategies are pluggable (`IShardKeyHasher<TKey>`, `IShardRingHasher`).
 - Metrics capture is optional and zero-cost when using the no-op implementation.
+- Consistent hash ring rebuilds (add/remove) swap an immutable key snapshot atomically for lock-free lookups.
+- Default router guarantees one `RouteMiss` per key via per-key lock, preserving historical metric semantics.
 
 ---
 
