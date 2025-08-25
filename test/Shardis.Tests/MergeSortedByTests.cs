@@ -1,5 +1,3 @@
-using FluentAssertions;
-
 using Shardis.Querying;
 
 namespace Shardis.Tests;
@@ -23,7 +21,7 @@ public class MergeSortedByTests
     [Fact]
     public async Task MergeSortedBy_ShouldReturnGloballyOrderedResults_EvenWithShardDelays()
     {
-        // Arrange
+        // arrange
         var shard1 = SimulatedShardResults("shard1",
         [
             ("a", 10, 100),
@@ -44,14 +42,18 @@ public class MergeSortedByTests
 
         var merged = new List<User>();
 
-        // Act
+        // act
         await foreach (var user in new[] { shard1, shard2, shard3 }.MergeSortedBy(u => u.LastLogin))
         {
             merged.Add(user);
         }
 
-        // Assert
-        merged.Should().BeInAscendingOrder(u => u.LastLogin);
+        // assert
+        var logins = merged.Select(u => u.LastLogin).ToList();
+        for (int i = 1; i < logins.Count; i++)
+        {
+            (logins[i - 1] <= logins[i]).Should().BeTrue();
+        }
         merged.Select(u => u.Id).Should().ContainInOrder(
             "shard1-a", "shard2-b", "shard3-e", "shard1-c", "shard2-d", "shard3-f");
     }

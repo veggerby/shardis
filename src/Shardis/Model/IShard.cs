@@ -1,3 +1,5 @@
+using Shardis.Querying.Linq;
+
 namespace Shardis.Model;
 
 /// <summary>
@@ -16,4 +18,6 @@ public interface IShard<TSession>
     /// </summary>
     /// <returns>A new session of type <typeparamref name="TSession"/>.</returns>
     TSession CreateSession();
+
+    IShardQueryExecutor<TSession> QueryExecutor { get; } // 🔥 New addition
 }

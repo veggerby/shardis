@@ -1,7 +1,3 @@
-using FluentAssertions;
-
-using NSubstitute;
-
 using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;
@@ -14,7 +10,7 @@ public class DefaultShardRouterTests
     [Fact]
     public void RouteToShard_ShouldAssignShardDeterministically()
     {
-        // Arrange
+        // arrange
         var shards = new List<IShard<string>>
         {
             new SimpleShard(new("shard-001"), "connection-1"),
@@ -22,15 +18,15 @@ public class DefaultShardRouterTests
             new SimpleShard(new("shard-003"), "connection-3")
         };
 
-        var shardMapStore = Substitute.For<IShardMapStore<string>>();
+        var shardMapStore = new InMemoryShardMapStore<string>();
         var router = new DefaultShardRouter<string, string>(shardMapStore, shards, StringShardKeyHasher.Instance);
 
         var shardKey = new ShardKey<string>("user-123");
 
-        // Act
+        // act
         var assignedShard = router.RouteToShard(shardKey);
 
-        // Assert
+        // assert
         assignedShard.Should().NotBeNull();
         shards.Should().Contain(assignedShard);
     }
@@ -38,7 +34,7 @@ public class DefaultShardRouterTests
     [Fact]
     public void RouteToShard_ShouldReturnSameShardForSameKey()
     {
-        // Arrange
+        // arrange
         var shards = new List<IShard<string>>
         {
             new SimpleShard(new("shard-001"), "connection-1"),
@@ -46,16 +42,16 @@ public class DefaultShardRouterTests
             new SimpleShard(new("shard-003"), "connection-3")
         };
 
-        var shardMapStore = Substitute.For<IShardMapStore<string>>();
+        var shardMapStore = new InMemoryShardMapStore<string>();
         var router = new DefaultShardRouter<string, string>(shardMapStore, shards, StringShardKeyHasher.Instance);
 
         var shardKey = new ShardKey<string>("user-123");
 
-        // Act
+        // act
         var firstAssignment = router.RouteToShard(shardKey);
         var secondAssignment = router.RouteToShard(shardKey);
 
-        // Assert
-        firstAssignment.Should().Be(secondAssignment);
+        // assert
+        firstAssignment.Should().BeSameAs(secondAssignment);
     }
 }

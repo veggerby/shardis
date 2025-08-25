@@ -22,4 +22,22 @@ public interface IShardMapStore<TKey> where TKey : notnull, IEquatable<TKey>
     /// <param name="shardId">The shard ID to assign to the key.</param>
     /// <returns>A <see cref="ShardMap"/> representing the key-to-shard assignment.</returns>
     ShardMap<TKey> AssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId);
+
+    /// <summary>
+    /// Attempts to assign the shard ID to the given shard key only if no existing assignment is present.
+    /// </summary>
+    /// <param name="shardKey">The shard key to assign.</param>
+    /// <param name="shardId">The shard ID to attempt to assign.</param>
+    /// <param name="shardMap">When the method returns, contains the resulting mapping (existing or newly added).</param>
+    /// <returns><c>true</c> if the assignment was created by this call; <c>false</c> if an assignment already existed.</returns>
+    bool TryAssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId, out ShardMap<TKey> shardMap);
+
+    /// <summary>
+    /// Attempts to get the existing shard assignment or atomically create it using the provided factory when absent.
+    /// </summary>
+    /// <param name="shardKey">The shard key.</param>
+    /// <param name="valueFactory">Factory invoked to obtain a shard id when the key is not yet assigned.</param>
+    /// <param name="shardMap">Resulting mapping (existing or newly created).</param>
+    /// <returns><c>true</c> if the mapping was created during this call; otherwise <c>false</c>.</returns>
+    bool TryGetOrAdd(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, out ShardMap<TKey> shardMap);
 }

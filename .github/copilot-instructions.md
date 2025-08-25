@@ -1,85 +1,149 @@
-# Copilot / AI Contributor Instructions for Shardis
+---
+applyTo: '**'
+---
+<!--
+GitHub Copilot / AI Contributor Instructions for the Shardis codebase.
+These rules are binding for any AI-generated contribution.
+-->
 
-Thank you for using Copilot, GPT, or any AI-assisted tools to contribute to Shardis.
+# Shardis – AI Contribution Guidelines
 
-Please follow these mandatory guidelines when using AI to generate code for this project.
+Shardis is a production-focused .NET sharding framework. All AI assistance must produce code that is correct, deterministic, maintainable, and aligned with existing architectural principles. Humor or playful tone from other templates is not appropriate here.
 
 ---
-
-## ✨ General Expectations
-
-- AI suggestions are **welcome** but **must match human-written code quality**.
-- Code must feel **clean, professional, and maintainable** — no obvious AI artifacts or shortcuts.
-- AI-written code should be treated as a **starting point**, then manually reviewed, polished, and explained clearly.
-
----
-
-## 🛠️ Coding Standards
-
-✅ **Adhere Strictly to `.editorconfig`**
-
-- Shardis defines style rules in the root `.editorconfig` file.
-- All AI-generated code must fully comply without exceptions.
-
-✅ **Follow Standard .NET/C# Practices**
-
-- Namespace layout must match folder structure (`Shardis.Model`, `Shardis.Routing`, etc.).
-- Use **full curly braces** `{}` even for single-line `if`, `for`, or `while` blocks.
-- Use **`async/await`** naturally — no synchronous hacks around async APIs.
-- Prefer **readonly structs** for immutable value objects.
-- Model behavior into **small, composable classes** — avoid God-objects.
-- Always prefer **dependency injection** over static helpers.
-- Favor **interfaces** for externally visible services (e.g., `IShardRouter`, `IShardMapStore`).
-- Public API methods must include clear **XML documentation comments**.
-
-✅ **Consistency is Mandatory**
-
-- Keep file and type names **PascalCase**.
-- Keep private fields **camelCase** prefixed with underscore (`_`).
-- No random style deviations, even minor.
+## 1. Non‑Negotiable Principles
+1. Determinism over cleverness.
+2. Clarity over abstraction bloat (but keep extensibility points explicit).
+3. Safety: thread-safe routing & persistence components.
+4. No leakage of sharding concerns into domain models.
+5. Public surface must be documented and stable.
 
 ---
+## 2. Style & Formatting
+Follow `.editorconfig` exactly.
 
-## 🔍 Architectural Guidelines
+Mandatory:
+- File-scoped namespaces only.
+- Explicit namespaces mirroring folders (`Shardis.Hashing`, `Shardis.Routing`, etc.).
+- Full curly braces for every control block.
+- `async/await` (no `Result`, `Wait()`, or sync over async).
+- Nullable reference types respected; no `#nullable disable` unless justified.
+- Prefer `readonly record struct` for immutable value objects (e.g. keys, ids).
+- Private fields: `_camelCase`; public types/members: PascalCase.
+- Remove unused usings; keep ordering consistent.
+- Primary constructors where useful.
+- Whitespace matters:
+  - Separate logical blocks clearly.
+  - Use vertical space generously for test sections.'
 
-- **Separate concerns cleanly**:
-  - Models (`Shard`, `ShardKey`) must be pure and behavior-free.
-  - Routers (`DefaultShardRouter`, `ConsistentHashShardRouter`) must be infrastructure-level services.
-  - Persistence logic (`IShardMapStore`) must remain pluggable.
-- **Never leak shard logic into domain models** (aggregates should not "know" about shards).
-- **Routing decisions must be deterministic** — no randomization unless explicitly documented.
-- **Router implementations must be thread-safe** if mutating internal state.
-
----
-
-## 🧪 Testing Expectations
-
-- Unit tests are mandatory for core components.
-- Tests must be readable, isolated, and not overly abstracted.
-- Use Arrange-Act-Assert structure in test methods.
-- Mock dependencies where reasonable (e.g., use fake `IShardMapStore`).
-
----
-
-## ❗ Forbidden Patterns
-
-🚫 No generated files or "playground" code inside `/Shardis` or `/Shardis.Tests`.
-🚫 No console output in library code (only in `/SampleApp`).
-🚫 No business logic inside model classes (`Shard`, `ShardKey`).
-🚫 No magic strings or "clever" hacks — be clear and boring when necessary.
-🚫 No copying random snippets from StackOverflow without understanding.
+Prohibited:
+- Generated banner comments / AI disclaimers.
+- Region folding (`#region`) unless already established pattern (not currently used).
 
 ---
+## 3. Architectural Boundaries
+- Models (`Shard`, `ShardKey`, `ShardId`) are pure data holders; no infrastructure logic.
+- Routers encapsulate selection logic (`DefaultShardRouter`, `ConsistentHashShardRouter`).
+- Persistence abstractions: `IShardMapStore<TKey>`; implementations must be pluggable and thread-safe.
+- Hashing abstractions: `IShardKeyHasher<TKey>` (key hashing) & `IShardRingHasher` (ring hashing). Never hardcode hashing strategies inside business logic.
+- Metrics: use `IShardisMetrics`; default is no-op; do not depend on concrete implementation.
+- Querying & broadcasting must remain streaming-first; avoid materializing whole shard result sets unless required by terminal operators.
 
-## 📋 Pull Request Expectations
-
-- Always manually review AI-written code for quality and clarity.
-- Explain in PR description whether Copilot/AI was involved and where.
-- Highlight any parts that might need special attention during code review.
+Rules:
+- No randomness in routing decisions (except deterministic hash functions).
+- Any stateful router caches must be concurrency-safe.
+- Avoid static mutable state.
 
 ---
+## 4. Testing Requirements
+Every new core component (routing, hashing, map store, migrator, enumerator, metrics adapter) must include unit tests under `test/Shardis.Tests/` using xUnit.
 
-# ✨ Final Reminder
+All generated tests **must**:
 
-Shardis is designed to **scale with simplicity, determinism, and clarity**.
-If an AI suggestion makes the system *more confusing*, *harder to extend*,
+- Use `NSubstitute` for mocking — never `Moq`
+- Use `AwesomeAssertions` for fluent assertions — never `FluentAssertions`
+- Deterministic inputs (seeded random if necessary; expose seed constant).
+- Be divided with `// arrange`, `// act`, `// assert` comments and proper spacing
+- Cover: happy path, edge case (empty shards, single shard), error/exception path, concurrency or idempotency where relevant.
+- Use fakes or in-memory implementations (e.g. `InMemoryShardMapStore`) over real external services in unit tests.
+
+---
+## 5. Performance & Benchmarks
+Benchmarks live in `benchmarks/` using BenchmarkDotNet.
+- Add benchmarks when optimizing hashing, routing, or merge enumerators.
+- Do not regress allocations in hot paths without justification & note in PR.
+
+---
+## 6. Documentation
+All public APIs require XML docs including `<summary>` and parameter docs. For complex algorithms (e.g. consistent hashing ring management), include a concise `<remarks>` describing invariants.
+Update `README.md` / `docs/` when adding: new DI options, public abstractions, or end-user features.
+
+---
+## 7. Dependency Injection (DI)
+- Prefer constructor injection; no service locator patterns.
+- `ServiceCollectionExtensions.AddShardis` is the single composition entry point—extend via options before adding new overloads.
+- Do not silently override user-registered services; check for existing registrations first.
+
+---
+## 8. Forbidden Patterns
+🚫 Console output in library projects (samples only).
+🚫 Business logic in model/value types.
+🚫 Blocking waits (`.Result`, `.Wait()`).
+🚫 Hidden side effects or ambient singletons.
+🚫 Unbounded growth caches without eviction or documentation.
+🚫 Random shard assignment.
+
+---
+## 9. Migration & Future Work (Scaffolding)
+When extending migration (`IShardMigrator`):
+- Keep planning vs execution distinct.
+- Ensure idempotency: re-running a plan should not duplicate work.
+- Document data integrity guarantees.
+
+---
+## 10. Metrics & Observability
+- Never hardcode metric export logic in routers; use `IShardisMetrics`.
+- Expose counters for: route hit, miss (new assignment), existing assignment.
+- Keep metric calls outside of critical lock sections where possible.
+
+---
+## 11. Pull Request Checklist (AI-Generated Code)
+Before submitting, validate:
+- [ ] Build passes (`dotnet build`).
+- [ ] Tests added / updated (`dotnet test`).
+- [ ] Benchmarks unaffected or justified (if touching critical path).
+- [ ] Public APIs documented.
+- [ ] No style warnings introduced.
+- [ ] Determinism preserved (hashing, routing).
+- [ ] Thread-safety maintained or documented.
+- [ ] README / docs updated if user-facing change.
+
+---
+## 12. Example Acceptable Prompt Targets
+Suitable tasks for Copilot:
+- "Add a xxHash-based IShardRingHasher and corresponding benchmark & tests."
+- "Implement migration execution step with dry-run option and tests."
+- "Add ordered streaming merge benchmark comparing current vs optimized enumerator."
+
+Unsuitable (reject or ask for clarification):
+- Vague feature requests without architectural context.
+- Requests to bypass tests or docs.
+
+---
+## 13. Failure Handling
+If information is missing:
+1. Infer minimal, reasonable defaults consistent with existing patterns.
+2. Clearly mark assumptions in PR description.
+3. Provide follow-up items if larger design decisions are needed.
+
+---
+## 14. Security & Safety
+- Do not log key material or shard assignments in production code by default.
+- Validate external inputs to public extension methods.
+
+---
+## 15. Final Reminder
+If an AI suggestion increases complexity without measurable benefit (performance, clarity, extensibility), **reject it**. Shardis prioritizes stable, predictable infrastructure primitives over novelty.
+
+---
+End of guidelines.
