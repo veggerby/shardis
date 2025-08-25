@@ -27,6 +27,7 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     private readonly object _lock = new();
     private readonly IShardisMetrics _metrics;
     private static readonly string RouterName = typeof(ConsistentHashShardRouter<TShard, TKey, TSession>).Name;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, byte> _missRecorded = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConsistentHashShardRouter{TSession}"/> class.
@@ -52,6 +53,10 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
 
         _shardMapStore = shardMapStore;
         _shardKeyHasher = shardKeyHasher;
+        if (replicationFactor > 10_000)
+        {
+            throw new ShardisException("ReplicationFactor greater than 10,000 is not supported (pathological ring size).");
+        }
         _replicationFactor = replicationFactor;
         _ringHasher = ringHasher ?? DefaultShardRingHasher.Instance;
         _metrics = metrics ?? NoOpShardisMetrics.Instance;
@@ -70,6 +75,47 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             AddShardToRingInternal(shard);
         }
         RebuildKeySnapshot();
+    }
+
+    /// <summary>
+    /// Dynamically adds a shard to the ring and atomically swaps the key snapshot. Thread-safe.
+    /// </summary>
+    public void AddShard(TShard shard)
+    {
+        ArgumentNullException.ThrowIfNull(shard);
+        lock (_lock)
+        {
+            if (_shardById.ContainsKey(shard.ShardId))
+            {
+                throw new InvalidOperationException($"Shard with id {shard.ShardId.Value} already exists.");
+            }
+            AddShardToRingInternal(shard);
+            RebuildKeySnapshot();
+        }
+    }
+
+    /// <summary>
+    /// Removes a shard from the ring if present and atomically rebuilds the snapshot.
+    /// Keys previously assigned remain mapped via the map store until migrated.
+    /// </summary>
+    /// <returns><c>true</c> if the shard was removed; otherwise <c>false</c>.</returns>
+    public bool RemoveShard(ShardId shardId)
+    {
+        lock (_lock)
+        {
+            if (!_shardById.Remove(shardId, out var shard))
+            {
+                return false;
+            }
+            // rebuild ring excluding removed shard
+            _ring.Clear();
+            foreach (var s in _shardById.Values)
+            {
+                AddShardToRingInternal(s);
+            }
+            RebuildKeySnapshot();
+            return true;
+        }
     }
 
     /// <summary>
@@ -127,28 +173,40 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             return (existingShard, true);
         }
 
-        _metrics.RouteMiss(RouterName);
-        var keyHash = _shardKeyHasher.ComputeHash(shardKey);
-        TShard selected;
-        lock (_lock)
+        TShard PickShard()
         {
-            // Use snapshot for binary search to minimize lock duration
-            var keys = _ringKeys;
-            if (keys.Length == 0)
+            var keyHash = _shardKeyHasher.ComputeHash(shardKey);
+            lock (_lock)
             {
-                throw new InvalidOperationException("Consistent hash ring is empty.");
+                var keys = _ringKeys;
+                if (keys.Length == 0)
+                {
+                    throw new InvalidOperationException("Consistent hash ring is empty.");
+                }
+                int idx = Array.BinarySearch(keys, keyHash);
+                if (idx < 0)
+                {
+                    idx = ~idx;
+                    if (idx == keys.Length) idx = 0;
+                }
+                var ringKey = keys[idx];
+                return _ring[ringKey];
             }
-            int idx = Array.BinarySearch(keys, keyHash);
-            if (idx < 0)
-            {
-                idx = ~idx; // next larger
-                if (idx == keys.Length) idx = 0; // wrap-around
-            }
-            var ringKey = keys[idx];
-            selected = _ring[ringKey];
         }
-        _shardMapStore.TryAssignShardToKey(shardKey, selected.ShardId, out _);
-        _metrics.RouteHit(RouterName, selected.ShardId.Value, false);
-        return (selected, false);
+        bool created = _shardMapStore.TryGetOrAdd(shardKey, () => PickShard().ShardId, out var map);
+        if (created && _missRecorded.TryAdd(shardKey, 0))
+        {
+            _metrics.RouteMiss(RouterName);
+        }
+        if (!_shardById.TryGetValue(map.ShardId, out var resolvedShard))
+        {
+            // Mapping refers to removed shard; re-pick and force assign
+            var replacement = PickShard();
+            _shardMapStore.AssignShardToKey(shardKey, replacement.ShardId);
+            resolvedShard = replacement;
+            created = true;
+        }
+        _metrics.RouteHit(RouterName, resolvedShard.ShardId.Value, !created);
+        return (resolvedShard, !created);
     }
 }

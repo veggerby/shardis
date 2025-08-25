@@ -43,4 +43,29 @@ public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
         shardMap = new ShardMap<TKey>(shardKey, effective);
         return added;
     }
+
+    /// <inheritdoc />
+    public bool TryGetOrAdd(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, out ShardMap<TKey> shardMap)
+    {
+        ArgumentNullException.ThrowIfNull(valueFactory, nameof(valueFactory));
+
+        if (_assignments.TryGetValue(shardKey, out var existing))
+        {
+            shardMap = new ShardMap<TKey>(shardKey, existing);
+            return false;
+        }
+
+        // Compute candidate id outside add for deterministic hashing cost per contender.
+        var candidate = valueFactory();
+        if (_assignments.TryAdd(shardKey, candidate))
+        {
+            shardMap = new ShardMap<TKey>(shardKey, candidate);
+            return true;
+        }
+
+        // Lost race: fetch existing (must succeed)
+        var winner = _assignments[shardKey];
+        shardMap = new ShardMap<TKey>(shardKey, winner);
+        return false;
+    }
 }

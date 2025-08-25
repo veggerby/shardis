@@ -18,7 +18,7 @@ public class ConsistentHashShardRouterTests
             new SimpleShard(new("shard-003"), "connection-3")
         };
 
-        var shardMapStore = Substitute.For<IShardMapStore<string>>();
+        var shardMapStore = new InMemoryShardMapStore<string>();
         var router = new ConsistentHashShardRouter<IShard<string>, string, string>(shardMapStore, shards, StringShardKeyHasher.Instance);
 
         var shardKey = new ShardKey<string>("user-123");
@@ -42,7 +42,7 @@ public class ConsistentHashShardRouterTests
             new SimpleShard(new("shard-003"), "connection-3")
         };
 
-        var shardMapStore = Substitute.For<IShardMapStore<string>>();
+        var shardMapStore = new InMemoryShardMapStore<string>();
         var router = new ConsistentHashShardRouter<IShard<string>, string, string>(shardMapStore, shards, StringShardKeyHasher.Instance);
 
         var shardKey = new ShardKey<string>("user-123");

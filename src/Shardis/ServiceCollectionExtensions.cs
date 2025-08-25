@@ -44,6 +44,10 @@ public static class ServiceCollectionExtensions
         {
             throw new ShardisException("ReplicationFactor must be greater than zero.");
         }
+        if (options.ReplicationFactor > 10_000)
+        {
+            throw new ShardisException("ReplicationFactor greater than 10,000 is not supported (pathological ring size).");
+        }
 
         services.AddSingleton<IEnumerable<TShard>>(options.Shards);
         // Register selected router

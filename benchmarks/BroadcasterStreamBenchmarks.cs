@@ -1,4 +1,5 @@
 using BenchmarkDotNet.Attributes;
+
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Querying.Linq;
@@ -47,7 +48,7 @@ public class BroadcasterStreamBenchmarks
     public async Task<int> StreamFastVsSlow()
     {
         int count = 0;
-    await foreach (var item in _broadcaster.QueryAllShardsAsync(s => _bySession[s].Produce()))
+        await foreach (var item in _broadcaster.QueryAllShardsAsync(s => _bySession[s].Produce()))
         {
             count++;
         }

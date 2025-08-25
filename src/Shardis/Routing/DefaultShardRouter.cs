@@ -28,6 +28,8 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
     private readonly IShardMapStore<TKey> _shardMapStore;
     private readonly IShardKeyHasher<TKey> _shardKeyHasher;
     private readonly IShardisMetrics _metrics;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, byte> _missRecorded = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, object> _keyLocks = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DefaultShardRouter{TSession}"/> class.
@@ -110,12 +112,29 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
             return (existingShard, true);
         }
 
-        _metrics.RouteMiss(RouterName);
-        var shardIndex = CalculateShardIndex(shardKey, _availableShards.Count);
-        var selectedShard = _availableShards[(int)shardIndex];
-        // Attempt CAS assignment to avoid overwriting concurrent assignment if races occur
-        _shardMapStore.TryAssignShardToKey(shardKey, selectedShard.ShardId, out _);
-        _metrics.RouteHit(RouterName, selectedShard.ShardId.Value, false);
-        return (selectedShard, false);
+        var keyLock = _keyLocks.GetOrAdd(shardKey, _ => new object());
+        bool existing;
+        IShard<TSession> shard;
+        lock (keyLock)
+        {
+            if (_shardMapStore.TryGetShardIdForKey(shardKey, out var existingId) && _shardById.TryGetValue(existingId, out var existingShard2))
+            {
+                shard = existingShard2;
+                existing = true;
+            }
+            else
+            {
+                var idx = CalculateShardIndex(shardKey, _availableShards.Count);
+                shard = _availableShards[(int)idx];
+                var created = _shardMapStore.TryAssignShardToKey(shardKey, shard.ShardId, out _);
+                if (created && _missRecorded.TryAdd(shardKey, 0))
+                {
+                    _metrics.RouteMiss(RouterName);
+                }
+                existing = !created;
+            }
+        }
+        _metrics.RouteHit(RouterName, shard.ShardId.Value, existing);
+        return (shard, existing);
     }
 }

@@ -64,4 +64,27 @@ public class RedisShardMapStore<TKey> : IShardMapStore<TKey>
         shardMap = new ShardMap<TKey>(shardKey, shardId);
         return true;
     }
+
+    /// <inheritdoc />
+    public bool TryGetOrAdd(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, out ShardMap<TKey> shardMap)
+    {
+        ArgumentNullException.ThrowIfNull(valueFactory);
+        if (TryGetShardIdForKey(shardKey, out var existing))
+        {
+            shardMap = new ShardMap<TKey>(shardKey, existing);
+            return false;
+        }
+        var id = valueFactory();
+        // attempt NX set; if lost race, fetch existing
+        var redisKey = ShardMapKeyPrefix + shardKey.Value;
+        var created = _database.StringSet(redisKey, id.Value, when: When.NotExists);
+        if (!created)
+        {
+            var current = _database.StringGet(redisKey);
+            shardMap = new ShardMap<TKey>(shardKey, new ShardId(current!));
+            return false;
+        }
+        shardMap = new ShardMap<TKey>(shardKey, id);
+        return true;
+    }
 }
