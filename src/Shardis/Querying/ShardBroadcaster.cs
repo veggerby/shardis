@@ -38,7 +38,7 @@ public class ShardBroadcaster<TShard, TSession> : IShardBroadcaster<TSession> wh
     {
         ArgumentNullException.ThrowIfNull(query, nameof(query));
 
-    var results = new ConcurrentBag<TResult>();
+        var results = new ConcurrentBag<TResult>();
 
         var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism, CancellationToken = cancellationToken };
 

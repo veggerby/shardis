@@ -31,4 +31,13 @@ public interface IShardMapStore<TKey> where TKey : notnull, IEquatable<TKey>
     /// <param name="shardMap">When the method returns, contains the resulting mapping (existing or newly added).</param>
     /// <returns><c>true</c> if the assignment was created by this call; <c>false</c> if an assignment already existed.</returns>
     bool TryAssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId, out ShardMap<TKey> shardMap);
+
+    /// <summary>
+    /// Attempts to get the existing shard assignment or atomically create it using the provided factory when absent.
+    /// </summary>
+    /// <param name="shardKey">The shard key.</param>
+    /// <param name="valueFactory">Factory invoked to obtain a shard id when the key is not yet assigned.</param>
+    /// <param name="shardMap">Resulting mapping (existing or newly created).</param>
+    /// <returns><c>true</c> if the mapping was created during this call; otherwise <c>false</c>.</returns>
+    bool TryGetOrAdd(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, out ShardMap<TKey> shardMap);
 }

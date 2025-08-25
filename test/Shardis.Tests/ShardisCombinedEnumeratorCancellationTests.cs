@@ -9,8 +9,8 @@ public class ShardisCombinedEnumeratorCancellationTests
     public async Task MoveNextAsync_ShouldRespectCancellation()
     {
         // arrange
-    var delays = Enumerable.Repeat(TimeSpan.FromMilliseconds(10), 5);
-    var shard = new TestShardisEnumerator<int>([1,2,3,4,5], "s1", delays);
+        var delays = Enumerable.Repeat(TimeSpan.FromMilliseconds(10), 5);
+        var shard = new TestShardisEnumerator<int>([1, 2, 3, 4, 5], "s1", delays);
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(15);
         var enumerator = new ShardisAsyncCombinedEnumerator<int>([shard], cts.Token);
