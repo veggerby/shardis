@@ -109,6 +109,72 @@ services.AddSingleton<IShardisMetrics, MetricShardisMetrics>();
 4. **ShardMapStore**: Caches key-to-shard assignments to ensure stable, deterministic routing over time.
 5. **Metrics**: Routers invoke `IShardisMetrics` (hits, misses, new/existing assignment) – default implementation is a no-op.
 
+### Validation & Safety Invariants
+
+The following invariants are enforced at startup / construction to fail fast and keep routing deterministic:
+
+| Invariant | Enforcement Point | Exception |
+|-----------|-------------------|-----------|
+| At least one shard registered | `AddShardis` options validation | `ShardisException` |
+| ReplicationFactor > 0 | `AddShardis` options validation | `ShardisException` |
+| Non-empty shard collection for broadcasters | `ShardBroadcaster` / `ShardStreamBroadcaster` constructors | `ArgumentException` |
+| Null shard collection rejected | Broadcaster constructors | `ArgumentNullException` (ParamName = `shards`) |
+| Null query delegate rejected | Broadcaster `QueryAllShardsAsync` methods | `ArgumentNullException` (ParamName = `query`) |
+
+### Default Key Hashers
+
+`DefaultShardKeyHasher<TKey>.Instance` selects an implementation by type:
+
+| Key Type | Hasher |
+|----------|--------|
+| `string` | `StringShardKeyHasher` |
+| `int` | `Int32ShardKeyHasher` |
+| `uint` | `UInt32ShardKeyHasher` |
+| `long` | `Int64ShardKeyHasher` |
+| `Guid` | `GuidShardKeyHasher` |
+| other | (throws) `ShardisException` |
+
+Override via `opts.ShardKeyHasher` if you need a custom algorithm (e.g. xxHash, HighwayHash) – ensure determinism and stable versioning.
+
+### Consistent Hash Ring Guidance
+
+`ReplicationFactor` controls virtual node count per shard. Higher values smooth distribution but increase memory and ring rebuild time. Empirically:
+
+| ReplicationFactor | Typical Shard Count | Distribution Variance (cv heuristic) |
+|-------------------|---------------------|---------------------------------------|
+| 50 | ≤ 8 | ~0.40–0.45 |
+| 100 (default) | 8–16 | ~0.32–0.38 |
+| 150 | 16–32 | ~0.28–0.33 |
+| 200+ | 32+ | Diminishing returns |
+
+Variance numbers are approximate and workload dependent; adjust after observing real key distributions.
+
+### Shard Map Store CAS Semantics
+
+`IShardMapStore<TKey>` provides `TryAssignShardToKey` (atomic compare-and-set). First writer wins; concurrent attempts racing to assign the same key will yield exactly one `true` result. Routers rely on this to avoid duplicate assignments under bursty traffic. Tests stress thousands of concurrent attempts to ensure a single winner.
+
+### Routing Metrics Semantics
+
+Routers emit exactly one `RouteMiss` for the first key assignment followed by `RouteHit(existingAssignment=false)` for the creation and subsequent `RouteHit(existingAssignment=true)` for reads thereafter. Under concurrency the miss remains singular (contention collapses through CAS in the map store). This property allows accurate cardinality / churn tracking without deduplicating events downstream.
+
+### Broadcasting & Streaming
+
+`ShardBroadcaster` (materializing) and `ShardStreamBroadcaster` (streaming) enforce non-empty shard sets and parameter validation. The streaming broadcaster:
+
+- Starts one producer task per shard.
+- Supports optional bounded channel capacity (backpressure) – unbounded by default.
+- Cancels remaining work early for short‑circuit operations (`AnyAsync`, `FirstAsync`).
+- Guarantees that consumer observation order is the actual arrival order (no artificial reordering unless using ordered merge utilities).
+
+### Ordered vs Combined Enumeration
+
+- `ShardisAsyncOrderedEnumerator` performs a k‑way merge using a min-heap keyed by the provided selector – stable for identical keys (tie broken by shard enumeration order).
+- `ShardisAsyncCombinedEnumerator` simply interleaves items as each shard advances; no global ordering guarantees.
+
+### Cancellation Behavior
+
+Enumerators and broadcasters honor passed `CancellationToken`s; ordered/combined enumerators propagate cancellation immediately on next `MoveNextAsync` and broadcasters swallow expected cancellation exceptions after signaling completion.
+
 ---
 
 ## 📚 Example Use Cases
@@ -188,6 +254,7 @@ Use these to compare:
 - Default vs Consistent hash routing cost
 - Different replication factors
 - Default vs FNV-1a ring hashing
+- Fast vs slow shard streaming (see `BroadcasterStreamBenchmarks`) for throughput / fairness analysis
 
 ---
 
@@ -209,6 +276,13 @@ dotnet test
 ```
 
 Assertion policy: the test suite relies on the `AwesomeAssertions` NuGet package for fluent, deterministic assertions.
+
+Additional invariants covered:
+
+- Single route miss under high concurrency
+- Deterministic ordering for duplicate keys in ordered merge
+- Statistical ring distribution bounds (coefficient of variation heuristic)
+- Non-empty broadcaster shard enforcement & null parameter guards
 
 ---
 

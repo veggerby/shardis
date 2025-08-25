@@ -10,7 +10,7 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
 {
     public static readonly MartenQueryExecutor Instance = new();
 
-    public IAsyncEnumerable<T> Execute<T>(IDocumentSession session, Expression<Func<IQueryable<T>, IQueryable<T>>> expr)
+    public IAsyncEnumerable<T> Execute<T>(IDocumentSession session, Expression<Func<IQueryable<T>, IQueryable<T>>> expr) where T : notnull
     {
         var queryable = session.Query<T>();
         var transformed = expr.Compile().Invoke(queryable);
@@ -20,7 +20,7 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
     public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(
         IDocumentSession session,
         Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr,
-        Func<T, TKey> keySelector)
+        Func<T, TKey> keySelector) where T : notnull
     {
         var queryable = session.Query<T>();
         var transformed = orderedExpr.Compile().Invoke(queryable);

@@ -15,6 +15,7 @@ Benchmark sources live under `benchmarks/`:
 
 - `RouterBenchmarks` – compares Default vs Consistent hashing routers when routing 10k keys.
 - `HasherBenchmarks` – micro-benchmarks ring hashers over 50k random values.
+- `BroadcasterStreamBenchmarks` – compares merged streaming throughput when mixing a fast vs slow shard (fairness + tail latency insight).
 
 ## Running
 
@@ -23,6 +24,7 @@ From repo root:
 ```bash
 dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *RouterBenchmarks*
 dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *HasherBenchmarks*
+dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *BroadcasterStreamBenchmarks*
 ```
 
 Add `--runtimes net8.0` (default) or include additional TFMs if supported in future.
