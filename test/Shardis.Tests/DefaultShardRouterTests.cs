@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 
 using NSubstitute;
 
@@ -14,7 +14,7 @@ public class DefaultShardRouterTests
     [Fact]
     public void RouteToShard_ShouldAssignShardDeterministically()
     {
-        // Arrange
+        // arrange
         var shards = new List<IShard<string>>
         {
             new SimpleShard(new("shard-001"), "connection-1"),
@@ -27,18 +27,18 @@ public class DefaultShardRouterTests
 
         var shardKey = new ShardKey<string>("user-123");
 
-        // Act
+        // act
         var assignedShard = router.RouteToShard(shardKey);
 
-        // Assert
-        assignedShard.Should().NotBeNull();
-        shards.Should().Contain(assignedShard);
+        // assert
+        assignedShard.ShouldNotBeNull();
+        shards.Contains(assignedShard).ShouldBeTrue();
     }
 
     [Fact]
     public void RouteToShard_ShouldReturnSameShardForSameKey()
     {
-        // Arrange
+        // arrange
         var shards = new List<IShard<string>>
         {
             new SimpleShard(new("shard-001"), "connection-1"),
@@ -51,11 +51,11 @@ public class DefaultShardRouterTests
 
         var shardKey = new ShardKey<string>("user-123");
 
-        // Act
+        // act
         var firstAssignment = router.RouteToShard(shardKey);
         var secondAssignment = router.RouteToShard(shardKey);
 
-        // Assert
-        firstAssignment.Should().Be(secondAssignment);
+        // assert
+        firstAssignment.ShouldBeSameAs(secondAssignment);
     }
 }

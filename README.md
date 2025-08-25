@@ -25,6 +25,10 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
 
 - 🏗 **Ready for Production Scaling**
   Shard assignments are persistent, predictable, and optimized for horizontal scalability.
+- 📊 **Instrumentation Hooks**
+  Plug in metrics (counters, tracing) by replacing the default no-op metrics service.
+- 🔄 **Consistent Hashing Option**
+  Choose between simple sticky routing and a consistent hashing ring with configurable replication factor & pluggable ring hashers.
 
 ---
 
@@ -51,6 +55,7 @@ Setting up a basic router:
 using Shardis.Model;
 using Shardis.Routing;
 using Shardis.Persistence;
+using Shardis.Hashing;
 
 // Define available shards
 var shards = new[]
@@ -73,6 +78,27 @@ var shard = shardRouter.RouteToShard(userId);
 Console.WriteLine($"User {userId} routed to {shard.ShardId}");
 ```
 
+### Using Dependency Injection
+
+```csharp
+// Register shards & configure options
+services.AddShardis<IShard<string>, string, string>(opts =>
+{
+  opts.UseConsistentHashing = true;         // or false for DefaultShardRouter
+  opts.ReplicationFactor = 150;             // only for consistent hashing
+  opts.RingHasher = Fnv1aShardRingHasher.Instance; // optional alternative ring hasher
+
+  opts.Shards.Add(new SimpleShard(new("shard-001"), "postgres://host1/db"));
+  opts.Shards.Add(new SimpleShard(new("shard-002"), "postgres://host2/db"));
+});
+
+// Override map store BEFORE AddShardis if desired:
+services.AddSingleton<IShardMapStore<string>>(new InMemoryShardMapStore<string>());
+
+// Provide metrics (default registered is no-op):
+services.AddSingleton<IShardisMetrics, MetricShardisMetrics>();
+```
+
 ---
 
 ## 🧠 How It Works
@@ -81,6 +107,7 @@ Console.WriteLine($"User {userId} routed to {shard.ShardId}");
 2. **Shard**: Represents a physical partition (e.g., a specific PostgreSQL database instance).
 3. **ShardRouter**: Routes incoming ShardKeys to the appropriate Shard based on hashing.
 4. **ShardMapStore**: Caches key-to-shard assignments to ensure stable, deterministic routing over time.
+5. **Metrics**: Routers invoke `IShardisMetrics` (hits, misses, new/existing assignment) – default implementation is a no-op.
 
 ---
 
@@ -105,6 +132,8 @@ Shardis is designed for extension:
 
 - **Shard Migrations and Rebalancing**
   Coming soon: native support for safely reassigning keys and migrating aggregates between shards.
+- **Metrics / Telemetry**
+  Implement `IShardisMetrics` to export counters to OpenTelemetry / Prometheus.
 
 ---
 
@@ -130,6 +159,7 @@ Shardis is built around three core principles:
 - [ ] Read/Write split support
 - [ ] Multi-region / geo-sharding support
 - [ ] Lightweight metrics/telemetry package
+- [ ] Benchmarks & performance regression harness
 
 ---
 
@@ -142,9 +172,187 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ---
 
+## 📊 Benchmarks
+
+BenchmarkDotNet benchmarks live in `benchmarks/`.
+
+Run (from repo root):
+
+```bash
+dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *RouterBenchmarks*
+dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *HasherBenchmarks*
+```
+
+Use these to compare:
+
+- Default vs Consistent hash routing cost
+- Different replication factors
+- Default vs FNV-1a ring hashing
+
+---
+
+## 🧪 Testing & Quality
+
+xUnit tests live in `test/Shardis.Tests/` covering:
+
+- Routing correctness
+- Consistent hashing determinism
+- Metrics invocation
+- DI registration & overrides
+- Migration planning scaffolding
+- Ordered merge enumerator
+
+Run:
+
+```bash
+dotnet test
+```
+
+Assertion policy: the test suite uses a lightweight internal helper set exposed under the `AwesomeAssertions` namespace (see `AssertionExtensions.cs`) to keep assertions deterministic and dependency-light.
+
+---
+
+## 🔄 Migration (Scaffolding)
+
+Early migration primitives are present (`IShardMigrator`, `DefaultShardMigrator`, `ShardMigrationPlan`). These currently support:
+
+- Planning: build a plan between source and target shard for a set of keys.
+- Execution skeleton: iterate keys (hook for data copy + re-assignment logic).
+
+Planned next steps before enabling in production:
+
+1. Data copy orchestration abstraction (`IShardDataTransfer` per domain).
+2. Idempotent re-assignment update in map store with optional optimistic lock.
+3. Dry-run verification mode with metrics + diff reporting.
+
+---
+
+## 📡 Broadcasting & Streaming Queries
+
+Two broadcaster abstractions exist today:
+
+- `ShardBroadcaster` – dispatches a synchronous / Task-returning delegate to every shard and aggregates materialized results.
+- `ShardStreamBroadcaster` – dispatches async streaming queries (`IAsyncEnumerable<T>` per shard) and yields a merged asynchronous stream without buffering entire shard result sets.
+
+Utility enumerators:
+
+- `ShardisAsyncOrderedEnumerator` – k-way merge for globally ordered streams.
+- `ShardisAsyncCombinedEnumerator` – simple interleaving without ordering guarantees.
+
+Higher-level fluent query API (LINQ-like) is under active design (see `docs/api.md` & `docs/linq.md`).
+
+---
+
+## 🗄 Persistence (Shard Map Stores)
+
+Several `IShardMapStore<TKey>` implementations are (or will be) available:
+
+| Implementation | Package / Location | Use Case |
+|----------------|-------------------|----------|
+| `InMemoryShardMapStore<TKey>` | Core | Tests, local dev, ephemeral scenarios |
+| `RedisShardMapStore<TKey>` | `Shardis.Redis` | Low-latency distributed cache + persistence |
+| SQL-backed (planned) | 🚧 | Durable relational storage |
+
+### Redis Example
+
+```csharp
+// Add package reference to Shardis.Redis (when published)
+services.AddSingleton<IShardMapStore<string>>(sp => new RedisShardMapStore<string>("localhost:6379"));
+services.AddShardis<IShard<string>, string, string>(opts =>
+{
+  opts.Shards.Add(new SimpleShard(new("shard-001"), "postgres://host1/db"));
+  opts.Shards.Add(new SimpleShard(new("shard-002"), "postgres://host2/db"));
+});
+```
+
+The Redis implementation stores assignments as simple string keys under the prefix `shardmap:`. It should be supplemented with persistence / snapshot strategy if you rotate Redis.
+
+---
+
+## 📦 Documentation Index
+
+See `docs/index.md` for a curated set of design and roadmap documents (fluent query API, migration, backlog, benchmarks).
+
+---
+
+## 🏗 Architectural Invariants
+
+- Routing is deterministic (no randomness besides stable hash functions).
+- No shard logic leaks into domain models; models are plain data structures.
+- All public APIs are documented with XML docs.
+- Hashing and ring strategies are pluggable (`IShardKeyHasher<TKey>`, `IShardRingHasher`).
+- Metrics capture is optional and zero-cost when using the no-op implementation.
+
+---
+
+---
+
+## ⚙️ Dependency Injection Options
+
+Configured via `AddShardis<TShard,TKey,TSession>(opts => { ... })`:
+
+| Option | Purpose | Default |
+|--------|---------|---------|
+| UseConsistentHashing | Toggle consistent vs simple router | true |
+| ReplicationFactor | Virtual nodes per shard (ring) | 100 |
+| RingHasher | Ring hashing implementation | DefaultShardRingHasher |
+| ShardMapStoreFactory | Custom map store factory | InMemoryShardMapStore |
+| ShardKeyHasher | Override key -> uint hash | DefaultShardKeyHasher |
+| RouterFactory | Provide totally custom router | null |
+| Shards | Collection of shards | (empty) |
+
+Overridable services (register before AddShardis):
+
+- `IShardMapStore<TKey>`
+- `IShardisMetrics`
+
+---
+
+## 📈 Metrics Integration
+
+Routers report two primitive events through `IShardisMetrics`:
+
+- `RouteMiss(router)` – a key had no prior assignment and hashing/selection occurred.
+- `RouteHit(router, shardId, existingAssignment)` – a shard was chosen; `existingAssignment` indicates whether the key already had a stored mapping.
+
+You can plug in your own metrics export by implementing `IShardisMetrics`. A production-ready default using `System.Diagnostics.Metrics` is provided as `MetricShardisMetrics` (register it in DI to enable counters):
+
+```csharp
+services.AddSingleton<IShardisMetrics, MetricShardisMetrics>();
+```
+
+Exposed counters (names subject to refinement before first NuGet release):
+
+| Counter | Description |
+|---------|-------------|
+| shardis.route.hits | Total route resolutions (both new + existing assignments) |
+| shardis.route.misses | Keys seen for the first time before assignment |
+| shardis.route.assignments.existing | Route hits where mapping already existed |
+| shardis.route.assignments.new | Route hits that resulted in a new persisted assignment |
+
+Attach these to OpenTelemetry via the .NET Metrics provider or scrape via Prometheus exporters.
+
+---
+
 ## 📄 License
 
 **MIT License** — free for personal and commercial use.
+
+---
+
+## 🔢 Versioning & Release Policy (Pre-NuGet Draft)
+
+- Semantic Versioning will be used once packages are published.
+- Until the first stable `1.0.0`, minor version bumps (`0.x`) may introduce breaking changes with clear CHANGELOG entries.
+- Public APIs with XML docs are considered part of the contract; anything `internal` or undocumented may change.
+- Experimental features are tagged in docs and may be excluded from backward compatibility guarantees until stabilized.
+
+Planned publication sequence:
+
+1. `Shardis` (core) – routing, hashing, map stores, metrics.
+2. `Shardis.Redis` – Redis map store.
+3. `Shardis.Marten` – query executor adapter (post fluent API MVP).
+4. Migration utilities (once copy + verify pipeline complete).
 
 ---
 

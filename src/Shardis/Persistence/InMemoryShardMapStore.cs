@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 using Shardis.Model;
 
 namespace Shardis.Persistence;
@@ -11,7 +13,7 @@ public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
     /// <summary>
     /// Stores the key-to-shard assignments in memory.
     /// </summary>
-    private readonly Dictionary<ShardKey<TKey>, ShardId> _assignments = [];
+    private readonly ConcurrentDictionary<ShardKey<TKey>, ShardId> _assignments = new();
 
     /// <summary>
     /// Attempts to retrieve the shard ID for a given shard key.
@@ -31,5 +33,14 @@ public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
     {
         _assignments[shardKey] = shardId;
         return new ShardMap<TKey>(shardKey, shardId);
+    }
+
+    /// <inheritdoc />
+    public bool TryAssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId, out ShardMap<TKey> shardMap)
+    {
+    var added = _assignments.TryAdd(shardKey, shardId);
+    var effective = _assignments[shardKey];
+    shardMap = new ShardMap<TKey>(shardKey, effective);
+    return added;
     }
 }

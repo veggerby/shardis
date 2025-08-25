@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Shardis.Querying;
 using Shardis.Tests.TestHelpers;
@@ -10,7 +10,7 @@ public class ShardisCombinedEnumeratorTests
     [Fact]
     public async Task MoveNextAsync_YieldsItemsFromAllEnumerators()
     {
-        // Arrange
+        // arrange
         var shard1 = new TestShardisEnumerator<int>(
             items: [1, 2],
             shardId: "shard1"
@@ -25,24 +25,24 @@ public class ShardisCombinedEnumeratorTests
             [shard1, shard2],
             cancellationToken: CancellationToken.None);
 
-        // Act
+        // act
         var results = new List<ShardItem<int>>();
         while (await enumerator.MoveNextAsync())
         {
             results.Add(enumerator.Current);
         }
 
-        // Assert
-        results.Should().HaveCount(3);
-        results.Should().ContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 1);
-        results.Should().ContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 2);
-        results.Should().ContainSingle(item => item.ShardId.Value == "shard2" && item.Item == 3);
+        // assert
+        results.ShouldHaveCount(3);
+        results.ShouldContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 1);
+        results.ShouldContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 2);
+        results.ShouldContainSingle(item => item.ShardId.Value == "shard2" && item.Item == 3);
     }
 
     [Fact]
     public async Task MoveNextAsync_CompletesWhenAllEnumeratorsAreExhausted()
     {
-        // Arrange
+        // arrange
         var shard1 = new TestShardisEnumerator<int>([], "shard1");
         var shard2 = new TestShardisEnumerator<int>([], "shard2");
 
@@ -50,11 +50,11 @@ public class ShardisCombinedEnumeratorTests
             [shard1, shard2],
             cancellationToken: CancellationToken.None);
 
-        // Act
+        // act
         var hasMore = await enumerator.MoveNextAsync();
 
-        // Assert
-        hasMore.Should().BeFalse();
-        enumerator.IsComplete.Should().BeTrue();
+        // assert
+        hasMore.ShouldBeFalse();
+        enumerator.IsComplete.ShouldBeTrue();
     }
 }

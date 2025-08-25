@@ -1,5 +1,7 @@
+using AwesomeAssertions;
+
 using NSubstitute;
-using FluentAssertions;
+
 using Shardis.Model;
 using Shardis.Querying;
 
@@ -10,7 +12,7 @@ public class ShardBroadcasterTests
     [Fact]
     public async Task QueryAllShardsAsync_ShouldAggregateResultsFromAllShards()
     {
-        // Arrange
+        // arrange
         var shard1 = Substitute.For<IShard<string>>();
         var shard2 = Substitute.For<IShard<string>>();
 
@@ -22,32 +24,33 @@ public class ShardBroadcasterTests
 
         Func<string, Task<IEnumerable<string>>> query = session => Task.FromResult(new[] { session + "-Result" }.AsEnumerable());
 
-        // Act
+        // act
         var results = await broadcaster.QueryAllShardsAsync(query);
 
-        // Assert
-        results.Should().HaveCount(2);
-        results.Should().Contain("Session1-Result");
-        results.Should().Contain("Session2-Result");
+        // assert
+        results.ShouldHaveCount(2);
+        results.ShouldContain("Session1-Result");
+        results.ShouldContain("Session2-Result");
     }
 
     [Fact]
     public async Task QueryAllShardsAsync_ShouldThrowArgumentNullException_WhenQueryIsNull()
     {
-        // Arrange
+        // arrange
         var shard = Substitute.For<IShard<string>>();
         var shards = new List<IShard<string>> { shard };
         var broadcaster = new ShardBroadcaster<IShard<string>, string>(shards);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => broadcaster.QueryAllShardsAsync<string>(null!));
+        // act & assert
+        Func<Task> invoke = () => broadcaster.QueryAllShardsAsync<string>(null!);
+        await invoke.ShouldThrowAsync<ArgumentNullException>();
     }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenShardsIsNull()
     {
-        // Act & Assert
-        Action act = () => new ShardBroadcaster<IShard<string>, string>(null!);
-        act.Should().Throw<ArgumentNullException>();
+        // act & assert
+        Action construct = () => new ShardBroadcaster<IShard<string>, string>(null!);
+        construct.ShouldThrow<ArgumentNullException>();
     }
 }
