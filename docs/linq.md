@@ -160,6 +160,17 @@ var results = await ShardQuery
 
 ---
 
+## 🔀 Current Short-Circuit Semantics
+
+The implemented helper methods (`AnyAsync`, `FirstAsync`) on sharded queries short-circuit once a decisive result is known:
+
+* `AnyAsync` stops dispatching further shard work as soon as one shard yields at least one element.
+* `FirstAsync` similarly returns immediately when the earliest shard (by scheduling order) produces a first element; if no shards produce elements an `InvalidOperationException` is thrown.
+
+These semantics minimize tail latency and cross-shard load for common existence / first-item probes while preserving determinism (no random shard ordering—only scheduler order).
+
+---
+
 ## ✅ Implementation Plan
 
 1. Implement:

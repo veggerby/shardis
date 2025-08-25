@@ -17,6 +17,10 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
     public ShardStreamBroadcaster(IEnumerable<TShard> shards, int? channelCapacity = null)
     {
         ArgumentNullException.ThrowIfNull(shards, nameof(shards));
+        if (!shards.Any())
+        {
+            throw new ArgumentException("Shard collection must not be empty", nameof(shards));
+        }
 
         _shards = shards;
         _channelCapacity = channelCapacity;

@@ -70,4 +70,31 @@ public class RouterMetricsTests
         metrics.Misses.Should().Be(1);
         metrics.Hits.Should().Be(2);
     }
+
+    [Fact]
+    public async Task DefaultRouter_Should_Record_Single_Miss_Under_Concurrency()
+    {
+        // arrange
+        var metrics = new TestMetrics();
+        var shards = new List<IShard<string>>
+        {
+            new SimpleShard(new("s1"), "c1"),
+            new SimpleShard(new("s2"), "c2"),
+        };
+        var store = new InMemoryShardMapStore<string>();
+        var router = new DefaultShardRouter<string, string>(store, shards, StringShardKeyHasher.Instance, metrics);
+        var key = new ShardKey<string>("user-conc");
+
+        // act
+        await Parallel.ForEachAsync(Enumerable.Range(0, 200), async (_, _) =>
+        {
+            _ = router.RouteToShard(key);
+            await Task.Yield();
+        });
+
+        // assert
+        metrics.Misses.Should().Be(1);
+        metrics.Hits.Should().BeGreaterThan(1);
+        metrics.Events.Count(e => !e.existing).Should().Be(1);
+    }
 }

@@ -107,4 +107,23 @@ public class ShardisOrderedEnumeratorTests
         };
         await iterate.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task MoveNextAsync_ShouldMaintainDeterministicOrder_For_DuplicateKeys()
+    {
+        // arrange
+        var shard1 = new TestShardisEnumerator<(int k, string v)>([(1,"a"),(2,"b")], "s1");
+        var shard2 = new TestShardisEnumerator<(int k, string v)>([(1,"c"),(2,"d")], "s2");
+        var enumerator = new ShardisAsyncOrderedEnumerator<(int k, string v), int>([shard1, shard2], x => x.k);
+
+        // act
+        var items = new List<ShardItem<(int k,string v)>>();
+        while (await enumerator.MoveNextAsync())
+        {
+            items.Add(enumerator.Current);
+        }
+
+        // assert
+        items.Select(i => i.Item.k).Should().ContainInOrder(1,1,2,2);
+    }
 }

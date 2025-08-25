@@ -74,4 +74,21 @@ public class ServiceRegistrationTests
         // assert
         resolved.Should().BeOfType(customStore.GetType());
     }
+
+    [Fact]
+    public void AddShardis_ShouldThrow_WhenReplicationFactorInvalid()
+    {
+        // arrange
+        var services = new ServiceCollection();
+
+        // act
+        Action act = () => services.AddShardis<IShard<string>, string, string>(opt =>
+        {
+            opt.ReplicationFactor = 0; // invalid
+            opt.Shards.Add(new SimpleShard(new("a"), "c1"));
+        });
+
+        // assert
+        act.Should().Throw<ShardisException>();
+    }
 }
