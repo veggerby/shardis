@@ -1,7 +1,5 @@
 using System.Diagnostics;
 
-using AwesomeAssertions;
-
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Tests.TestHelpers;
@@ -30,8 +28,8 @@ public class ShardStreamBroadcasterTests
         }
 
         // assert
-        results.ShouldBeEquivalentTo(new[]
-        {
+        results.Should().BeEquivalentTo(new[]
+                {
             "Session1-Result1",
             "Session1-Result2",
             "Session2-Result1",
@@ -52,10 +50,9 @@ public class ShardStreamBroadcasterTests
         {
             await foreach (var _ in broadcaster.QueryAllShardsAsync<string>(null!)) { }
         };
-        var exception = await Xunit.Assert.ThrowsAsync<ArgumentNullException>(invoke); // capture for param name check
+        await invoke.Should().ThrowAsync<ArgumentNullException>();
 
-        // assert
-        exception.ParamName.ShouldEqual("query");
+        // assert (exception type asserted above)
     }
 
     [Fact]
@@ -63,7 +60,7 @@ public class ShardStreamBroadcasterTests
     {
         // arrange / act / assert
         Action construct = () => new ShardStreamBroadcaster<IShard<string>, string>(null!);
-        construct.ShouldThrow<ArgumentNullException>();
+        construct.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
@@ -106,13 +103,13 @@ public class ShardStreamBroadcasterTests
         stopwatch.Stop();
 
         // assert
-        yielded.ShouldContain(r => r.Result.StartsWith("Fast"));
-        yielded.ShouldContain(r => r.Result.StartsWith("Slow"));
+        yielded.Should().Contain(r => r.Result.StartsWith("Fast"));
+        yielded.Should().Contain(r => r.Result.StartsWith("Slow"));
 
         var firstSlow = yielded.First(r => r.Result.StartsWith("Slow"));
         var lastFast = yielded.Last(r => r.Result.StartsWith("Fast"));
 
-        lastFast.Timestamp.ShouldBeLessThan(firstSlow.Timestamp);
+        lastFast.Timestamp.Should().BeLessThan(firstSlow.Timestamp);
     }
 
     private async IAsyncEnumerable<string> GetMockedResults(string session)

@@ -147,7 +147,7 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             var ringKey = keys[idx];
             selected = _ring[ringKey];
         }
-    _shardMapStore.TryAssignShardToKey(shardKey, selected.ShardId, out _);
+        _shardMapStore.TryAssignShardToKey(shardKey, selected.ShardId, out _);
         _metrics.RouteHit(RouterName, selected.ShardId.Value, false);
         return (selected, false);
     }

@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Shardis.Hashing;
 using Shardis.Instrumentation;
 using Shardis.Model;
@@ -41,11 +39,11 @@ public class RouterMetricsTests
         var shard2 = router.RouteToShard(key);
 
         // assert
-        shard1.ShouldEqual(shard2);
-        metrics.Misses.ShouldEqual(1);
-        metrics.Hits.ShouldEqual(2); // existing + new assignment
-        metrics.Events.ShouldContain(e => !e.existing);
-        metrics.Events.ShouldContain(e => e.existing);
+        shard1.Should().Be(shard2);
+        metrics.Misses.Should().Be(1);
+        metrics.Hits.Should().Be(2); // existing + new assignment
+        metrics.Events.Should().Contain(e => !e.existing);
+        metrics.Events.Should().Contain(e => e.existing);
     }
 
     [Fact]
@@ -68,8 +66,8 @@ public class RouterMetricsTests
         var shard2 = router.RouteToShard(key);
 
         // assert
-        shard1.ShouldEqual(shard2);
-        metrics.Misses.ShouldEqual(1);
-        metrics.Hits.ShouldEqual(2);
+        shard1.Should().Be(shard2);
+        metrics.Misses.Should().Be(1);
+        metrics.Hits.Should().Be(2);
     }
 }

@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Shardis.Querying;
 
 namespace Shardis.Tests;
@@ -54,9 +52,9 @@ public class MergeSortedByTests
         var logins = merged.Select(u => u.LastLogin).ToList();
         for (int i = 1; i < logins.Count; i++)
         {
-            (logins[i - 1] <= logins[i]).ShouldBeTrue();
+            (logins[i - 1] <= logins[i]).Should().BeTrue();
         }
-        merged.Select(u => u.Id).ShouldContainInOrder(
+        merged.Select(u => u.Id).Should().ContainInOrder(
             "shard1-a", "shard2-b", "shard3-e", "shard1-c", "shard2-d", "shard3-f");
     }
 }

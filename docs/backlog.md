@@ -20,7 +20,7 @@ This file tracks the planned and proposed features for the Shardis sharding libr
 | Benchmarks project | ✅ Done | `infra` | Baseline performance harness (routers, hashers). |
 | Migration scaffolding (`IShardMigrator`, plan/execute) | ✅ Done | `core` | Foundation for future safe key moves. |
 | Documentation overhaul (README, index, migration, metrics) | ✅ Done | `dx` | Core concepts + roadmap captured. |
-| Assertion unification (AwesomeAssertions) | ✅ Done | `dx` | Deterministic internal assertion helpers. |
+| Assertion unification (AwesomeAssertions) | ✅ Done | `dx` | Standardized on external AwesomeAssertions package. |
 | Fluent query prototype (`ShardQuery` internal) | 🧪 Prototype | `dx` | Early LINQ-style API (ordering & provider integration pending). |
 | Metrics duplication elimination (consistent router) | ✅ Done | `core` | Single metrics emission via unified Resolve helper. |
 | Consistent ring binary search lookup | ✅ Done | `perf` | Snapshot key array + Array.BinarySearch replaces linear scan. |

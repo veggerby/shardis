@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Shardis.Migration;
 using Shardis.Model;
 
@@ -20,9 +18,9 @@ public class MigrationTests
         var plan = await migrator.PlanAsync(shardA, shardB, keys);
 
         // assert
-        plan.SourceShardId.ShouldEqual(shardA.ShardId);
-        plan.TargetShardId.ShouldEqual(shardB.ShardId);
-        plan.Keys.Count.ShouldEqual(2);
+        plan.SourceShardId.Should().Be(shardA.ShardId);
+        plan.TargetShardId.Should().Be(shardB.ShardId);
+        plan.Keys.Count.Should().Be(2);
     }
 
     [Fact]
@@ -40,6 +38,6 @@ public class MigrationTests
         await migrator.ExecutePlanAsync(plan, _ => { count++; return Task.CompletedTask; });
 
         // assert
-        count.ShouldEqual(3);
+        count.Should().Be(3);
     }
 }

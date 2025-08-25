@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using NSubstitute;
 
 using Shardis.Model;
@@ -28,9 +26,9 @@ public class ShardBroadcasterTests
         var results = await broadcaster.QueryAllShardsAsync(query);
 
         // assert
-        results.ShouldHaveCount(2);
-        results.ShouldContain("Session1-Result");
-        results.ShouldContain("Session2-Result");
+        results.Should().HaveCount(2);
+        results.Should().Contain("Session1-Result");
+        results.Should().Contain("Session2-Result");
     }
 
     [Fact]
@@ -43,7 +41,7 @@ public class ShardBroadcasterTests
 
         // act & assert
         Func<Task> invoke = () => broadcaster.QueryAllShardsAsync<string>(null!);
-        await invoke.ShouldThrowAsync<ArgumentNullException>();
+        await invoke.Should().ThrowAsync<ArgumentNullException>();
     }
 
     [Fact]
@@ -51,6 +49,6 @@ public class ShardBroadcasterTests
     {
         // act & assert
         Action construct = () => new ShardBroadcaster<IShard<string>, string>(null!);
-        construct.ShouldThrow<ArgumentNullException>();
+        construct.Should().Throw<ArgumentNullException>();
     }
 }

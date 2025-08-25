@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Shardis.Querying;
 using Shardis.Tests.TestHelpers;
 
@@ -33,10 +31,10 @@ public class ShardisCombinedEnumeratorTests
         }
 
         // assert
-        results.ShouldHaveCount(3);
-        results.ShouldContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 1);
-        results.ShouldContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 2);
-        results.ShouldContainSingle(item => item.ShardId.Value == "shard2" && item.Item == 3);
+        results.Should().HaveCount(3);
+        results.Should().ContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 1);
+        results.Should().ContainSingle(item => item.ShardId.Value == "shard1" && item.Item == 2);
+        results.Should().ContainSingle(item => item.ShardId.Value == "shard2" && item.Item == 3);
     }
 
     [Fact]
@@ -54,7 +52,7 @@ public class ShardisCombinedEnumeratorTests
         var hasMore = await enumerator.MoveNextAsync();
 
         // assert
-        hasMore.ShouldBeFalse();
-        enumerator.IsComplete.ShouldBeTrue();
+        hasMore.Should().BeFalse();
+        enumerator.IsComplete.Should().BeTrue();
     }
 }

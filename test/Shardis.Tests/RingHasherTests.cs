@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Shardis.Hashing;
 
 namespace Shardis.Tests;
@@ -15,7 +13,7 @@ public class RingHasherTests
         var fnv = Fnv1aShardRingHasher.Instance.Hash(input);
         var def = DefaultShardRingHasher.Instance.Hash(input);
         // assert
-        fnv.ShouldNotEqual(def);
+        fnv.Should().NotBe(def);
     }
 
     [Fact]
@@ -27,6 +25,6 @@ public class RingHasherTests
         var h1 = Fnv1aShardRingHasher.Instance.Hash(input);
         var h2 = Fnv1aShardRingHasher.Instance.Hash(input);
         // assert
-        h1.ShouldEqual(h2);
+        h1.Should().Be(h2);
     }
 }
