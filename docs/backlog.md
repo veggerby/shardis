@@ -30,6 +30,13 @@ This file tracks the planned and proposed features for the Shardis sharding libr
 | Broadcaster completion & cancellation hardening | ✅ Done | `core` | Deterministic channel completion + early cancellation support. |
 | Removed per-item Task.Yield in enumeration | ✅ Done | `perf` | Eliminated unnecessary scheduling overhead in query prototype. |
 | Early cancellation for Any / First | ✅ Done | `perf` | Linked CTS cancels remaining producers after first match. |
+| Dynamic ring mutation (add/remove shards) | ✅ Done | `core` | Thread-safe add/remove with atomic ring key snapshot rebuild. |
+| Replication factor upper bound validation | ✅ Done | `core` | Guards against pathological ring sizes (>10,000). |
+| Map store unified fast-path (`TryGetOrAdd`) | ✅ Done | `perf` | Eliminated double lookup + double hashing on first assignment. |
+| Single-miss metrics guarantee (per-key lock + de-dup) | ✅ Done | `core` | Exactly one `RouteMiss` emitted per key under contention. |
+| Ring removal fallback reassignment | ✅ Done | `core` | Auto re-hash & reassign when mapping points to removed shard. |
+| Dynamic ring rebuild concurrency tests | ✅ Done | `qa` | Verifies routing stability during add/remove under load. |
+| Ring distribution test | ✅ Done | `qa` | Statistical evenness assertions on ring (coefficient of variation bounds). |
 
 ---
 
@@ -43,7 +50,17 @@ All previously listed high-impact optimizations have been completed (see Complet
 
 | Item | Label | Description |
 |------|-------|-------------|
-| — | — | (No outstanding core optimization tasks at this time) |
+| Metrics miss emission unification (consistent router review) | `core` | Ensure consistent router uses same single-miss enforcement pattern (evaluate lock vs pure CAS + de-dup). |
+| Per-key lock dictionary lifecycle strategy | `perf` | Evaluate memory growth; consider aging or document unbounded behavior. |
+| Routing performance benchmark (pre/post TryGetOrAdd) | `perf` | Add benchmark capturing latency & allocation delta. |
+| Dynamic ring rebuild cost benchmark | `perf` | Measure add/remove latency across replication factors (50–500). |
+| Migration operational playbook doc | `dx` | Document scale-out (add), drain (remove), migrate sequence + invariants. |
+| OpenTelemetry metrics usage example | `dx` | Sample configuration + counter mapping guidance. |
+| Fuzz test: hash distribution variance | `qa` | Random shard IDs + large key set to assert CV bounds. |
+| Integration test: shard removal under heavy routing | `qa` | Remove shard mid‑storm; assert no failures, fallback reassignment works. |
+| CHANGELOG initialization | `dx` | Start formal change tracking pre-first release. |
+| Optional read-only Route peek (`TryGetAssignment`) | `dx` | Non-mutating lookup without hit/miss side effects. |
+| Mutable topology interface extraction (`IMutableShardTopology`) | `core` | Clarify capability boundary for dynamic operations. |
 
 ### Feature Enablement
 
@@ -60,7 +77,6 @@ All previously listed high-impact optimizations have been completed (see Complet
 | Item | Label | Description |
 |------|-------|-------------|
 | Concurrency stress tests (routing) | `qa` | Verify single assignment under race, metrics consistency. |
-| Ring distribution test | `qa` | Statistical evenness under high replication factor. |
 | Bench: ring lookup vs current | `perf` | Validate improvement pre/post optimization. |
 | Broadcaster throughput benchmark | `perf` | Measure effect of channel capacity & backpressure. |
 
@@ -76,7 +92,6 @@ All previously listed high-impact optimizations have been completed (see Complet
 | Read/Write Split Routing | `core` | Distinct strategies for reads vs writes (leader/follower). |
 | Batched Query Execution | `dx` | Group results per shard with metadata (diagnostics). |
 | Shard Type Constraints / Policies | `core` | Policy layer restricting eligible shard pool per key/domain. |
-| Dynamic ring mutation (add/remove shards) | `core` | Thread-safe ring rebuild + minimal churn planning integration. |
 | Provider adapters (Marten/EF/Dapper) | `dx` | Queryable backend integration for fluent API. |
 | Query latency / slow shard detection | `dx` | Emit timing + per-shard latency histograms. |
 
