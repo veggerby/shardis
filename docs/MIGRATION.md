@@ -3,6 +3,7 @@
 This document formalizes the approach for safely reassigning keys (and associated data) between shards.
 
 ---
+
 ## Objectives
 
 1. Deterministic, auditable reassignment of a bounded key set.
@@ -12,6 +13,7 @@ This document formalizes the approach for safely reassigning keys (and associate
 5. Progress visibility + metrics (planned vs migrated vs failed keys).
 
 ---
+
 ## Core Types (Current / Planned)
 
 | Type | Status | Purpose |
@@ -24,6 +26,7 @@ This document formalizes the approach for safely reassigning keys (and associate
 | `IShardMigrationLocker` | 🚧 | Optional: coordinate concurrent migrations (advisory lock). |
 
 ---
+
 ## High-Level Flow (Target State)
 
 1. Discover candidate keys (external query or supplied list).
@@ -38,6 +41,7 @@ This document formalizes the approach for safely reassigning keys (and associate
 5. Emit metrics + audit events.
 
 ---
+
 ## Idempotency Strategy
 
 | Step | Idempotency Mechanism |
@@ -51,6 +55,7 @@ This document formalizes the approach for safely reassigning keys (and associate
 If a run crashes mid-key, re-execution resumes at first non-idempotent boundary automatically.
 
 ---
+
 ## Data Integrity Guarantees
 
 Goal tiering (progressively implemented):
@@ -64,6 +69,7 @@ Goal tiering (progressively implemented):
 | 4 | Cryptographic diff audit (optional). |
 
 ---
+
 ## Concurrency & Locking
 
 Planned extension points:
@@ -73,6 +79,7 @@ Planned extension points:
 - Backpressure knobs: max in-flight keys, retry budget.
 
 ---
+
 ## Metrics (Planned Names)
 
 | Metric | Type | Description |
@@ -86,6 +93,7 @@ Planned extension points:
 Metrics emitted outside critical locks.
 
 ---
+
 ## Failure Handling
 
 | Failure | Action |
@@ -98,6 +106,7 @@ Metrics emitted outside critical locks.
 No partial destructive operations; mapping change is final boundary.
 
 ---
+
 ## Dry Run Mode
 
 `ExecutePlanAsync(plan, dryRun: true)` (planned signature) will:
@@ -108,6 +117,7 @@ No partial destructive operations; mapping change is final boundary.
 - Emit no writes or mapping changes.
 
 ---
+
 ## Open Questions
 
 1. Should mapping store expose compare-and-set primitive? (Recommended for atomicity.)
@@ -116,6 +126,7 @@ No partial destructive operations; mapping change is final boundary.
 4. Graceful rollback path if mapping swap occurs but verification fails late? (Prefer pre-swap verification to avoid.)
 
 ---
+
 ## Near-Term Implementation Tasks
 
 1. Introduce `IShardDataTransfer<TKey,TSession>` + default noop (test harness).
@@ -126,6 +137,7 @@ No partial destructive operations; mapping change is final boundary.
 6. Add dry-run compute & report.
 
 ---
+
 ## Usage (Current Scaffold)
 
 ```csharp
@@ -145,6 +157,7 @@ var result = await migrator.ExecutePlanAsync(plan, options => options
 ```
 
 ---
+
 ## Summary
 
 Migration will emphasize *determinism*, *auditability*, and *incremental adoption*. This scaffold provides a foundation without risking data until full copy + verify pipeline is implemented.
