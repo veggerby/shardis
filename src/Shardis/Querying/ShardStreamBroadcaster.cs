@@ -88,7 +88,7 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
     /// </summary>
     public async IAsyncEnumerable<ShardItem<TResult>> QueryAllShardsWithExpressionAsync<TResult>(
         Expression<Func<IQueryable<TResult>, IQueryable<TResult>>> queryExpression,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) where TResult : notnull
     {
         var channel = _channelCapacity.HasValue
             ? Channel.CreateBounded<ShardItem<TResult>>(new BoundedChannelOptions(_channelCapacity.Value)
