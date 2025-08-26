@@ -1,6 +1,7 @@
 namespace Shardis.Migration.InMemory;
 
 using System.Collections.Concurrent;
+
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 

@@ -111,6 +111,7 @@ When extending migration (`IShardMigrator`):
 Before submitting, validate:
 - [ ] Build passes (`dotnet build`).
 - [ ] Tests added / updated (`dotnet test`).
+- [ ] Full solution test suite executed (no relying on filtered subsets) immediately before declaring task complete.
 - [ ] Benchmarks unaffected or justified (if touching critical path).
 - [ ] Public APIs documented.
 - [ ] No style warnings introduced.

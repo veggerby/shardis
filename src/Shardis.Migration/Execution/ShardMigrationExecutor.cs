@@ -1,6 +1,7 @@
 namespace Shardis.Migration.Execution;
 
 using System.Collections.Concurrent;
+
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 using Shardis.Model;
@@ -85,7 +86,7 @@ internal sealed class ShardMigrationExecutor<TKey>
         async Task ExecuteWithRetry(Func<Task> action, string phase, KeyMove<TKey> move)
         {
             int attempt = 0;
-            for (;;)
+            for (; ; )
             {
                 try
                 {

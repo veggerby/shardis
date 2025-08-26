@@ -10,8 +10,8 @@ using Shardis.Model;
 /// <param name="Source">The source shard currently owning the key.</param>
 /// <param name="Target">The target shard to which the key will be moved.</param>
 public readonly record struct KeyMove<TKey>(ShardKey<TKey> Key, ShardId Source, ShardId Target)
-	where TKey : notnull, IEquatable<TKey>
+    where TKey : notnull, IEquatable<TKey>
 {
-	/// <summary>Returns a readable string for diagnostics (does not include raw key value beyond ToString()).</summary>
-	public override string ToString() => $"{Key} {Source.Value}->{Target.Value}";
+    /// <summary>Returns a readable string for diagnostics (does not include raw key value beyond ToString()).</summary>
+    public override string ToString() => $"{Key} {Source.Value}->{Target.Value}";
 }
