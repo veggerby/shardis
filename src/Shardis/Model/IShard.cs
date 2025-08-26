@@ -19,5 +19,9 @@ public interface IShard<TSession>
     /// <returns>A new session of type <typeparamref name="TSession"/>.</returns>
     TSession CreateSession();
 
-    IShardQueryExecutor<TSession> QueryExecutor { get; } // 🔥 New addition
+    /// <summary>
+    /// Gets the query executor capable of running LINQ expressions or provider-specific queries
+    /// against this shard's backing store using a <typeparamref name="TSession"/> instance.
+    /// </summary>
+    IShardQueryExecutor<TSession> QueryExecutor { get; }
 }

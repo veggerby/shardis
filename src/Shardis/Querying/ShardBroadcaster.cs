@@ -5,8 +5,9 @@ using Shardis.Model;
 namespace Shardis.Querying;
 
 /// <summary>
-/// Provides an implementation of the <see cref="IShardBroadcaster{TSession}"/> interface for querying all shards in parallel.
+/// Provides an implementation of <see cref="IShardBroadcaster{TSession}"/> for querying all shards in parallel.
 /// </summary>
+/// <typeparam name="TShard">Concrete shard type.</typeparam>
 /// <typeparam name="TSession">The type of session used for querying shards.</typeparam>
 public class ShardBroadcaster<TShard, TSession> : IShardBroadcaster<TSession> where TShard : IShard<TSession>
 {
@@ -14,7 +15,7 @@ public class ShardBroadcaster<TShard, TSession> : IShardBroadcaster<TSession> wh
     private readonly int _maxDegreeOfParallelism = 20;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ShardBroadcaster{TSession}"/> class.
+    /// Initializes a new instance of the <see cref="ShardBroadcaster{TShard, TSession}"/> class.
     /// </summary>
     /// <param name="shards">The collection of shards to query.</param>
     /// <param name="maxDegreeOfParallelism">The maximum degree of parallelism for querying shards.</param>

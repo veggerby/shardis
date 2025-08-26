@@ -6,6 +6,9 @@ using Shardis.Model;
 
 namespace Shardis.Querying;
 
+/// <summary>
+/// Extension methods providing higher-level merge and projection operations over shard broadcast query streams.
+/// </summary>
 public static class ShardStreamBroadcasterExtensions
 {
     /// <summary>
@@ -168,6 +171,17 @@ public static class ShardStreamBroadcasterExtensions
         }
     }
 
+    /// <summary>
+    /// Executes a query across all shards and applies a projection function to each element in a streaming fashion.
+    /// </summary>
+    /// <typeparam name="TSession">Shard session type.</typeparam>
+    /// <typeparam name="T">Source element type.</typeparam>
+    /// <typeparam name="TResult">Projected element type.</typeparam>
+    /// <param name="broadcaster">The broadcaster.</param>
+    /// <param name="query">Function producing an async enumerable per shard.</param>
+    /// <param name="selector">Projection delegate applied to each element.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A projected merged async sequence.</returns>
     public static async IAsyncEnumerable<TResult> QueryAndProjectAsync<TSession, T, TResult>(
     this IShardStreamBroadcaster<TSession> broadcaster,
     Func<TSession, IAsyncEnumerable<T>> query,
@@ -180,6 +194,13 @@ public static class ShardStreamBroadcasterExtensions
         }
     }
 
+    /// <summary>
+    /// Wraps an <see cref="IAsyncEnumerable{T}"/> with a shard identifier for participation in merge operations.
+    /// </summary>
+    /// <typeparam name="T">Element type.</typeparam>
+    /// <param name="source">Source sequence.</param>
+    /// <param name="shardId">Origin shard id.</param>
+    /// <returns>A shard-aware enumerator.</returns>
     public static IShardisAsyncEnumerator<T> ToShardisEnumerator<T>(
         this IAsyncEnumerable<T> source,
         ShardId shardId)

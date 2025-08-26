@@ -3,7 +3,7 @@ using Shardis.Model;
 namespace Shardis.Migration;
 
 /// <summary>
-/// Provides a default implementation of the <see cref="IShardMigrator"/> interface for migrating data between shards.
+/// Default implementation of <see cref="IShardMigrator{TKey, TSession}"/> providing planning and basic execution hooks.
 /// </summary>
 public class DefaultShardMigrator<TKey, TSession> : IShardMigrator<TKey, TSession>
     where TKey : notnull, IEquatable<TKey>
@@ -36,6 +36,13 @@ public class DefaultShardMigrator<TKey, TSession> : IShardMigrator<TKey, TSessio
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Builds a migration plan for a set of shard keys from <paramref name="sourceShard"/> to <paramref name="targetShard"/>.
+    /// </summary>
+    /// <param name="sourceShard">The shard currently owning the keys.</param>
+    /// <param name="targetShard">The shard that will receive the keys.</param>
+    /// <param name="keys">The keys to migrate.</param>
+    /// <returns>A populated <see cref="ShardMigrationPlan{TKey}"/>.</returns>
     public Task<ShardMigrationPlan<TKey>> PlanAsync(IShard<TSession> sourceShard, IShard<TSession> targetShard, IEnumerable<ShardKey<TKey>> keys)
     {
         ArgumentNullException.ThrowIfNull(sourceShard);
@@ -44,6 +51,11 @@ public class DefaultShardMigrator<TKey, TSession> : IShardMigrator<TKey, TSessio
         return Task.FromResult(new ShardMigrationPlan<TKey>(sourceShard.ShardId, targetShard.ShardId, keys));
     }
 
+    /// <summary>
+    /// Executes the provided migration <paramref name="plan"/> invoking an optional <paramref name="perKeyCallback"/> for each key.
+    /// </summary>
+    /// <param name="plan">The plan containing keys to migrate.</param>
+    /// <param name="perKeyCallback">Optional callback invoked per key (e.g. to copy data).</param>
     public async Task ExecutePlanAsync(ShardMigrationPlan<TKey> plan, Func<ShardKey<TKey>, Task>? perKeyCallback = null)
     {
         ArgumentNullException.ThrowIfNull(plan);

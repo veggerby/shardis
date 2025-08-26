@@ -8,23 +8,20 @@
 
   <PropertyGroup>
     <PackageId>Shardis.Redis</PackageId>
-    <Version>1.0.0</Version>
-    <Authors>Jesper Veggerby</Authors>
-    <Description>Shardis is a lightweight, domain-driven sharding framework for .NET applications.</Description>
-    <PackageTags>sharding, redis, .NET, framework</PackageTags>
-    <RepositoryUrl>https://github.com/veggerby/shardis</RepositoryUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
-    <PackageIcon>icon.png</PackageIcon>
-    <OutputPath>$(OutputPath)</OutputPath>
+    <Version>0.1.0</Version>
+    <Description>Redis-backed shard map store for Shardis (atomic CAS &amp; TryGetOrAdd) enabling deterministic key to shard assignments.</Description>
+    <PackageTags>shardis;sharding;redis;consistent-hashing;partitioning;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="" />
+    <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="StackExchange.Redis" Version="2.9.11" />
+    <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
 
   <ItemGroup>
