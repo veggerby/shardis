@@ -32,17 +32,19 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
     private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, object> _keyLocks = new();
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="DefaultShardRouter{TSession}"/> class.
+    /// Initializes a new instance of the <see cref="DefaultShardRouter{TKey, TSession}"/> class.
     /// </summary>
     /// <param name="shardMapStore">The shard map store for managing shard assignments.</param>
     /// <param name="availableShards">The collection of available shards.</param>
+    /// <param name="shardKeyHasher">Optional custom key hasher; defaults to <see cref="DefaultShardKeyHasher{TKey}"/>.</param>
+    /// <param name="metrics">Optional metrics sink; defaults to no-op.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardMapStore"/> or <paramref name="availableShards"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="availableShards"/> is empty.</exception>
     public DefaultShardRouter(
         IShardMapStore<TKey> shardMapStore,
         IEnumerable<IShard<TSession>> availableShards,
-    IShardKeyHasher<TKey>? shardKeyHasher = null,
-    IShardisMetrics? metrics = null)
+        IShardKeyHasher<TKey>? shardKeyHasher = null,
+        IShardisMetrics? metrics = null)
     {
         ArgumentNullException.ThrowIfNull(shardMapStore, nameof(shardMapStore));
         ArgumentNullException.ThrowIfNull(availableShards, nameof(availableShards));

@@ -2,8 +2,14 @@ using System.Linq.Expressions;
 
 namespace Shardis.Querying.Linq;
 
+/// <summary>
+/// Entry points for constructing shard-composed queries.
+/// </summary>
 public static class ShardQuery
 {
+    /// <summary>
+    /// Begins a query for the element type <typeparamref name="T"/>.
+    /// </summary>
     public static IShardQueryable<T> For<T>() => new InitialShardQueryable<T>();
 }
 

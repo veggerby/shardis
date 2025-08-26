@@ -1,5 +1,10 @@
 namespace Shardis.Querying;
 
+/// <summary>
+/// Represents a shard-aware asynchronous enumerator that yields <see cref="ShardItem{T}"/> values and exposes
+/// progress metadata used by merge algorithms.
+/// </summary>
+/// <typeparam name="T">Element type.</typeparam>
 public interface IShardisAsyncEnumerator<T> : IAsyncEnumerator<ShardItem<T>>
 {
     /// <summary>

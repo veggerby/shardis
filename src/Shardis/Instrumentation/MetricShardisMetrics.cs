@@ -3,13 +3,7 @@ using System.Diagnostics.Metrics;
 namespace Shardis.Instrumentation;
 
 /// <summary>
-/// Metrics implementation backed by System.Diagnostics.Metrics.
-/// </summary>
-/// <summary>
-/// Metrics implementation backed by <see cref="System.Diagnostics.Metrics"/> counters.
-/// </summary>
-/// <summary>
-/// Default production metrics implementation backed by <see cref="System.Diagnostics.Metrics"/> counters.
+/// Default production metrics implementation backed by <see cref="Meter"/> counters.
 /// Register this with DI to emit routing metrics; otherwise the internal no-op implementation is used.
 /// </summary>
 public sealed class MetricShardisMetrics : IShardisMetrics
@@ -20,6 +14,12 @@ public sealed class MetricShardisMetrics : IShardisMetrics
     private static readonly Counter<long> ExistingAssignments = Meter.CreateCounter<long>("shardis.route.assignments.existing");
     private static readonly Counter<long> NewAssignments = Meter.CreateCounter<long>("shardis.route.assignments.new");
 
+    /// <summary>
+    /// Records a successful routing decision to a shard.
+    /// </summary>
+    /// <param name="router">The router implementation name.</param>
+    /// <param name="shardId">The target shard identifier.</param>
+    /// <param name="existingAssignment">True if the key had a prior assignment (hit); false if a new assignment was created.</param>
     public void RouteHit(string router, string shardId, bool existingAssignment)
     {
         RouteHits.Add(1, new KeyValuePair<string, object?>("router", router), new KeyValuePair<string, object?>("shard", shardId));
@@ -33,6 +33,10 @@ public sealed class MetricShardisMetrics : IShardisMetrics
         }
     }
 
+    /// <summary>
+    /// Records a routing miss that resulted in a new shard assignment.
+    /// </summary>
+    /// <param name="router">The router implementation name.</param>
     public void RouteMiss(string router)
     {
         RouteMisses.Add(1, new KeyValuePair<string, object?>("router", router));
