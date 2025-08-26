@@ -9,8 +9,8 @@ using Shardis.Migration.Model;
 internal sealed class InMemoryDataMover<TKey> : IShardDataMover<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
-    private readonly HashSet<KeyMove<TKey>> _copied = new();
-    private readonly HashSet<KeyMove<TKey>> _verified = new();
+    private readonly HashSet<KeyMove<TKey>> _copied = [];
+    private readonly HashSet<KeyMove<TKey>> _verified = [];
     private readonly object _lock = new();
 
     public Func<KeyMove<TKey>, Exception?>? CopyFailureInjector { get; set; }

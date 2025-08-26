@@ -9,16 +9,11 @@ using Shardis.Persistence;
 /// In-memory implementation that applies shard ownership swaps via the underlying map store.
 /// Simulates partial failure when <see cref="SimulatePartialFailure"/> is true by failing after half the batch.
 /// </summary>
-internal sealed class InMemoryMapSwapper<TKey> : IShardMapSwapper<TKey>
+internal sealed class InMemoryMapSwapper<TKey>(IShardMapStore<TKey> mapStore) : IShardMapSwapper<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
-    private readonly IShardMapStore<TKey> _mapStore;
+    private readonly IShardMapStore<TKey> _mapStore = mapStore;
     public bool SimulatePartialFailure { get; set; }
-
-    public InMemoryMapSwapper(IShardMapStore<TKey> mapStore)
-    {
-        _mapStore = mapStore;
-    }
 
     public Task SwapAsync(IReadOnlyList<KeyMove<TKey>> verifiedBatch, CancellationToken ct)
     {
