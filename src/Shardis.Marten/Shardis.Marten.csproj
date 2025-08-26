@@ -8,16 +8,11 @@
 
   <PropertyGroup>
     <PackageId>Shardis.Marten</PackageId>
-    <Version>1.0.0</Version>
-    <Authors>Jesper Veggerby</Authors>
-    <Description>Shardis is a lightweight, domain-driven sharding framework for .NET applications.</Description>
-    <PackageTags>sharding, martendb, .NET, framework</PackageTags>
-    <RepositoryUrl>https://github.com/veggerby/shardis</RepositoryUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
-    <PackageIcon>icon.png</PackageIcon>
+    <Version>0.1.0</Version>
+    <Description>Marten integration for Shardis: per-shard sessions and query execution adapter.</Description>
+    <PackageTags>shardis;sharding;marten;document-db;consistent-hashing;partitioning;dotnet</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <OutputPath>$(OutputPath)</OutputPath>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Marten" Version="8.8.2" />
+    <PackageReference Include="Marten" />
   </ItemGroup>
 
   <ItemGroup>

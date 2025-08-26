@@ -30,11 +30,14 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, byte> _missRecorded = new();
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ConsistentHashShardRouter{TSession}"/> class.
+    /// Initializes a new instance of the <see cref="ConsistentHashShardRouter{TShard, TKey, TSession}"/> class.
     /// </summary>
     /// <param name="shardMapStore">The shard map store for managing shard assignments.</param>
     /// <param name="availableShards">The collection of available shards.</param>
     /// <param name="replicationFactor">The replication factor for virtual nodes in the consistent hash ring.</param>
+    /// <param name="shardKeyHasher">Deterministic shard key hasher used to compute key positions.</param>
+    /// <param name="ringHasher">Optional ring hasher; defaults to <see cref="DefaultShardRingHasher"/>.</param>
+    /// <param name="metrics">Optional metrics sink; defaults to no-op.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardMapStore"/> or <paramref name="availableShards"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="replicationFactor"/> is less than or equal to zero.</exception>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="availableShards"/> is empty.</exception>
