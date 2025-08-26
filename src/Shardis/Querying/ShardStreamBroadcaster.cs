@@ -95,9 +95,6 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
     /// <summary>
     /// Executes an expression-based query (LINQ transformation) across all shards using backend-aware executors.
     /// </summary>
-    /// <summary>
-    /// Executes an expression-based query against all shards, letting the per-shard executor translate the expression.
-    /// </summary>
     public async IAsyncEnumerable<ShardItem<TResult>> QueryAllShardsWithExpressionAsync<TResult>(
         Expression<Func<IQueryable<TResult>, IQueryable<TResult>>> queryExpression,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) where TResult : notnull
