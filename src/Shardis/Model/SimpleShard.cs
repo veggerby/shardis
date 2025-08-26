@@ -25,6 +25,7 @@ public sealed class SimpleShard : ISimpleShard
     /// </summary>
     /// <param name="shardId">The unique identifier of the shard.</param>
     /// <param name="connectionString">The connection string for the shard.</param>
+    /// <param name="queryExecutor">Optional query executor enabling LINQ broadcast operations.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="shardId"/> is null or whitespace.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
     public SimpleShard(ShardId shardId, string connectionString, IShardQueryExecutor<string>? queryExecutor = null)
@@ -49,6 +50,7 @@ public sealed class SimpleShard : ISimpleShard
     /// <returns>The connection string as the session.</returns>
     public string CreateSession() => ConnectionString;
 
+    /// <summary>Gets the configured query executor (or a no-op executor if none supplied).</summary>
     public IShardQueryExecutor<string> QueryExecutor => _queryExecutor;
 
     private sealed class NoOpQueryExecutor : IShardQueryExecutor<string>

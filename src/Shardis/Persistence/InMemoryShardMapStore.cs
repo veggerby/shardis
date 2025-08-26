@@ -5,7 +5,7 @@ using Shardis.Model;
 namespace Shardis.Persistence;
 
 /// <summary>
-/// Provides an in-memory implementation of the <see cref="IShardMapStore"/> interface.
+/// Provides an in-memory implementation of the <see cref="IShardMapStore{TKey}"/> interface.
 /// </summary>
 public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
     where TKey : notnull, IEquatable<TKey>
@@ -28,7 +28,7 @@ public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
     /// </summary>
     /// <param name="shardKey">The shard key to assign.</param>
     /// <param name="shardId">The shard ID to assign to the key.</param>
-    /// <returns>A <see cref="ShardMap"/> representing the key-to-shard assignment.</returns>
+    /// <returns>A <see cref="ShardMap{TKey}"/> representing the key-to-shard assignment.</returns>
     public ShardMap<TKey> AssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId)
     {
         _assignments[shardKey] = shardId;

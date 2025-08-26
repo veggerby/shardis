@@ -23,6 +23,7 @@ public class Shard<TSession> : IShard<TSession>
     /// </summary>
     /// <param name="shardId">The unique identifier of the shard.</param>
     /// <param name="sessionProvider">The session provider for managing shard sessions.</param>
+    /// <param name="queryExecutor">Optional query executor enabling LINQ broadcast operations.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="shardId"/> is null or whitespace.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="sessionProvider"/> is null.</exception>
     public Shard(ShardId shardId, IShardSessionProvider<TSession> sessionProvider, IShardQueryExecutor<TSession>? queryExecutor = null)
@@ -50,6 +51,7 @@ public class Shard<TSession> : IShard<TSession>
         return _sessionProvider.GetSession(ShardId);
     }
 
+    /// <summary>Gets the configured query executor (or a no-op executor if none supplied).</summary>
     public IShardQueryExecutor<TSession> QueryExecutor => _queryExecutor;
 
     private sealed class NoOpQueryExecutor : IShardQueryExecutor<TSession>

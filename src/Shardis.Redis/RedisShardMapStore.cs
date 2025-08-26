@@ -6,7 +6,7 @@ using StackExchange.Redis;
 namespace Shardis.Redis;
 
 /// <summary>
-/// Provides a Redis-backed implementation of the <see cref="IShardMapStore"/> interface.
+/// Provides a Redis-backed implementation of the <see cref="IShardMapStore{TKey}"/> interface.
 /// </summary>
 public class RedisShardMapStore<TKey> : IShardMapStore<TKey>
     where TKey : notnull, IEquatable<TKey>
@@ -15,7 +15,7 @@ public class RedisShardMapStore<TKey> : IShardMapStore<TKey>
     private const string ShardMapKeyPrefix = "shardmap:";
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisShardMapStore"/> class.
+    /// Initializes a new instance of the <see cref="RedisShardMapStore{TKey}"/> class.
     /// </summary>
     /// <param name="connectionString">The Redis connection string.</param>
     public RedisShardMapStore(string connectionString)

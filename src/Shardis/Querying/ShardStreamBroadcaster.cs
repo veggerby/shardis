@@ -6,14 +6,20 @@ using Shardis.Model;
 namespace Shardis.Querying;
 
 /// <summary>
-/// Provides an implementation of the <see cref="IShardStreamBroadcaster{TSession}"/> interface for querying all shards in parallel.
+/// Provides an implementation of <see cref="IShardStreamBroadcaster{TSession}"/> streaming results from all shards in parallel.
 /// </summary>
+/// <typeparam name="TShard">Concrete shard type.</typeparam>
 /// <typeparam name="TSession">The type of session used for querying shards.</typeparam>
 public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<TSession> where TShard : IShard<TSession>
 {
     private readonly IEnumerable<TShard> _shards;
     private readonly int? _channelCapacity;
 
+    /// <summary>
+    /// Creates a new broadcaster.
+    /// </summary>
+    /// <param name="shards">Shard collection to query.</param>
+    /// <param name="channelCapacity">Optional bounded channel capacity (null = unbounded).</param>
     public ShardStreamBroadcaster(IEnumerable<TShard> shards, int? channelCapacity = null)
     {
         ArgumentNullException.ThrowIfNull(shards, nameof(shards));
@@ -26,6 +32,9 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
         _channelCapacity = channelCapacity;
     }
 
+    /// <summary>
+    /// Executes an asynchronous query against all shards, streaming back <see cref="ShardItem{TItem}"/> values as they arrive.
+    /// </summary>
     public async IAsyncEnumerable<ShardItem<TResult>> QueryAllShardsAsync<TResult>(
         Func<TSession, IAsyncEnumerable<TResult>> query,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -86,6 +95,9 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
     /// <summary>
     /// Executes an expression-based query (LINQ transformation) across all shards using backend-aware executors.
     /// </summary>
+    /// <summary>
+    /// Executes an expression-based query against all shards, letting the per-shard executor translate the expression.
+    /// </summary>
     public async IAsyncEnumerable<ShardItem<TResult>> QueryAllShardsWithExpressionAsync<TResult>(
         Expression<Func<IQueryable<TResult>, IQueryable<TResult>>> queryExpression,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) where TResult : notnull
@@ -142,9 +154,8 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
     }
 
     /// <summary>
-    /// Executes a globally ordered query using a LINQ ordering expression and backend-native execution.
+    /// Executes an ordered asynchronous query across all shards and performs a k-way merge to yield globally ordered results.
     /// </summary>
-    // NOTE: This method fulfills the interface by projecting from IAsyncEnumerable query rather than expression for now.
     public async IAsyncEnumerable<ShardItem<TResult>> QueryAllShardsOrderedAsync<TResult, TKey>(
         Func<TSession, IAsyncEnumerable<TResult>> query,
         Func<TResult, TKey> keySelector,
@@ -168,6 +179,9 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
         }
     }
 
+    /// <summary>
+    /// Executes a query across all shards and projects each item to another shape.
+    /// </summary>
     public async IAsyncEnumerable<TProjected> QueryAndProjectAsync<TResult, TProjected>(
         Func<TSession, IAsyncEnumerable<TResult>> query,
         Func<TResult, TProjected> selector,

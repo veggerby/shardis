@@ -12,7 +12,7 @@ public readonly record struct ShardKey<TKey>
     public TKey Value { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ShardKey"/> struct.
+    /// Initializes a new instance of the <see cref="ShardKey{TKey}"/> struct.
     /// </summary>
     /// <param name="value">The value of the shard key.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null or whitespace.</exception>

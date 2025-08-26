@@ -17,7 +17,7 @@ public readonly record struct ShardMap<TKey>
     public ShardId ShardId { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ShardMap"/> struct.
+    /// Initializes a new instance of the <see cref="ShardMap{TKey}"/> struct.
     /// </summary>
     /// <param name="shardKey">The shard key to map.</param>
     /// <param name="shardId">The shard ID to map to.</param>
