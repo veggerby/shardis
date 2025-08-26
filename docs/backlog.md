@@ -62,6 +62,26 @@ All previously listed high-impact optimizations have been completed (see Complet
 | Optional read-only Route peek (`TryGetAssignment`) | `dx` | Non-mutating lookup without hit/miss side effects. |
 | Mutable topology interface extraction (`IMutableShardTopology`) | `core` | Clarify capability boundary for dynamic operations. |
 
+### Newly Added (Issue Stubs)
+
+| Item | Label | Description | Issue |
+|------|-------|-------------|-------|
+| Migration execution pipeline (plan/copy/verify/swap/rollback) | `core` | End-to-end key movement lifecycle with idempotent phases and rollback safeguards. | _TBD_ |
+| Migration checkpoints & dry-run diff | `core`,`dx` | Persisted progress + ability to preview moves without executing data copy. | _TBD_ |
+| Migration metrics & progress events | `dx` | Counters (planned, copied, verified, failed, retried), gauges (throughput, ETA) and optional progress callbacks. | _TBD_ |
+| Topology snapshot import/export | `core` | Serialize/restore ring + assignments for cold start, rollback, audits. | _TBD_ |
+| Shard map compaction / stale key cleanup | `core` | Remove or archive keys referencing removed shards or post-migration tombstones. | _TBD_ |
+| Transient fault policy abstraction (map stores) | `infra` | Central retry/backoff strategy for Redis/SQL stores—no ad hoc retries in callers. | _TBD_ |
+| Optional read-only route peek (`TryGetAssignment`) | `dx` | Non‑mutating lookup without hit/miss metric side effects. | _TBD_ |
+| Weighted shard interface precursor | `core` | Abstraction to allow future weighted / capacity-based routing without breaking changes. | _TBD_ |
+| Health policy abstraction (`IShardHealthPolicy`) | `core` | Compose health checks + policy (e.g. quorum, hysteresis) distinct from raw liveness probe. | _TBD_ |
+| Backpressure & timeout guarantees doc | `dx` | Document broadcaster queue bounds, cancellation propagation, timeout invariants. | _TBD_ |
+| Versioning & change policy doc | `dx` | SemVer intent, pre-1.0 guarantees, deprecation workflow. | _TBD_ |
+| Security & logging guidance doc | `dx` | What is safe to log; avoidance of leaking keys or shard assignments; hashing considerations. | _TBD_ |
+| OpenTelemetry tracing sample (routing + migration spans) | `dx` | Example wiring of spans around resolution, broadcast, migration phases. | _TBD_ |
+| Weighted / adaptive routing R&D placeholder | `experimental` | Follow-on after weighted interface: dynamic weight adjustment from metrics. | _TBD_ |
+
+
 ### Feature Enablement
 
 | Item | Label | Description |
@@ -79,6 +99,9 @@ All previously listed high-impact optimizations have been completed (see Complet
 | Concurrency stress tests (routing) | `qa` | Verify single assignment under race, metrics consistency. |
 | Bench: ring lookup vs current | `perf` | Validate improvement pre/post optimization. |
 | Broadcaster throughput benchmark | `perf` | Measure effect of channel capacity & backpressure. |
+| Enumerator performance benchmarks (skew & shard count matrix) | `perf` | Measure ordered/combined enumerators under high skew and varying shard counts. |
+| Allocation regression guard (CI baseline) | `perf` | Establish BenchmarkDotNet baselines + threshold alerts for hot paths. |
+| Hash & migration property test suite | `qa` | Property-based tests for hash uniformity, migration idempotency, dynamic ring churn. |
 
 ---
 
