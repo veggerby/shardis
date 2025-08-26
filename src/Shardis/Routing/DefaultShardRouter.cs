@@ -53,7 +53,7 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
         _shardKeyHasher = shardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance;
         _availableShards = availableShards.ToList();
         // Validate uniqueness of shard IDs
-        _shardById = new Dictionary<ShardId, IShard<TSession>>();
+        _shardById = [];
         foreach (var shard in _availableShards)
         {
             if (_shardById.ContainsKey(shard.ShardId))

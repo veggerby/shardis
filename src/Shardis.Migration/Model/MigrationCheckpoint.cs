@@ -38,7 +38,7 @@ public sealed record MigrationCheckpoint<TKey>
         PlanId = planId;
         Version = version;
         UpdatedAtUtc = updatedAtUtc;
-        States = states.Count == 0 ? new Dictionary<ShardKey<TKey>, KeyMoveState>() : new Dictionary<ShardKey<TKey>, KeyMoveState>(states);
+        States = states.Count == 0 ? [] : new Dictionary<ShardKey<TKey>, KeyMoveState>(states);
         LastProcessedIndex = lastProcessedIndex;
     }
 }
