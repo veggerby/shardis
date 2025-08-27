@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 
-using Shardis;
 using Shardis.Model;
 using Shardis.Routing;
 

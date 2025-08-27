@@ -2,7 +2,6 @@ namespace Shardis.Migration.InMemory;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
-using Shardis.Model;
 using Shardis.Persistence;
 
 /// <summary>

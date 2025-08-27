@@ -1,12 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 
-using Shardis.Migration;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
 using Shardis.Migration.Instrumentation;
 using Shardis.Migration.Model;
-using Shardis.Model;
 
 namespace Shardis.Migration.Tests;
 

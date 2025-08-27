@@ -16,7 +16,7 @@ Benchmark sources live under `benchmarks/` (single project `Shardis.Benchmarks`)
 - `RouterBenchmarks` (category `router`) – Default vs Consistent routers routing 10k deterministic keys.
 - `HasherBenchmarks` (category `hasher`) – ring hasher micro-benchmarks over 50k seeded random values.
 - `MigrationThroughputBenchmarks` (category `migration`) – end-to-end migration executor throughput across a controlled concurrency matrix.
-- `BroadcasterStreamBenchmarks` (category `broadcaster`) – evaluates the existing streaming broadcaster under shard speed skew (fast vs slow producers) and varying item pacing. Today it focuses on raw interleaving fairness & latency; it remains while ordered vs unordered merge benchmarks are being added (see planned `merge` category) so users can compare pre‑merge baseline behavior.
+- `BroadcasterStreamBenchmarks` (category `broadcaster`) – evaluates the existing streaming broadcaster under shard speed skew (fast vs slow producers) and varying item pacing. Includes a channel capacity sweep (0=unbounded, 32..512) and a consumer‑slow variant; ordered merge modes ignore capacity (N/A) by design.
 - `MergeEnumeratorBenchmarks` (category `merge`) – compares three global merge strategies: unordered streaming (baseline), ordered streaming (bounded prefetch, low memory, early first-item), and ordered eager (parallel per-shard materialization, higher memory, potentially larger first-item delay). Also exports first‑item latency percentile CSV (p50/p95) grouped by parameter tuple.
 
 ## Running
@@ -124,6 +124,19 @@ Interpretation:
 - Increase `ReplicationFactor` cautiously: better distribution vs more ring entries.
 - Prefer cheaper ring hash algorithms if distribution remains acceptable.
 - Watch allocations: accidental boxing or LINQ in hot path can inflate costs.
+- Broadcaster channel capacity: extremely low capacities (≤32) can raise backpressure waits & p95 first-item latency under harsh skew; moderate (128–256) often balances memory and latency; unbounded (0) removes waits but may increase allocation & defer cancellation responsiveness.
+
+### Capacity Tuning Quick Defaults
+
+| Scenario | Recommended Capacity | Notes |
+|----------|----------------------|-------|
+| Balanced mix, mild skew | 128–256 | Good latency/memory tradeoff |
+| Memory constrained | 64 | Expect more waits & elevated p95 under harsh skew |
+| High skew / bursty producers | 256 | Reduces backpressure waits without going fully unbounded |
+| Consumer also slow | 256–512 | Extra buffering smooths simultaneous producer+consumer stalls |
+| Lowest latency focus & ample memory | 512 or 0 (unbounded) | Minimizes waits; watch allocations & GC |
+
+Consumer‑slow benchmark variant helps illustrate compounded backpressure when both producer pacing and consumer drain speed interact; capacity above 256 typically dampens wait amplification in that case.
 
 ## Adding New Benchmarks
 

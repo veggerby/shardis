@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - First-item latency micro benchmark (time-to-first-item instrumentation).
 - Merge enumerator benchmark suite (`MergeEnumeratorBenchmarks`, category `merge`) comparing unordered streaming, ordered streaming (bounded prefetch) and ordered eager strategies across shard count, items/shard, skew, capacity (unordered only), and prefetch parameters.
 - Export of first-item latency percentiles (p50/p95) aggregated across benchmark runs to CSV: `merge-first-item-latency-all-methods-seed<seed>.csv`.
+- Broadcaster capacity sweep benchmarks (`BroadcasterStreamBenchmarks`, category `broadcaster`) including baseline and consumer-slow scenarios with first-item latency & backpressure wait/blocked metrics; CSV export with scenario + capacity percentiles (`broadcaster-capacity-sweep-seed<seed>.csv`).
 - README observer snippet & documented lifecycle callback semantics.
 - Bounded prefetch validation (`prefetchPerShard >= 1`) and broadcaster argument validation (`channelCapacity`, `heapSampleEvery`).
 - CI link-check workflow and benchmark smoke workflow.
