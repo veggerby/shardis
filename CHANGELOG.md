@@ -28,6 +28,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Cancellation & leak test suite (unordered early-cancel, ordered streaming mid-cancel, small-capacity deadlock guard) with WeakReference-based `LeakProbe` and capped GC retry.
 - Metrics observer tests validating heap sampling (>0), lifecycle callbacks, backpressure wait symmetry and zero-wait invariants for unbounded / ordered streaming paths.
 - Category traits (`[Trait("category","cancellation")]`, `[Trait("category","metrics")]`) to enable selective CI shards.
+- Adaptive paging for Marten query executor with latency-targeted deterministic page adjustments (`WithAdaptivePaging`).
+- Adaptive paging telemetry (`IAdaptivePagingObserver`): `OnPageDecision`, `OnOscillationDetected`, `OnFinalPageSize`.
+- Consolidated multi-assembly Public API approval tests (`Shardis.PublicApi.Tests`) with auto baseline creation and drift `.received` snapshots.
+- Central public API baselines (`test/PublicApiApproval/*.approved.txt`) for all assemblies (core, migration, redis, query providers, testing, marten).
+- Allocation benchmark guard (adaptive vs fixed Marten paging) with JSON export + delta report (`ADAPTIVE_ALLOC_MAX_PCT`, `ADAPTIVE_ALLOC_MIN_BYTES`).
+- EF Core provider README & documented command timeout usage in samples.
+- README updates (adaptive paging guidance, telemetry expansion, allocation guard docs, ordered vs unordered merge guidance).
 
 ### Changed (Unreleased)
 
@@ -35,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Eager ordered path now uses parallel per-shard buffering then reuses ordered merge enumerator for consistency.
 - `IMergeObserver` callbacks may now be invoked concurrently (thread-safety requirement documented).
 - `IMergeObserver` extended with `OnShardStopped`; `OnShardCompleted` now only signals successful completion.
+- Public API approval moved from custom reflection snapshot in query tests to standardized PublicApiGenerator-based consolidated project (stable ordering & clearer diffs).
+- Adaptive paging materializer now records decision history to detect oscillation, emits final page size summary.
 
 ### Fixed (Unreleased)
 
@@ -42,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Ensured exceptions from any shard during ordered streaming propagate immediately and dispose all enumerators.
 - Ensured single-fire guarantee for shard stop events across success / cancel / fault paths.
 - Guarded observer callbacks against downstream exceptions (no pipeline impact).
+- Eliminated flaky public API approval failures caused by ordering drift (stable generator & normalization).
 
 ### Deprecated (Unreleased)
 
@@ -56,6 +66,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Added argument validation for broadcaster parameters (`channelCapacity`, `heapSampleEvery`, `prefetchPerShard`).
 - Added ordering, throttle, startup fault, and deterministic cancellation tests for observer lifecycle.
 - Deterministic per-shard delay schedules reused in benchmarks (seeded) for reproducible merge latency measurements.
+- Added `.gitignore` rule for `*.received.txt` (keeps transient diff artifacts out of commits).
+- Added PublicApiGenerator (v11.x) test dependency; baseline writer establishes approvals automatically on first run.
+- Allocation guard minimum-byte threshold reduces noise for trivial deltas.
 
 ## [0.1.1] - 2025-08-26
 

@@ -43,6 +43,12 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Ordered and unordered streaming paths are covered by metrics observer tests (item counts, heap samples, backpressure waits) ensuring instrumentation stability.
 - 🔄 **Consistent Hashing Option**
   Choose between simple sticky routing and a consistent hashing ring with configurable replication factor & pluggable ring hashers.
+- 📥 **Ordered & Unordered Streaming Queries**
+  Low-latency unordered fan-out plus deterministic k‑way heap merge (bounded prefetch) for globally ordered streaming.
+- 📈 **Adaptive Paging (Marten)**
+  Deterministic latency-targeted page size adjustments with oscillation & final-size telemetry.
+- 🧪 **Central Public API Snapshots**
+  Consolidated multi-assembly approval tests ensure stable public surface; drift produces clear `.received` diffs.
 
 ---
 
@@ -351,6 +357,16 @@ Additional invariants covered:
 - Deterministic ordering for duplicate keys in ordered merge
 - Statistical ring distribution bounds (coefficient of variation heuristic)
 - Non-empty broadcaster shard enforcement & null parameter guards
+
+### Public API Stability
+
+All public surfaces across assemblies are snapshotted via `Shardis.PublicApi.Tests` using PublicApiGenerator. Baselines live under `test/PublicApiApproval/*.approved.txt` (committed). When an intentional API change is made:
+
+1. Run `dotnet test -c Debug -p:PublicApi` (or simply `dotnet test`).
+2. A `.received` file will be written alongside the affected `.approved` file.
+3. Inspect the diff; if intentional, replace the `.approved` content with the `.received` content and delete the `.received` file (the test does this automatically on next green run).
+
+The test auto-creates missing `.approved` files (first run does not fail). Only stable, documented APIs should be added—avoid leaking internal abstractions.
 
 ---
 

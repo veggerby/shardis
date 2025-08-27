@@ -39,5 +39,7 @@ This index links core conceptual and roadmap documents.
 | Additional map stores (SQL) | 🚧 | backlog |
 | Benchmarks suite | ✅ | `benchmarks.md` |
 | Ordered merge enumerator | ✅ | tests / README |
+| Adaptive paging (Marten) | ✅ | README (Adaptive Paging) |
+| Public API snapshots | ✅ | test/Shardis.PublicApi.Tests |
 
 This file will evolve as components progress through stages.
