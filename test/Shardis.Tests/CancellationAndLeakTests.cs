@@ -38,6 +38,7 @@ public class CancellationAndLeakTests
     [Fact]
     public async Task Unordered_Cancel_Early_NoDeadlock_NoLeak()
     {
+        // arrange
         var leak = new LeakProbe();
         async Task RunAsync()
         {
@@ -52,11 +53,15 @@ public class CancellationAndLeakTests
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             int yielded = 0;
             var sw = Stopwatch.StartNew();
-            await foreach (var it in broadcaster.QueryAllShardsAsync<int>(s => ((IntShard)shardObjs[s]).Stream(cts.Token), cts.Token))
+
+            // act
+            await foreach (var it in broadcaster.QueryAllShardsAsync(s => ((IntShard)shardObjs[s]).Stream(cts.Token), cts.Token))
             {
                 yielded++;
                 if (yielded >= 50) { cts.Cancel(); break; }
             }
+
+            // assert (duration)
             sw.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1));
         }
         await RunAsync();
@@ -67,12 +72,14 @@ public class CancellationAndLeakTests
             await Task.Delay(50);
             leak.ForceGC();
         }
+        // assert (GC)
         collected.Should().BeTrue("Broadcaster should be eligible for GC after cancellation (unordered early cancel)");
     }
 
     [Fact]
     public async Task OrderedStreaming_Cancel_Midway_DisposesEnumerators_NoLeak()
     {
+        // arrange
         var leak = new LeakProbe();
         async Task RunAsync()
         {
@@ -84,7 +91,9 @@ public class CancellationAndLeakTests
             leak.Track(broadcaster);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             int yielded = 0;
-            await foreach (var it in broadcaster.QueryAllShardsOrderedStreamingAsync<int, int>(s => ((IntShard)shardObjs[s]).Stream(cts.Token), x => x, prefetchPerShard: 1, cts.Token))
+
+            // act
+            await foreach (var it in broadcaster.QueryAllShardsOrderedStreamingAsync(s => ((IntShard)shardObjs[s]).Stream(cts.Token), x => x, prefetchPerShard: 1, cts.Token))
             {
                 yielded++;
                 if (yielded >= 80) { cts.Cancel(); break; }
@@ -98,29 +107,32 @@ public class CancellationAndLeakTests
             await Task.Delay(50);
             leak.ForceGC();
         }
+        // assert
         collected.Should().BeTrue("Broadcaster should be eligible for GC after mid-way cancellation (ordered streaming)");
     }
 
     [Fact]
     public async Task Unordered_SmallCapacity_NoDeadlock_OnEarlyCancel()
     {
+        // arrange
         var det = Determinism.Create(Seed);
         int shards = 4, items = 300;
         var schedules = det.MakeDelays(shards, Skew.Harsh, TimeSpan.FromMilliseconds(1), steps: items);
         var shardObjs = Enumerable.Range(0, shards).Select(i => new IntShard(i, schedules, items, det)).Cast<IShard<int>>().ToArray();
-
         var broadcaster = new ShardStreamBroadcaster<IShard<int>, int>(shardObjs, channelCapacity: 16);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
+        // act
         var task = Task.Run(async () =>
         {
-            await foreach (var _ in broadcaster.QueryAllShardsAsync<int>(s => ((IntShard)shardObjs[s]).Stream(cts.Token), cts.Token))
+            await foreach (var _ in broadcaster.QueryAllShardsAsync(s => ((IntShard)shardObjs[s]).Stream(cts.Token), cts.Token))
             {
                 cts.Cancel();
                 break;
             }
         });
 
+        // assert
         await task.WaitAsync(TimeSpan.FromSeconds(1));
     }
 }

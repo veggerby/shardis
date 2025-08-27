@@ -17,20 +17,12 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
     private ShardItem<T>? _current;
 
     private sealed record StreamState(int ShardIndex, IShardisAsyncEnumerator<T> Enumerator, long Sequence, int Buffered, bool Completed);
-    private readonly struct HeapItem : IComparable<HeapItem>
+    private readonly struct HeapItem(TKey key, int shardIndex, long sequence, ShardItem<T> item) : IComparable<HeapItem>
     {
-        public readonly TKey Key;
-        public readonly int ShardIndex;
-        public readonly long Sequence;
-        public readonly ShardItem<T> Item;
-
-        public HeapItem(TKey key, int shardIndex, long sequence, ShardItem<T> item)
-        {
-            Key = key;
-            ShardIndex = shardIndex;
-            Sequence = sequence;
-            Item = item;
-        }
+        public readonly TKey Key = key;
+        public readonly int ShardIndex = shardIndex;
+        public readonly long Sequence = sequence;
+        public readonly ShardItem<T> Item = item;
 
         public int CompareTo(HeapItem other)
         {

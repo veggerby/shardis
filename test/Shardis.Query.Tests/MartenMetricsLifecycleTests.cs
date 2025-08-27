@@ -7,7 +7,13 @@ public sealed class MartenMetricsLifecycleTests
     [Fact(Skip = "Requires Postgres for Marten integration; manual run only.")]
     public void MetricsObserver_Attachable()
     {
-        var exec = MartenQueryExecutor.Instance.WithMetrics(Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance);
+        // arrange
+        var observer = Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
+
+        // act
+        var exec = MartenQueryExecutor.Instance.WithMetrics(observer);
+
+        // assert
         exec.Should().NotBeNull();
     }
 }

@@ -83,7 +83,7 @@ public class MergeEnumeratorBenchmarks
         int count = 0;
         long firstItem = -1;
         _sw.Restart();
-        await foreach (var item in _unordered.QueryAllShardsAsync<int>(s => _shards[s].Stream()))
+        await foreach (var item in _unordered.QueryAllShardsAsync(s => _shards[s].Stream()))
         {
             if (firstItem < 0) { firstItem = ElapsedMicros(_sw); }
             count++;
@@ -98,7 +98,7 @@ public class MergeEnumeratorBenchmarks
         int count = 0;
         long firstItem = -1;
         _sw.Restart();
-        await foreach (var item in _ordered.QueryAllShardsOrderedStreamingAsync<int, int>(s => _shards[s].Stream(), x => x, prefetchPerShard: PrefetchPerShard))
+        await foreach (var item in _ordered.QueryAllShardsOrderedStreamingAsync(s => _shards[s].Stream(), x => x, prefetchPerShard: PrefetchPerShard))
         {
             if (firstItem < 0) { firstItem = ElapsedMicros(_sw); }
             count++;
@@ -113,7 +113,7 @@ public class MergeEnumeratorBenchmarks
         int count = 0;
         long firstItem = -1;
         _sw.Restart();
-        await foreach (var item in _ordered.QueryAllShardsOrderedEagerAsync<int, int>(s => _shards[s].Stream(), x => x))
+        await foreach (var item in _ordered.QueryAllShardsOrderedEagerAsync(s => _shards[s].Stream(), x => x))
         {
             if (firstItem < 0) { firstItem = ElapsedMicros(_sw); }
             count++;

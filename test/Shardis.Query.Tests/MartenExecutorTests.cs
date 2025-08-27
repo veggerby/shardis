@@ -9,6 +9,13 @@ public sealed class MartenExecutorTests
     [Fact(Skip = "Requires Postgres for Marten integration; run manually as needed.")]
     public void MartenExecutor_Instance_Available()
     {
-        MartenQueryExecutor.Instance.Should().NotBeNull();
+        // arrange
+        // No setup required as this is a static instance check.
+
+        // act
+        var instance = MartenQueryExecutor.Instance;
+
+        // assert
+        instance.Should().NotBeNull();
     }
 }

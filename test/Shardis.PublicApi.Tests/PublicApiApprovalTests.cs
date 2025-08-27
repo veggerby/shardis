@@ -2,6 +2,8 @@ using System.Reflection;
 
 using PublicApiGenerator;
 
+using Shardis.Query.InMemory.Execution;
+
 using Xunit;
 
 namespace Shardis.PublicApi.Tests;
@@ -14,15 +16,15 @@ public sealed class PublicApiApprovalTests
 {
     private static readonly (Assembly Assembly, string Name)[] Targets =
     {
-        (typeof(Shardis.ShardAssignmentResult<>).Assembly, "Shardis"),
-        (typeof(Shardis.Marten.MartenShard).Assembly, "Shardis.Marten"),
-        (typeof(Shardis.Migration.ServiceCollectionExtensions).Assembly, "Shardis.Migration"),
-        (typeof(Shardis.Query.Execution.IShardQueryExecutor).Assembly, "Shardis.Query"),
-        (typeof(Shardis.Query.Execution.EFCore.EfCoreShardQueryExecutor).Assembly, "Shardis.Query.EFCore"),
-        (typeof(Shardis.Query.Execution.InMemory.InMemoryShardQueryExecutor).Assembly, "Shardis.Query.InMemory"),
-        (typeof(Shardis.Query.Marten.AdaptiveMartenMaterializer).Assembly, "Shardis.Query.Marten"),
-        (typeof(Shardis.Redis.RedisShardMapStore<>).Assembly, "Shardis.Redis"),
-        (typeof(Shardis.Testing.Determinism).Assembly, "Shardis.Testing")
+        (typeof(ShardAssignmentResult<>).Assembly, "Shardis"),
+        (typeof(Marten.MartenShard).Assembly, "Shardis.Marten"),
+        (typeof(Migration.ServiceCollectionExtensions).Assembly, "Shardis.Migration"),
+        (typeof(Query.Execution.IShardQueryExecutor).Assembly, "Shardis.Query"),
+        (typeof(Query.EFCore.Execution.EfCoreShardQueryExecutor).Assembly, "Shardis.Query.EFCore"),
+        (typeof(InMemoryShardQueryExecutor).Assembly, "Shardis.Query.InMemory"),
+        (typeof(Query.Marten.AdaptiveMartenMaterializer).Assembly, "Shardis.Query.Marten"),
+        (typeof(Redis.RedisShardMapStore<>).Assembly, "Shardis.Redis"),
+        (typeof(Testing.Determinism).Assembly, "Shardis.Testing")
     };
 
     private static string ApprovedDir => Path.Combine(FindRepoRoot(), "test", "PublicApiApproval");
@@ -30,10 +32,11 @@ public sealed class PublicApiApprovalTests
     [Fact]
     public void Public_api_matches_approved_baselines()
     {
+        // arrange
         Directory.CreateDirectory(ApprovedDir);
-
         var failures = new List<string>();
 
+        // act
         foreach (var (assembly, name) in Targets)
         {
             var options = new ApiGeneratorOptions
@@ -45,19 +48,16 @@ public sealed class PublicApiApprovalTests
             };
 
             var current = Normalize(assembly.GeneratePublicApi(options));
-
             var approvedPath = Path.Combine(ApprovedDir, $"PublicApi.{name}.approved.txt");
             var receivedPath = Path.Combine(ApprovedDir, $"PublicApi.{name}.received.txt");
 
             if (!File.Exists(approvedPath))
             {
-                File.WriteAllText(approvedPath, current);
-                // Establish baseline – do not fail this run.
+                File.WriteAllText(approvedPath, current); // establish baseline
                 continue;
             }
 
             var approved = Normalize(File.ReadAllText(approvedPath));
-
             if (!string.Equals(current, approved, StringComparison.Ordinal))
             {
                 File.WriteAllText(receivedPath, current);
@@ -69,6 +69,7 @@ public sealed class PublicApiApprovalTests
             }
         }
 
+        // assert
         if (failures.Count > 0)
         {
             Assert.Fail(string.Join("\n\n", failures) + "\nReview drift and if intentional, replace approved with received content.");

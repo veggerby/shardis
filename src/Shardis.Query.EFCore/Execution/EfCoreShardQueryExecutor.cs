@@ -1,36 +1,28 @@
 using System.Runtime.CompilerServices;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 
+using Shardis.Query;
+using Shardis.Query.Execution;
 using Shardis.Query.Internals;
 
-namespace Shardis.Query.Execution.EFCore;
+namespace Shardis.Query.EFCore.Execution;
 
 /// <summary>EF Core executor (provider package) – unordered streaming Where/Select.</summary>
-public sealed class EfCoreShardQueryExecutor : IShardQueryExecutor
+/// <remarks>Create a new EF Core shard query executor.</remarks>
+/// <param name="shardCount">Number of logical shards.</param>
+/// <param name="contextFactory">Factory giving a DbContext for a shard id.</param>
+/// <param name="merge">Unordered merge function.</param>
+/// <param name="metrics">Optional metrics observer implementation.</param>
+/// <param name="commandTimeoutSeconds">Optional database command timeout in seconds applied per shard query.</param>
+public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext> contextFactory, Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> merge, Diagnostics.IQueryMetricsObserver? metrics = null, int? commandTimeoutSeconds = null) : IShardQueryExecutor
 {
-    private readonly int _shardCount;
-    private readonly Func<int, DbContext> _contextFactory;
-    private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge;
+    private readonly int _shardCount = shardCount;
+    private readonly Func<int, DbContext> _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+    private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge = merge ?? throw new ArgumentNullException(nameof(merge));
     private readonly IShardQueryCapabilities _caps = new BasicQueryCapabilities(ordering: false, pagination: false);
-    private readonly Shardis.Query.Diagnostics.IQueryMetricsObserver _metrics;
-    private readonly int? _commandTimeoutSeconds;
-
-    /// <summary>Create a new EF Core shard query executor.</summary>
-    /// <param name="shardCount">Number of logical shards.</param>
-    /// <param name="contextFactory">Factory giving a DbContext for a shard id.</param>
-    /// <param name="merge">Unordered merge function.</param>
-    /// <param name="metrics">Optional metrics observer implementation.</param>
-    /// <param name="commandTimeoutSeconds">Optional database command timeout in seconds applied per shard query.</param>
-    public EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext> contextFactory, Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> merge, Shardis.Query.Diagnostics.IQueryMetricsObserver? metrics = null, int? commandTimeoutSeconds = null)
-    {
-        _shardCount = shardCount;
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
-        _merge = merge ?? throw new ArgumentNullException(nameof(merge));
-        _metrics = metrics ?? Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
-        _commandTimeoutSeconds = commandTimeoutSeconds;
-    }
+    private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
+    private readonly int? _commandTimeoutSeconds = commandTimeoutSeconds;
 
     /// <inheritdoc />
     public IShardQueryCapabilities Capabilities => _caps;
@@ -66,7 +58,7 @@ public sealed class EfCoreShardQueryExecutor : IShardQueryExecutor
         var apply = typeof(QueryComposer).GetMethod(nameof(QueryComposer.ApplyQueryable))!.MakeGenericMethod(tIn, typeof(TResult));
         var applied = (IQueryable<TResult>)apply.Invoke(null, new object[] { q, model })!;
         // Default to AsNoTracking for query performance / reduced change tracking overhead
-        var asNoTracking = typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions)
+        var asNoTracking = typeof(EntityFrameworkQueryableExtensions)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
             .First(m => m.Name == nameof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
             .MakeGenericMethod(typeof(TResult));

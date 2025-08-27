@@ -7,6 +7,8 @@ public class DefaultShardKeyHasherTests
     [Fact]
     public void Instance_Should_Return_StringHasher_For_String()
     {
+        // arrange
+
         // act
         var hasher = DefaultShardKeyHasher<string>.Instance;
 
@@ -17,6 +19,8 @@ public class DefaultShardKeyHasherTests
     [Fact]
     public void Instance_Should_Return_Int32Hasher_For_Int()
     {
+        // arrange
+
         // act
         var hasher = DefaultShardKeyHasher<int>.Instance;
 
@@ -29,6 +33,8 @@ public class DefaultShardKeyHasherTests
     [Fact]
     public void Instance_Should_Throw_For_Unsupported_Type()
     {
+        // arrange
+
         // act
         Action act = () => _ = DefaultShardKeyHasher<Dummy>.Instance;
 
