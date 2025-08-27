@@ -17,6 +17,7 @@ Benchmark sources live under `benchmarks/` (single project `Shardis.Benchmarks`)
 - `HasherBenchmarks` (category `hasher`) – ring hasher micro-benchmarks over 50k seeded random values.
 - `MigrationThroughputBenchmarks` (category `migration`) – end-to-end migration executor throughput across a controlled concurrency matrix.
 - `BroadcasterStreamBenchmarks` (category `broadcaster`) – evaluates the existing streaming broadcaster under shard speed skew (fast vs slow producers) and varying item pacing. Today it focuses on raw interleaving fairness & latency; it remains while ordered vs unordered merge benchmarks are being added (see planned `merge` category) so users can compare pre‑merge baseline behavior.
+- `MergeEnumeratorBenchmarks` (category `merge`) – compares three global merge strategies: unordered streaming (baseline), ordered streaming (bounded prefetch, low memory, early first-item), and ordered eager (parallel per-shard materialization, higher memory, potentially larger first-item delay). Also exports first‑item latency percentile CSV (p50/p95) grouped by parameter tuple.
 
 ## Running
 
@@ -133,7 +134,7 @@ Interpretation:
 
 ## Roadmap Ideas
 
-- Bench streaming query merge enumerators (ordered vs unordered) – category `merge` (planned).
+- (moved to active) Streaming merge enumerators now implemented: see `MergeEnumeratorBenchmarks`.
 - Benchmark migration planning overhead.
 - Benchmark map store implementations (InMemory vs Redis vs SQL).
 - Add broadcaster channel capacity sweep (param) for backpressure tuning.

@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Heap size sampling callbacks for ordered merge with configurable throttle (`heapSampleEvery`).
 - Deterministic cancellation & startup fault tests covering stop reason emission.
 - First-item latency micro benchmark (time-to-first-item instrumentation).
+- Merge enumerator benchmark suite (`MergeEnumeratorBenchmarks`, category `merge`) comparing unordered streaming, ordered streaming (bounded prefetch) and ordered eager strategies across shard count, items/shard, skew, capacity (unordered only), and prefetch parameters.
+- Export of first-item latency percentiles (p50/p95) aggregated across benchmark runs to CSV: `merge-first-item-latency-all-methods-seed<seed>.csv`.
 - README observer snippet & documented lifecycle callback semantics.
 - Bounded prefetch validation (`prefetchPerShard >= 1`) and broadcaster argument validation (`channelCapacity`, `heapSampleEvery`).
 - CI link-check workflow and benchmark smoke workflow.
@@ -49,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Heap sampling throttle (`heapSampleEvery`) reduces observer overhead in hot path.
 - Added argument validation for broadcaster parameters (`channelCapacity`, `heapSampleEvery`, `prefetchPerShard`).
 - Added ordering, throttle, startup fault, and deterministic cancellation tests for observer lifecycle.
+- Deterministic per-shard delay schedules reused in benchmarks (seeded) for reproducible merge latency measurements.
 
 ## [0.1.1] - 2025-08-26
 
