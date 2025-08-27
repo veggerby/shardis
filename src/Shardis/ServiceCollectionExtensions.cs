@@ -99,7 +99,7 @@ public static class ServiceCollectionExtensions
             }
         }
 
-        services.AddSingleton(sp => options.ShardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance);
+        services.AddSingleton<IShardKeyHasher<TKey>>(sp => options.ShardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance);
         services.AddSingleton<IShardisMetrics>(sp => NoOpShardisMetrics.Instance); // user can replace
         if (options.RingHasher is not null)
         {
