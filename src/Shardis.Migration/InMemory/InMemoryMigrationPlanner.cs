@@ -1,6 +1,5 @@
 namespace Shardis.Migration.InMemory;
 
-using System.Security.Cryptography;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
@@ -8,7 +7,7 @@ using Shardis.Model;
 
 /// <summary>
 /// In-memory planner computing key moves by diffing two topology snapshots.
-/// Ordering: Source, Target, KeyHash (stable hash of key string representation via SHA256 first 8 bytes).
+/// Ordering: Source, Target, KeyHash (stable hash of key string representation via FNV-1a 64-bit).
 /// </summary>
 internal sealed class InMemoryMigrationPlanner<TKey> : IShardMigrationPlanner<TKey>
     where TKey : notnull, IEquatable<TKey>
@@ -40,10 +39,21 @@ internal sealed class InMemoryMigrationPlanner<TKey> : IShardMigrationPlanner<TK
 
     private static ulong StableKeyHash(ShardKey<TKey> key)
     {
-        // Deterministic, not for crypto security (already using SHA256 truncated for uniformity).
-        var str = key.Value.ToString() ?? string.Empty;
-        var bytes = System.Text.Encoding.UTF8.GetBytes(str);
-        var hash = SHA256.HashData(bytes);
-        return BitConverter.ToUInt64(hash, 0);
+        // Deterministic, non-cryptographic FNV-1a 64-bit for ordering (uniform enough, much cheaper than SHA256).
+        var str = key.Value?.ToString() ?? string.Empty;
+        ReadOnlySpan<char> chars = str.AsSpan();
+        // Worst-case UTF8 expansion is 4 bytes per char; typical ASCII keys should be common.
+        // Use stackalloc for small keys to avoid allocations.
+        Span<byte> utf8 = chars.Length <= 128 ? stackalloc byte[chars.Length * 4] : new byte[System.Text.Encoding.UTF8.GetMaxByteCount(chars.Length)];
+        var count = System.Text.Encoding.UTF8.GetBytes(chars, utf8);
+        const ulong offset = 14695981039346656037UL; // FNV offset basis
+        const ulong prime = 1099511628211UL;          // FNV prime
+        ulong hash = offset;
+        for (int i = 0; i < count; i++)
+        {
+            hash ^= utf8[i];
+            hash *= prime;
+        }
+        return hash;
     }
 }
