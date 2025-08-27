@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 using Shardis.Model;
 using Shardis.Persistence;
 

@@ -4,8 +4,6 @@ using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Querying.Linq;
 
-using Xunit;
-
 namespace Shardis.Tests;
 
 public class MergeObserverTests
@@ -33,11 +31,11 @@ public class MergeObserverTests
 
     private sealed class RecordingObserver : IMergeObserver
     {
-        public ConcurrentBag<ShardId> ItemShards = new();
-        public ConcurrentBag<ShardId> Completed = new();
-        public ConcurrentBag<(ShardId, ShardStopReason)> Stopped = new();
+        public ConcurrentBag<ShardId> ItemShards = [];
+        public ConcurrentBag<ShardId> Completed = [];
+        public ConcurrentBag<(ShardId, ShardStopReason)> Stopped = [];
         public ConcurrentQueue<(string Event, ShardId Id, ShardStopReason? Reason)> Sequence = new();
-        public int BackpressureStarts; public int BackpressureStops; public ConcurrentBag<int> HeapSizes = new();
+        public int BackpressureStarts; public int BackpressureStops; public ConcurrentBag<int> HeapSizes = [];
         public void OnItemYielded(ShardId shardId) { ItemShards.Add(shardId); }
         public void OnShardCompleted(ShardId shardId) { Completed.Add(shardId); Sequence.Enqueue(("Completed", shardId, null)); }
         public void OnShardStopped(ShardId shardId, ShardStopReason reason) { Stopped.Add((shardId, reason)); Sequence.Enqueue(("Stopped", shardId, reason)); }

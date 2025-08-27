@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -46,7 +45,7 @@ public class MergeEnumeratorBenchmarks
 
     // Static accumulators (BenchmarkDotNet creates new instances per param combination) -----
     private static readonly object _lock = new();
-    private static readonly List<Record> _records = new();
+    private static readonly List<Record> _records = [];
 
     private record struct Record(int Seed, int Shards, int ItemsPerShard, string Skew, int Capacity, int Prefetch, string Method, long FirstItemUs);
 
