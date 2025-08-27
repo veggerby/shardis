@@ -91,7 +91,7 @@ public static class ServiceCollectionExtensions
         {
             if (options.ShardMapStoreFactory is not null)
             {
-                services.AddSingleton(sp => options.ShardMapStoreFactory(sp));
+                services.AddSingleton<IShardMapStore<TKey>>(sp => options.ShardMapStoreFactory(sp));
             }
             else
             {
