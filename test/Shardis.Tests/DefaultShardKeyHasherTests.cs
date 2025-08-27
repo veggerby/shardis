@@ -1,5 +1,4 @@
 using Shardis.Hashing;
-using Shardis.Model;
 
 namespace Shardis.Tests;
 

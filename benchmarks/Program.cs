@@ -8,6 +8,7 @@ using Shardis.Benchmarks;
 var switcher = new BenchmarkSwitcher(
 [
     typeof(MigrationThroughputBenchmarks),
+    typeof(MergeEnumeratorBenchmarks),
     typeof(RouterBenchmarks),
     typeof(HasherBenchmarks)
 ]);

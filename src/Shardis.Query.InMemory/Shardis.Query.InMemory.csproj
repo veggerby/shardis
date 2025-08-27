@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PackageId>Shardis.Query.InMemory</PackageId>
+    <Version>0.1.0</Version>
+    <Description>In-memory query executor for Shardis (testing, prototyping).</Description>
+    <PackageTags>shardis;sharding;in-memory;query;testing</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="icon.png" Pack="true" PackagePath="" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="../Shardis.Query/Shardis.Query.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shardis.Query.Tests" />
+  </ItemGroup>
+</Project>

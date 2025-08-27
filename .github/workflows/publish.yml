@@ -104,9 +104,14 @@ jobs:
             RELEASE_NOTES_ARG="/p:PackageReleaseNotes=\"$(sed 's/\r//g' RELEASE_NOTES.txt)\""
           fi
           mkdir -p "$NUGET_PACK_DIR"
-          for proj in src/Shardis/Shardis.csproj src/Shardis.Marten/Shardis.Marten.csproj src/Shardis.Redis/Shardis.Redis.csproj; do
-            dotnet pack "$proj" --configuration Release --no-build --output "$NUGET_PACK_DIR" /p:Version=${{ steps.gitversion.outputs.nuGetVersionV2 }}$VERSION_SUFFIX $RELEASE_NOTES_ARG
-          done
+
+          dotnet pack Shardis.sln \
+            --configuration Release \
+            --no-build \
+            --output "$NUGET_PACK_DIR" \
+            /p:Version=${{ steps.gitversion.outputs.nuGetVersionV2 }}$VERSION_SUFFIX \
+            $RELEASE_NOTES_ARG
+
       - name: Upload NuGet Packages
         uses: actions/upload-artifact@v4
         with:

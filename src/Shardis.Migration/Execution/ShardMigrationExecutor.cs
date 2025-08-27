@@ -6,13 +6,6 @@ using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 using Shardis.Model;
 
-/// <summary>Summary of a migration execution.</summary>
-/// <param name="PlanId">Plan identifier.</param>
-/// <param name="Planned">Total planned key moves.</param>
-/// <param name="Done">Number of successfully migrated keys.</param>
-/// <param name="Failed">Number of permanently failed keys.</param>
-/// <param name="Elapsed">Total elapsed wall-clock time.</param>
-public sealed record MigrationSummary(Guid PlanId, int Planned, int Done, int Failed, TimeSpan Elapsed);
 /// <summary>
 /// Orchestrates execution of a migration plan: copy, optional interleaved verify, and batched swap with retry and checkpointing.
 /// Public for benchmarking and advanced scenarios; general consumption may wrap this in higher-level services later.

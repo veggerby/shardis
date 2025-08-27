@@ -1,7 +1,5 @@
-using Shardis.Migration.Abstractions;
 using Shardis.Migration.InMemory;
 using Shardis.Migration.Model;
-using Shardis.Model;
 
 namespace Shardis.Migration.Tests;
 
