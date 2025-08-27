@@ -28,13 +28,13 @@ public class ShardStreamBroadcasterTests
         }
 
         // assert
-        results.Should().BeEquivalentTo(new[]
-                {
+        results.Should().BeEquivalentTo(
+                [
             "Session1-Result1",
             "Session1-Result2",
             "Session2-Result1",
             "Session2-Result2"
-        });
+        ]);
     }
 
     [Fact]
