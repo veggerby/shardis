@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Bounded prefetch validation (`prefetchPerShard >= 1`) and broadcaster argument validation (`channelCapacity`, `heapSampleEvery`).
 - CI link-check workflow and benchmark smoke workflow.
 - Ordering / throttle / deterministic cancel tests asserting single-fire + ordering of `OnShardCompleted` before `OnShardStopped`.
+- Cancellation & leak test suite (unordered early-cancel, ordered streaming mid-cancel, small-capacity deadlock guard) with WeakReference-based `LeakProbe` and capped GC retry.
+- Metrics observer tests validating heap sampling (>0), lifecycle callbacks, backpressure wait symmetry and zero-wait invariants for unbounded / ordered streaming paths.
+- Category traits (`[Trait("category","cancellation")]`, `[Trait("category","metrics")]`) to enable selective CI shards.
 
 ### Changed (Unreleased)
 

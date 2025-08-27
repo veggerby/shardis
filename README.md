@@ -40,6 +40,7 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Shard assignments are persistent, predictable, and optimized for horizontal scalability.
 - 📊 **Instrumentation Hooks**
   Plug in metrics (counters, tracing) by replacing the default no-op metrics service.
+  Ordered and unordered streaming paths are covered by metrics observer tests (item counts, heap samples, backpressure waits) ensuring instrumentation stability.
 - 🔄 **Consistent Hashing Option**
   Choose between simple sticky routing and a consistent hashing ring with configurable replication factor & pluggable ring hashers.
 
@@ -408,6 +409,11 @@ await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(s => 
 int prefetch = isLowLatencyScenario ? 1 : 2; // rarely >4
 await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(s => Query(s), x => x.Id, prefetch)) { }
 ```
+
+// Cancellation & Observability
+// Early / mid-stream cancellation is tested (no deadlocks, resources released, no leaks via WeakReference probe).
+// Metrics observer tests assert heap sampling (>0 for ordered), symmetric backpressure wait events for bounded channels,
+// and zero wait events for unbounded / ordered streaming scenarios.
 
 Memory scale: O(shards × prefetch). Increase only if profiling shows the merge heap frequently empty while shards are still producing (starvation).
 
