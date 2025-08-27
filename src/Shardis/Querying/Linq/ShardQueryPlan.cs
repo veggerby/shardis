@@ -7,7 +7,7 @@ namespace Shardis.Querying.Linq;
 /// </summary>
 public sealed class ShardQueryPlan<T>
 {
-    internal List<Expression<Func<T, bool>>> Filters { get; } = new();
+    internal List<Expression<Func<T, bool>>> Filters { get; } = [];
     internal LambdaExpression? OrderByExpression { get; private set; }
     internal bool OrderByDescending { get; private set; } = false;
 

@@ -100,6 +100,8 @@ All previously listed high-impact optimizations have been completed (see Complet
 | Bench: ring lookup vs current | `perf` | Validate improvement pre/post optimization. |
 | Broadcaster throughput benchmark | `perf` | Measure effect of channel capacity & backpressure. |
 | Enumerator performance benchmarks (skew & shard count matrix) | `perf` | Measure ordered/combined enumerators under high skew and varying shard counts. |
+| Merge enumerator benchmark suite (`merge` category) | `perf` | Ordered vs unordered streaming merge (heap vs interleave) latency & allocation. |
+| Segmented / streaming migration planner | `core` | Large key set planning without full materialization (range cursors, pagination). |
 | Allocation regression guard (CI baseline) | `perf` | Establish BenchmarkDotNet baselines + threshold alerts for hot paths. |
 | Hash & migration property test suite | `qa` | Property-based tests for hash uniformity, migration idempotency, dynamic ring churn. |
 

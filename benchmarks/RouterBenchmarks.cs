@@ -1,5 +1,4 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
 
 using Shardis.Hashing;
 using Shardis.Model;
@@ -10,6 +9,7 @@ namespace Shardis.Benchmarks;
 
 [MemoryDiagnoser]
 [RankColumn]
+[BenchmarkCategory("router")]
 public class RouterBenchmarks
 {
     private readonly IShardRouter<string, string> _defaultRouter;
@@ -62,10 +62,4 @@ public class RouterBenchmarks
     }
 }
 
-public static class Program
-{
-    public static void Main(string[] args)
-    {
-        BenchmarkRunner.Run<RouterBenchmarks>();
-    }
-}
+// Entry point removed; central benchmark switcher in Program.cs handles execution.

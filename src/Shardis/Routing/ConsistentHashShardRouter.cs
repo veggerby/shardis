@@ -19,7 +19,7 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
 {
     private readonly SortedDictionary<uint, TShard> _ring = [];
     private uint[] _ringKeys = Array.Empty<uint>(); // snapshot for binary search
-    private readonly Dictionary<ShardId, TShard> _shardById = new();
+    private readonly Dictionary<ShardId, TShard> _shardById = [];
     private readonly IShardMapStore<TKey> _shardMapStore;
     private readonly IShardKeyHasher<TKey> _shardKeyHasher;
     private readonly int _replicationFactor;
