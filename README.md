@@ -359,6 +359,28 @@ Utility enumerators:
 
 Higher-level fluent query API (LINQ-like) is under active design (see `docs/api.md` & `docs/linq.md`).
 
+### Merge Modes & Tuning
+
+See `docs/merge-modes.md` for a full matrix. Quick guidance:
+
+```csharp
+// Unordered streaming (arrival order, lowest latency)
+await foreach (var item in broadcaster.QueryAllShardsAsync(s => Query(s))) { /* ... */ }
+
+// Ordered streaming (bounded memory k-way merge)
+await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(s => Query(s), keySelector: x => x.Timestamp, prefetchPerShard: 2)) { /* ... */ }
+
+// Tuning prefetch:
+// 1 => minimal latency & memory (default)
+// 2 => balanced latency vs throughput
+// 4 => higher throughput if shards intermittently stall
+
+int prefetch = isLowLatencyScenario ? 1 : 2; // rarely >4
+await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(s => Query(s), x => x.Id, prefetch)) { }
+```
+
+Memory scale: O(shards × prefetch). Increase only if profiling shows the merge heap frequently empty while shards are still producing (starvation).
+
 ---
 
 ## 🗄 Persistence (Shard Map Stores)

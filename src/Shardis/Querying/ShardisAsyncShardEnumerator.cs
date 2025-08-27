@@ -15,6 +15,7 @@ internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerat
     public bool IsComplete { get; private set; } = false;
     public bool IsPrimed { get; private set; } = false;
     public ShardItem<TItem> Current { get; private set; } = default!;
+    public ShardId ShardId => _shardId;
 
     public ShardisAsyncShardEnumerator(ShardId shardId, int shardIndex, IAsyncEnumerator<TItem> enumerator)
     {
