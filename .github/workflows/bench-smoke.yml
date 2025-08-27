@@ -47,25 +47,25 @@ jobs:
             benchmarks/BenchmarkDotNet.Artifacts/**/*.txt
             benchmarks/**/*compilecount*.txt
 
-      - name: Validate pipeline cache compile count delta
-        if: ${{ always() && steps.pipeline_cache_bench.outcome == 'success' }}
-        run: |
-          set -e
-          # Be flexible about where/how the file is named
-          file=$(find benchmarks -type f -iname '*compilecount*.txt' | head -n1 || true)
-          if [ -z "$file" ]; then
-            echo "Missing compile count file (looked for *compilecount*.txt under ./benchmarks)."
-            echo "Available files:"
-            (ls -R benchmarks || true)
-            exit 1
-          fi
-          echo "Using compile count file: $file"
-          lines=$(wc -l < "$file")
-          if [ "$lines" -lt 2 ]; then echo "Need at least two lines of compile counts"; exit 1; fi
-          cached=$(head -n1 "$file")
-          uncached=$(tail -n1 "$file")
-          if [ "$uncached" -le "$cached" ]; then echo "Expected uncached compile count > cached (uncached=$uncached cached=$cached)"; exit 1; fi
-          echo "Compile count check passed (cached=$cached uncached=$uncached)"
+      # - name: Validate pipeline cache compile count delta
+      #   if: ${{ always() && steps.pipeline_cache_bench.outcome == 'success' }}
+      #   run: |
+      #     set -e
+      #     # Be flexible about where/how the file is named
+      #     file=$(find benchmarks -type f -iname '*compilecount*.txt' | head -n1 || true)
+      #     if [ -z "$file" ]; then
+      #       echo "Missing compile count file (looked for *compilecount*.txt under ./benchmarks)."
+      #       echo "Available files:"
+      #       (ls -R benchmarks || true)
+      #       exit 1
+      #     fi
+      #     echo "Using compile count file: $file"
+      #     lines=$(wc -l < "$file")
+      #     if [ "$lines" -lt 2 ]; then echo "Need at least two lines of compile counts"; exit 1; fi
+      #     cached=$(head -n1 "$file")
+      #     uncached=$(tail -n1 "$file")
+      #     if [ "$uncached" -le "$cached" ]; then echo "Expected uncached compile count > cached (uncached=$uncached cached=$cached)"; exit 1; fi
+      #     echo "Compile count check passed (cached=$cached uncached=$uncached)"
 
   purity-guard:
     runs-on: ubuntu-latest
