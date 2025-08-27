@@ -16,8 +16,8 @@ public static class ShardStreamBroadcasterExtensions
     /// </summary>
     public static async IAsyncEnumerable<T> MergeOrdered<T, TKey>(
         this IAsyncEnumerable<T> source,
-        Func<T, TKey> keySelector,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    Func<T, TKey> keySelector,
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where TKey : IComparable<TKey>
     {
         var buffer = new List<T>();
@@ -38,8 +38,8 @@ public static class ShardStreamBroadcasterExtensions
     /// </summary>
     public static async IAsyncEnumerable<T> MergeSortedBy<T, TKey>(
         this IEnumerable<IAsyncEnumerable<T>> shardStreams,
-        Func<T, TKey> keySelector,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    Func<T, TKey> keySelector,
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where TKey : IComparable<TKey>
     {
         var enumerators = shardStreams
@@ -69,8 +69,8 @@ public static class ShardStreamBroadcasterExtensions
     /// </summary>
     public static async IAsyncEnumerable<ShardItem<T>> QueryMergedAsync<TSession, T>(
         this IShardStreamBroadcaster<TSession> broadcaster,
-        Func<TSession, IAsyncEnumerable<T>> query,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    Func<TSession, IAsyncEnumerable<T>> query,
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var item in broadcaster.QueryAllShardsAsync(query, cancellationToken))
         {
@@ -83,23 +83,24 @@ public static class ShardStreamBroadcasterExtensions
     /// </summary>
     public static async IAsyncEnumerable<ShardItem<T>> QueryAndMergeSortedByAsync<TSession, T, TKey>(
         this IShardStreamBroadcaster<TSession> broadcaster,
-        Func<TSession, IAsyncEnumerable<T>> query,
-        Func<T, TKey> keySelector,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    Func<TSession, IAsyncEnumerable<T>> query,
+    Func<T, TKey> keySelector,
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where TKey : IComparable<TKey>
     {
         var shardStreams = broadcaster
             .QueryAllShardsAsync(query, cancellationToken)
             .GroupByShard()
-            .Select(pair =>
+            .Select((pair, idx) =>
                 new ShardisAsyncShardEnumerator<T>(
                     pair.Key,
+                    idx,
                     pair.Value.GetAsyncEnumerator(cancellationToken)
                 )
             )
             .ToList();
 
-        await using var ordered = new ShardisAsyncOrderedEnumerator<T, TKey>(shardStreams, keySelector, cancellationToken);
+        await using var ordered = new ShardisAsyncOrderedEnumerator<T, TKey>(shardStreams, keySelector, prefetchPerShard: 1, cancellationToken);
 
         while (await ordered.MoveNextAsync())
         {
