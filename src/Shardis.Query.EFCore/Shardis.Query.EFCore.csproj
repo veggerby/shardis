@@ -5,9 +5,27 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+  <PropertyGroup>
+    <PackageId>Shardis.Query.EFCore</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming).</Description>
+    <PackageTags>shardis;sharding;efcore;query;linq</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="icon.png" Pack="true" PackagePath="" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Shardis.Query/Shardis.Query.csproj" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" />
-  <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
   </ItemGroup>
+
 </Project>
