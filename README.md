@@ -195,6 +195,36 @@ Consistent hash router only records a miss if `TryGetOrAdd` actually created the
 - Supports optional bounded channel capacity (backpressure) – unbounded by default.
 - Cancels remaining work early for short‑circuit operations (`AnyAsync`, `FirstAsync`).
 - Guarantees that consumer observation order is the actual arrival order (no artificial reordering unless using ordered merge utilities).
+- Emits lifecycle callbacks via `IMergeObserver`:
+  - `OnItemYielded(shardId)` – after an item is yielded to the consumer.
+  - `OnShardCompleted(shardId)` – shard produced all items successfully.
+  - `OnShardStopped(shardId, reason)` – exactly once per shard with `Completed|Canceled|Faulted`.
+  - `OnBackpressureWaitStart/Stop()` – unordered path only when bounded channel is full.
+  - `OnHeapSizeSample(size)` – ordered merge heap sampling (throttled by `heapSampleEvery`).
+
+#### Minimal Observer Example
+
+```csharp
+using Shardis.Querying;
+using Shardis.Model;
+
+public sealed class LoggingObserver : IMergeObserver
+{
+    private int _count;
+    public void OnItemYielded(ShardId shardId) => Interlocked.Increment(ref _count);
+    public void OnShardCompleted(ShardId shardId) => Console.WriteLine($"Shard {shardId} completed.");
+    public void OnShardStopped(ShardId shardId, ShardStopReason reason) => Console.WriteLine($"Shard {shardId} stopped: {reason} (items so far={_count}).");
+    public void OnBackpressureWaitStart() { }
+    public void OnBackpressureWaitStop() { }
+    public void OnHeapSizeSample(int size) => Console.WriteLine($"Heap size: {size}");
+}
+
+// Wiring:
+var observer = new LoggingObserver();
+var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, channelCapacity: 64, observer: observer, heapSampleEvery: 10);
+```
+
+Observer implementations MUST be thread-safe; callbacks can occur concurrently.
 
 ### Ordered vs Combined Enumeration
 
