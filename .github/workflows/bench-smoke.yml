@@ -18,4 +18,45 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore Shardis.sln
       - name: Run merge smoke benchmark
-        run: dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *MergeEnumeratorBenchmarks.OrderedStreaming_FirstItemLatency* --maxIterationCount 1 --minIterationCount 1 --warmupCount 0 || true
+        run: dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *MergeEnumeratorBenchmarks.OrderedStreaming_FirstItemLatency* --maxIterationCount 1 --minIterationCount 1 --warmupCount 0
+      - name: Run query smoke benchmark
+        run: dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *QueryBenchmarks.ShardQuery_WhereSelect_Count* --maxIterationCount 1 --minIterationCount 1 --warmupCount 0
+      - name: Run pipeline cache benchmark (single iteration)
+        run: dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *PipelineCacheBenchmarks* --maxIterationCount 1 --minIterationCount 1 --warmupCount 0
+      - name: Archive pipeline cache results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-cache-bench
+          path: |
+            benchmarks/BenchmarkDotNet.Artifacts/**/PipelineCacheBenchmarks*.log
+            benchmarks/**/PipelineCacheBenchmarks.compilecount.txt
+      - name: Validate pipeline cache compile count delta
+        if: always()
+        run: |
+          set -e
+          file=$(find benchmarks -name PipelineCacheBenchmarks.compilecount.txt | head -n1 || true)
+          if [ -z "$file" ]; then echo "Missing compile count file"; exit 1; fi
+          lines=$(wc -l < "$file")
+          if [ "$lines" -lt 2 ]; then echo "Need at least two lines of compile counts"; exit 1; fi
+          cached=$(head -n1 "$file")
+          uncached=$(tail -n1 "$file")
+          if [ "$uncached" -le "$cached" ]; then echo "Expected uncached compile count > cached (uncached=$uncached cached=$cached)"; exit 1; fi
+          echo "Compile count check passed (cached=$cached uncached=$uncached)";
+  purity-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Pack Core Query
+        run: dotnet pack src/Shardis.Query/Shardis.Query.csproj -o artifact --no-build -c Release || dotnet build src/Shardis.Query/Shardis.Query.csproj -c Release && dotnet pack src/Shardis.Query/Shardis.Query.csproj -o artifact -c Release
+      - name: Inspect nuspec for provider deps
+        run: |
+          set -e
+          f=$(ls artifact/Shardis.Query*.nupkg)
+          mkdir extract && cd extract
+          unzip -q ../$f
+          if grep -E 'EntityFramework|Marten' -r ./*.nuspec; then echo "Found forbidden provider dependency in Shardis.Query"; exit 1; fi

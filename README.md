@@ -390,6 +390,127 @@ Utility enumerators:
 
 Higher-level fluent query API (LINQ-like) is under active design (see `docs/api.md` & `docs/linq.md`).
 
+### LINQ MVP (Where / Select Only)
+
+Experimental minimal provider (see ADR 0003 cross-link) allows composing simple per-shard filters and a single projection and executing unordered:
+
+```csharp
+var exec = /* IShardQueryExecutor implementation (e.g. InMemory / EFCore) */;
+var q = Shardis.Query.ShardQuery.For<Person>(exec)
+                               .Where(p => p.Age >= 30)
+                               .Select(p => new { p.Name, p.Age });
+await foreach (var row in q) { Console.WriteLine($"{row.Name} ({row.Age})"); }
+```
+
+Constraints (MVP):
+
+- Only `Where` (multiple) + single terminal `Select`.
+- No ordering operators; use `ShardStreamBroadcaster.QueryAllShardsOrderedStreamingAsync` for global ordering or order after materialization.
+- Unordered merge semantics identical to `QueryAllShardsAsync`.
+- Cancellation respected mid-stream.
+
+Future work (tracked): join support, ordering pushdown, aggregation.
+
+#### Provider Matrix (MVP)
+
+| Provider | Package | Where | Select | Ordering | Cancellation | Metrics Hooks |
+|----------|---------|-------|--------|----------|--------------|---------------|
+| InMemory | `Shardis.Query.InMemory` | ✅ | ✅ | ❌ (post-filter only) | Cooperative (no throw) | ✅ (OnShardStart/Stop/Items/Completed/Canceled) |
+| EF Core  | `Shardis.Query.EFCore`   | ✅ server-side | ✅ server-side | ❌ | Cooperative | ✅ |
+| Marten (adapter)* | `Shardis.Marten` | ✅ | ✅ | Backend native only (no global merge) | Cooperative | (planned) |
+
+### Adaptive Paging & Provider Capabilities
+
+| Provider | Unordered Streaming | Ordered Merge Compatible | Native Pagination | Adaptive Paging | Notes |
+|----------|---------------------|---------------------------|------------------|-----------------|-------|
+| InMemory | Yes (in-process)    | Yes                       | N/A              | N/A             | Uses compiled expression pipelines. |
+| EF Core  | Yes (IAsyncEnumerable) | Yes                    | Yes (Skip/Take)  | Not yet         | Relies on underlying provider translation. |
+| Marten   | Yes (paged)         | Yes                       | Yes              | Yes             | Fixed or adaptive paging materializer. |
+
+Adaptive paging (Marten) grows/shrinks page size within configured bounds to keep batch latency near a target window. It is deterministic (pure function of prior elapsed times) and never exceeds `maxPageSize`. Choose:
+
+- Fixed page size: predictable memory footprint, steady workload.
+- Adaptive: heterogeneous shard performance, aims to reduce tail latency without overfetching.
+
+### Cancellation Semantics (Queries)
+
+| Aspect | InMemory | EF Core | Marten (Fixed) | Marten (Adaptive) |
+|--------|----------|---------|----------------|-------------------|
+| Mid-item check | Between MoveNext calls | Provider awaits next row | Before each page & per item | Before each page & per item |
+| On cancel effect | Stops yielding, completes gracefully | Stops enumeration, disposes | Stops paging loop | Stops paging loop, retains last page decision state |
+| Exception surface | None (cooperative) | OperationCanceledException may bubble internally then swallowed | Swallows after signaling metrics | Same as fixed |
+
+Guidance: always pass a token with timeout for interactive workloads; enumerators honor cancellation promptly.
+
+*Marten executor currently requires a PostgreSQL instance; tests are scaffolded and skipped in CI when no connection is available.
+
+#### Unordered Merge Non-Determinism
+
+Unordered execution intentionally interleaves per-shard results based on arrival timing. For identical logical inputs, interleaving order may vary across runs. Applications requiring deterministic global ordering must either:
+
+1. Use an ordered merge (`ShardisAsyncOrderedEnumerator`) supplying a stable key selector, or
+2. Materialize then order results explicitly.
+
+#### Cancellation Semantics
+
+All executors observe `CancellationToken` cooperatively. Enumeration stops early without throwing unless the underlying provider surfaces an `OperationCanceledException`. Metrics observers receive `OnCanceled` exactly once.
+
+#### Query Benchmarks
+
+Run the new query benchmark suite:
+
+```bash
+dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *QueryBenchmarks*
+```
+
+### Multi-Provider Example (InMemory vs EF vs Marten)
+
+```csharp
+// InMemory
+var inMemExec = new InMemoryShardQueryExecutor(new[] { shard1Objects, shard2Objects }, UnorderedMerge.Merge);
+var inMemQuery = ShardQuery.For<Person>(inMemExec).Where(p => p.Age >= 30).Select(p => p.Name);
+var names1 = await inMemQuery.ToListAsync();
+
+// EF Core (Sqlite)
+var efExec = new EfCoreShardQueryExecutor(2, shardId => CreateSqliteContext(shardId), UnorderedMerge.Merge);
+var efQuery = ShardQuery.For<Person>(efExec).Where(p => p.Age >= 30).Select(p => p.Name);
+var names2 = await efQuery.ToListAsync();
+
+// Marten (single shard adapter for now)
+using var session = documentStore.LightweightSession();
+var martenNames = await MartenQueryExecutor.Instance
+  .Execute(session, q => q.Where(p => p.Age >= 30).Select(p => p))
+  .Select(p => p.Name)
+  .ToListAsync();
+
+// NOTE: Unordered merge => arrival-order, not globally deterministic across shards.
+```
+
+**Important:** Unordered execution is intentionally non-deterministic. For deterministic ordering across shards use an ordered merge (`QueryAllShardsOrderedStreamingAsync`) or materialize then order.
+
+### Exception Semantics
+
+Shardis executors use a cooperative cancellation model: when cancellation is requested the async iterator stops yielding without throwing unless the underlying provider surfaces an `OperationCanceledException`. Translation/database/provider exceptions are propagated unchanged. Consumers requiring explicit cancellation signaling should inspect the token externally.
+
+### Ordered Merge
+
+For deterministic cross-shard ordering use `OrderedMergeHelper.Merge` supplying a key selector. Each shard stream must already be locally ordered by that key. The merge performs a streaming k-way heap merge (O(log n) per item, where n = shard count) without materializing full result sets.
+
+### Provider Matrix
+
+| Package | Dependency | Where/Select | Streaming | Ordering | Notes |
+|---------|------------|-------------|-----------|----------|-------|
+| Shardis.Query | none | ✔️ | n/a | n/a | Core query model & merge helpers |
+| Shardis.Query.InMemory | none | ✔️ | ✔️ | ❌ | Dev/test executor |
+| Shardis.Query.EFCore | EF Core | ✔️ | ✔️ | ❌ | Server-side translation (Sqlite tests) |
+| Shardis.Query.Marten | Marten | ✔️ | ✔️ (paged/native) | ❌ | Async/paged materializer |
+
+### Backpressure
+
+`UnorderedMerge` uses an unbounded channel by default. Supply a `channelCapacity` to bound memory (e.g. `UnorderedMerge.Merge(streams, ct, channelCapacity: 64)`). Lower capacity reduces peak memory but increases producer blocking; tune per workload.
+
+Measures end-to-end cost of composing and executing simple `Where`+`Select` against two shards vs a LINQ baseline (single in-process collection). Use for regression tracking (allocations & mean time).
+
 ### Merge Modes & Tuning
 
 See `docs/merge-modes.md` for a full matrix. Quick guidance:

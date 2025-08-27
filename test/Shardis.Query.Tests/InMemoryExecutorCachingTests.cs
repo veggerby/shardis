@@ -1,0 +1,52 @@
+using Shardis.Query.Execution.InMemory;
+using Shardis.Query.Internals;
+
+namespace Shardis.Query.Tests;
+
+public sealed class InMemoryExecutorCachingTests
+{
+    [Fact]
+    public async Task CompilePipeline_OncePerDistinctQueryModel()
+    {
+        var shard1 = new object[] { new Person { Id = 1, Age = 50 }, new Person { Id = 2, Age = 20 } };
+        var shard2 = new object[] { new Person { Id = 3, Age = 70 } };
+        var exec = new InMemoryShardQueryExecutor(new[] { shard1, shard2 }, (streams, ct) => UnorderedMerge.Merge(streams, ct));
+        var before = InMemoryShardQueryExecutor.CompileCount;
+        var q1 = ShardQuery.For<Person>(exec).Where(p => p.Age > 30).Select(p => p.Age);
+        var q2 = ShardQuery.For<Person>(exec).Where(p => p.Age > 30).Select(p => p.Age); // structurally identical new model
+        _ = await q1.ToListAsync();
+        _ = await q2.ToListAsync();
+        var after = InMemoryShardQueryExecutor.CompileCount;
+        // Pipeline compilation is per distinct query model (not per shard). Expect exactly one new compilation.
+        var delta = after - before;
+        delta.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Metrics_Observer_ReceivesLifecycle_InMemory()
+    {
+        var shard1 = new object[] { new Person { Id = 1, Age = 50 }, new Person { Id = 2, Age = 20 } };
+        var shard2 = new object[] { new Person { Id = 3, Age = 70 } };
+        var obs = new RecordingObserver();
+        var exec = new Shardis.Query.Execution.InMemory.InMemoryShardQueryExecutor(new[] { shard1, shard2 }, (s, ct) => Shardis.Query.Internals.UnorderedMerge.Merge(s, ct), obs);
+        var q = ShardQuery.For<Person>(exec).Where(p => p.Age > 30);
+        var list = await q.ToListAsync();
+        list.Count.Should().Be(2);
+        obs.ShardStarts.Should().Be(2);
+        obs.ItemsProduced.Should().BeGreaterThan(0);
+        obs.Completed.Should().BeTrue();
+        obs.Canceled.Should().BeFalse();
+    }
+
+    private sealed class RecordingObserver : Shardis.Query.Diagnostics.IQueryMetricsObserver
+    {
+        public int ShardStarts; public int ItemsProduced; public int ShardStops; public bool Completed; public bool Canceled;
+        public void OnShardStart(int shardId) => Interlocked.Increment(ref ShardStarts);
+        public void OnItemsProduced(int shardId, int count) => Interlocked.Add(ref ItemsProduced, count);
+        public void OnShardStop(int shardId) => Interlocked.Increment(ref ShardStops);
+        public void OnCompleted() => Completed = true;
+        public void OnCanceled() => Canceled = true;
+    }
+
+    private sealed class Person { public int Id { get; set; } public int Age { get; set; } }
+}

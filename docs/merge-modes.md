@@ -30,6 +30,19 @@ Memory scales as: `O(shards × prefetchPerShard)` items resident in the heap.
 * Prefer Ordered Streaming over Eager for large or unbounded streams – it emits progressively and bounds memory.
 * Use Ordered Eager only for small bounded result sets where simplicity and single-pass sort cost is negligible.
 
+### LINQ MVP Integration
+
+The minimal LINQ provider (`Shardis.Query`) currently emits only unordered streams (Where/Select). To obtain ordered results combine with broadcaster ordered streaming APIs after materialization or delay adopting ordering until provider vNext (see ADR 0003). Example:
+
+```csharp
+var exec = /* IShardQueryExecutor */;
+var unordered = Shardis.Query.ShardQuery.For<Person>(exec)
+ .Where(p => p.Age > 40)
+ .Select(p => p.LastSeen);
+// unordered enumeration
+await foreach (var ts in unordered) { /* ... */ }
+```
+
 ## Observer & Metrics
 
 `IMergeObserver` receives callbacks for item yield, shard completion (success only), shard stopped (any terminal state), backpressure waits and heap size samples. Wire adapters to Prometheus/OpenTelemetry by translating:

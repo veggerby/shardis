@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Shardis.Query/Shardis.Query.csproj" />
+    <ProjectReference Include="../../src/Shardis.Query.EFCore/Shardis.Query.EFCore.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+</Project>

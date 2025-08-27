@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Shardis/Shardis.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shardis.Query.Tests" />
+    <InternalsVisibleTo Include="Shardis.Query.EFCore" />
+    <InternalsVisibleTo Include="Shardis.Query.InMemory" />
+  </ItemGroup>
+
+  <!-- Guard: fail build if forbidden provider namespaces leak into core -->
+  <Target Name="EnforceProviderFreeCore" BeforeTargets="Build">
+    <Exec Command="bash -c &quot;grep -R -n Microsoft.EntityFrameworkCore src/Shardis.Query &amp;&amp; echo Provider reference detected in core &amp;&amp; exit 1 || true&quot;" />
+    <Exec Command="bash -c &quot;grep -R -n Marten src/Shardis.Query &amp;&amp; echo Provider reference detected in core &amp;&amp; exit 1 || true&quot;" />
+  </Target>
+
+</Project>
