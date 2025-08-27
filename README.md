@@ -266,12 +266,16 @@ dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *RouterBe
 dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *HasherBenchmarks*
 ```
 
-Use these to compare:
+Use these to compare (by `--anyCategories`):
 
-- Default vs Consistent hash routing cost
-- Different replication factors
-- Default vs FNV-1a ring hashing
-- Fast vs slow shard streaming (see `BroadcasterStreamBenchmarks`) for throughput / fairness analysis
+- `router`: Default vs Consistent hash routing cost
+- `hasher`: Different ring hash algorithms (Default vs FNV-1a) & replication factor impact
+- `migration`: Migration executor throughput across concurrency / batch matrix
+- `broadcaster`: Fast vs slow shard streaming (fairness, interleaving, backpressure sensitivity)
+
+Planned:
+
+- `merge`: Ordered vs unordered streaming merge enumerators (k‑way heap vs combined interleave)
 
 After optimization: routing hot path avoids double hashing (via `TryGetOrAdd`) and maintains constant single miss emission under high contention.
 
@@ -308,16 +312,23 @@ Additional invariants covered:
 
 ## 🔄 Migration (Scaffolding)
 
-Early migration primitives are present (`IShardMigrator`, `DefaultShardMigrator`, `ShardMigrationPlan`). These currently support:
+Two layers exist:
 
-- Planning: build a plan between source and target shard for a set of keys.
-- Execution skeleton: iterate keys (hook for data copy + re-assignment logic).
+1. Core stub (`IShardMigrator`, `DefaultShardMigrator`, `ShardMigrationPlan`) – minimal plan + per-key callback iteration (non-production; placeholder to avoid breaking API later).
+2. Dedicated migration framework (`Shardis.Migration` project) – executor, planner, mover, checkpoint, metrics (active development per ADR 0002 / docs in `docs/migration/`).
 
-Planned next steps before enabling in production:
+Current core stub behavior:
 
-1. Data copy orchestration abstraction (`IShardDataTransfer` per domain).
-2. Idempotent re-assignment update in map store with optional optimistic lock.
-3. Dry-run verification mode with metrics + diff reporting.
+- Builds a simple plan (source → target, ordered keys).
+- Iterates keys and invokes optional callback (no data copy, no map mutation, no verification, no metrics).
+
+Next actions (tracked in backlog):
+
+1. Unify guidance: mark `DefaultShardMigrator` `[Obsolete]` once the full executor is stabilized.
+2. Integrate adapter so `IShardMigrator` can delegate to executor implementations.
+3. Add metrics + checkpoint wiring via `Shardis.Migration` when enabled.
+
+Until then: use the migration project APIs for real key movement; the core stub is intentionally inert and safe for experimentation only.
 
 ---
 
