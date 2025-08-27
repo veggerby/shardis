@@ -72,25 +72,16 @@ public class MigrationThroughputBenchmarks
         }
     }
 
-    // Matrix control: default is SMALL (kept intentionally tiny). Set SHARDIS_FULL=1 for exploratory full matrix.
-    private static readonly bool FullMatrix = Environment.GetEnvironmentVariable("SHARDIS_FULL") == "1";
+    // Matrix control:
+    //  - SHARDIS_FULL=1 expands to larger exploratory matrix (local analysis only).
+    //  - SHARDIS_CI=1 forces SMALL matrix regardless of SHARDIS_FULL to bound CI runtime.
+    private static readonly bool FullMatrixRequested = Environment.GetEnvironmentVariable("SHARDIS_FULL") == "1";
+    private static readonly bool CiMode = Environment.GetEnvironmentVariable("SHARDIS_CI") == "1";
 
-#if SHARDIS_CI
-    private static readonly int[] KeysSmall = { 10_000 };
-    private static readonly int[] CopySmall = { 1, 4 };
-    private static readonly int[] VerifySmall = { 1, 4 };
-    private static readonly bool[] InterleaveSmall = { true };
-    private static readonly int[] SwapSmall = { 100 };
-    private static readonly int[] KeysFull = KeysSmall; // CI never expands regardless of SHARDIS_FULL
-    private static readonly int[] CopyFull = CopySmall;
-    private static readonly int[] VerifyFull = VerifySmall;
-    private static readonly bool[] InterleaveFull = InterleaveSmall;
-    private static readonly int[] SwapFull = SwapSmall;
-#else
     private static readonly int[] KeysSmall = [10_000];
     private static readonly int[] CopySmall = [1, 4];
     private static readonly int[] VerifySmall = [1, 4];
-    private static readonly bool[] InterleaveSmall = [true]; // keep only the interleaved mode for quick signal
+    private static readonly bool[] InterleaveSmall = [true];
     private static readonly int[] SwapSmall = [100];
 
     private static readonly int[] KeysFull = [1_000, 10_000, 100_000];
@@ -98,7 +89,8 @@ public class MigrationThroughputBenchmarks
     private static readonly int[] VerifyFull = [1, 4, 16];
     private static readonly bool[] InterleaveFull = [true, false];
     private static readonly int[] SwapFull = [10, 100, 1_000];
-#endif
+
+    private static bool UseFullMatrix => FullMatrixRequested && !CiMode;
 
     [ParamsSource(nameof(KeysValues))] public int Keys { get; set; }
     [ParamsSource(nameof(CopyValues))] public int CopyConcurrency { get; set; }
@@ -106,11 +98,11 @@ public class MigrationThroughputBenchmarks
     [ParamsSource(nameof(InterleaveValues))] public bool InterleaveCopyAndVerify { get; set; }
     [ParamsSource(nameof(SwapValues))] public int SwapBatchSize { get; set; }
 
-    public IEnumerable<int> KeysValues => FullMatrix ? KeysFull : KeysSmall;
-    public IEnumerable<int> CopyValues => FullMatrix ? CopyFull : CopySmall;
-    public IEnumerable<int> VerifyValues => FullMatrix ? VerifyFull : VerifySmall;
-    public IEnumerable<bool> InterleaveValues => FullMatrix ? InterleaveFull : InterleaveSmall;
-    public IEnumerable<int> SwapValues => FullMatrix ? SwapFull : SwapSmall;
+    public IEnumerable<int> KeysValues => UseFullMatrix ? KeysFull : KeysSmall;
+    public IEnumerable<int> CopyValues => UseFullMatrix ? CopyFull : CopySmall;
+    public IEnumerable<int> VerifyValues => UseFullMatrix ? VerifyFull : VerifySmall;
+    public IEnumerable<bool> InterleaveValues => UseFullMatrix ? InterleaveFull : InterleaveSmall;
+    public IEnumerable<int> SwapValues => UseFullMatrix ? SwapFull : SwapSmall;
 
     private MigrationPlan<string>? _plan;
     private ShardMigrationExecutor<string>? _executor;

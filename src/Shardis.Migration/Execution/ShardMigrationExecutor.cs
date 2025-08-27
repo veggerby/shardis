@@ -39,6 +39,8 @@ public sealed class ShardMigrationExecutor<TKey>(
     private readonly Func<DateTimeOffset> _now = timeProvider ?? (() => DateTimeOffset.UtcNow);
 
     private const int CheckpointVersion = 1;
+    /// <summary>Holds the last exception encountered while persisting a checkpoint in the failure path (for diagnostics).</summary>
+    public Exception? LastCheckpointPersistException { get; private set; }
 
     /// <summary>
     /// Executes the specified migration plan to completion (or until cancellation), applying copy, verify and swap phases.
@@ -88,6 +90,9 @@ public sealed class ShardMigrationExecutor<TKey>(
         {
             if (indexByKey.TryGetValue(key, out var idx))
             {
+                // Bounded CAS loop: contention expected to be extremely low; guard against pathological spinning.
+                const int maxSpins = 10_000;
+                var spins = 0;
                 while (true)
                 {
                     var snapshot = lastProcessedIndex;
@@ -98,6 +103,11 @@ public sealed class ShardMigrationExecutor<TKey>(
                     var updated = Interlocked.CompareExchange(ref lastProcessedIndex, idx, snapshot);
                     if (updated == snapshot)
                     {
+                        return;
+                    }
+                    if (++spins == maxSpins)
+                    {
+                        // Give up; next progress update attempt will retry implicitly for later keys.
                         return;
                     }
                 }
@@ -277,8 +287,11 @@ public sealed class ShardMigrationExecutor<TKey>(
                     var cp = new MigrationCheckpoint<TKey>(plan.PlanId, CheckpointVersion, _now(), states, lastProcessedIndex);
                     await _checkpointStore.PersistAsync(cp, CancellationToken.None).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // Intentionally do not throw to avoid masking the original failure / cancellation exception.
+                    // Store for diagnostic inspection; caller may choose to surface externally.
+                    LastCheckpointPersistException = ex;
                 }
             }
         }
