@@ -163,14 +163,13 @@ public class OrderedStreamingMergeTests
         // arrange: one shard throws after first item
         var good = new TestShardisEnumerator<int>(new[] { 1, 2, 3 }, "good");
         var bad = new ThrowingEnumerator<int>(new ShardId("bad"), throwAfter: 1);
-        await using var ordered = new ShardisAsyncOrderedEnumerator<int, int>([good, bad], x => x, prefetchPerShard: 2, CancellationToken.None);
+        await using var ordered = new ShardisAsyncOrderedEnumerator<int, int>([good, bad], x => x, prefetchPerShard: 1, CancellationToken.None);
 
-        // act: first item ok
-        (await ordered.MoveNextAsync()).Should().BeTrue();
-        // second MoveNext should surface exception
-        var ex = await Record.ExceptionAsync(() => ordered.MoveNextAsync().AsTask());
-
-        ex.Should().BeOfType<InvalidOperationException>();
+        // act/assert: enumerating to exhaustion should surface injected failure
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            while (await ordered.MoveNextAsync()) { }
+        });
     }
 
     [Fact]

@@ -10,17 +10,21 @@ namespace Shardis.Querying;
 /// </summary>
 /// <typeparam name="TShard">Concrete shard type.</typeparam>
 /// <typeparam name="TSession">The type of session used for querying shards.</typeparam>
-public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<TSession> where TShard : IShard<TSession>
+public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<TSession> where TShard : IShard<TSession>
 {
     private readonly IEnumerable<TShard> _shards;
     private readonly int? _channelCapacity;
+    internal IMergeObserver Observer { get; }
+    private readonly int _heapSampleEvery;
 
     /// <summary>
     /// Creates a new broadcaster.
     /// </summary>
     /// <param name="shards">Shard collection to query.</param>
     /// <param name="channelCapacity">Optional bounded channel capacity (null = unbounded).</param>
-    public ShardStreamBroadcaster(IEnumerable<TShard> shards, int? channelCapacity = null)
+    /// <param name="observer">Optional merge observer for instrumentation (null = no-op).</param>
+    /// <param name="heapSampleEvery">Heap sampling frequency for ordered merge (1 = every insertion, N = every Nth insertion).</param>
+    public ShardStreamBroadcaster(IEnumerable<TShard> shards, int? channelCapacity = null, IMergeObserver? observer = null, int heapSampleEvery = 1)
     {
         ArgumentNullException.ThrowIfNull(shards, nameof(shards));
         if (!shards.Any())
@@ -30,7 +34,14 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
 
         _shards = shards;
         _channelCapacity = channelCapacity;
+        Observer = observer ?? NoOpMergeObserver.Instance;
+        _heapSampleEvery = heapSampleEvery < 1 ? 1 : heapSampleEvery;
     }
+
+    /// <summary>
+    /// Overload retaining previous signature (no observer / sampling) for source compatibility.
+    /// </summary>
+    public ShardStreamBroadcaster(IEnumerable<TShard> shards) : this(shards, null, null, 1) { }
 
     /// <summary>
     /// Executes an asynchronous query against all shards, streaming back <see cref="ShardItem{TItem}"/> values as they arrive.
@@ -61,8 +72,23 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
                 {
                     await foreach (var item in query(session).WithCancellation(cancellationToken).ConfigureAwait(false))
                     {
-                        await channel.Writer.WriteAsync(new(shard.ShardId, item), cancellationToken).ConfigureAwait(false);
+                        if (_channelCapacity.HasValue)
+                        {
+                            var write = channel.Writer.WriteAsync(new(shard.ShardId, item), cancellationToken);
+                            if (!write.IsCompletedSuccessfully)
+                            {
+                                TryObserver(o => o.OnBackpressureWaitStart());
+                                await write.ConfigureAwait(false);
+                                TryObserver(o => o.OnBackpressureWaitStop());
+                            }
+                            else { /* completed synchronously */ }
+                        }
+                        else
+                        {
+                            await channel.Writer.WriteAsync(new(shard.ShardId, item), cancellationToken).ConfigureAwait(false);
+                        }
                     }
+                    TryObserver(o => o.OnShardCompleted(shard.ShardId));
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -88,6 +114,7 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
 
             await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
+                TryObserver(o => o.OnItemYielded(item.ShardId));
                 yield return item;
             }
 
@@ -183,19 +210,23 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
         async IAsyncEnumerable<ShardItem<TResult>> Execute([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
         {
             var shardEnumerators = new List<IShardisAsyncEnumerator<TResult>>();
+            var shardIds = new List<ShardId>();
             int shardIndex = 0;
             foreach (var shard in _shards)
             {
                 var session = shard.CreateSession();
                 var stream = query(session);
                 shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(shard.ShardId, shardIndex++, stream.GetAsyncEnumerator(ct)));
+                shardIds.Add(shard.ShardId);
             }
-
-            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard, ct);
+            var probe = new ObserverMergeProbe(Observer);
+            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard, ct, probe);
             while (await ordered.MoveNextAsync().ConfigureAwait(false))
             {
+                TryObserver(o => o.OnItemYielded(ordered.Current.ShardId));
                 yield return ordered.Current;
             }
+            foreach (var id in shardIds) { TryObserver(o => o.OnShardCompleted(id)); }
         }
     }
 
@@ -222,15 +253,21 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
             }).ToArray();
 
             var perShardBuffers = await Task.WhenAll(bufferTasks).ConfigureAwait(false);
-            var shardEnumerators = perShardBuffers.Select(buf =>
-                new ShardisAsyncShardEnumerator<TResult>(buf.ShardId, buf.idx, ToAsyncEnumerable(buf.list).GetAsyncEnumerator(ct)))
-                .ToList();
-
-            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard: 1, ct);
+            var shardEnumerators = new List<IShardisAsyncEnumerator<TResult>>();
+            var shardIds = new List<ShardId>();
+            foreach (var buf in perShardBuffers)
+            {
+                shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(buf.ShardId, buf.idx, ToAsyncEnumerable(buf.list).GetAsyncEnumerator(ct)));
+                shardIds.Add(buf.ShardId);
+            }
+            var probe = new ObserverMergeProbe(Observer);
+            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard: 1, ct, probe);
             while (await ordered.MoveNextAsync().ConfigureAwait(false))
             {
+                TryObserver(o => o.OnItemYielded(ordered.Current.ShardId));
                 yield return ordered.Current;
             }
+            foreach (var id in shardIds) { TryObserver(o => o.OnShardCompleted(id)); }
 
             static async IAsyncEnumerable<TResult> ToAsyncEnumerable(IEnumerable<TResult> source)
             {
@@ -263,5 +300,32 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
                 yield return selector(item.Item);
             }
         }
+    }
+}
+
+internal sealed class ObserverMergeProbe : IOrderedMergeProbe
+{
+    private readonly IMergeObserver _observer;
+    private readonly int _sampleEvery;
+    private int _counter;
+    public ObserverMergeProbe(IMergeObserver observer, int sampleEvery = 1)
+    {
+        _observer = observer;
+        _sampleEvery = sampleEvery < 1 ? 1 : sampleEvery;
+        _counter = 0;
+    }
+    public void OnHeapSize(int size)
+    {
+        if ((++_counter % _sampleEvery) != 0) { return; }
+        try { _observer.OnHeapSizeSample(size); } catch { /* swallow */ }
+    }
+}
+
+partial class ShardStreamBroadcaster<TShard, TSession>
+{
+    private void TryObserver(Action<IMergeObserver> invoke)
+    {
+        if (ReferenceEquals(Observer, NoOpMergeObserver.Instance)) { return; }
+        try { invoke(Observer); } catch { /* observer faults must not impact pipeline */ }
     }
 }
