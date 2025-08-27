@@ -17,16 +17,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Backpressure instrumentation hooks (`OnBackpressureWaitStart/Stop`) for unordered/channel path.
 - Heap size sampling callbacks for ordered merge with configurable throttle (`heapSampleEvery`).
 - Deterministic cancellation & startup fault tests covering stop reason emission.
+- First-item latency micro benchmark (time-to-first-item instrumentation).
+- README observer snippet & documented lifecycle callback semantics.
+- Bounded prefetch validation (`prefetchPerShard >= 1`) and broadcaster argument validation (`channelCapacity`, `heapSampleEvery`).
+- CI link-check workflow and benchmark smoke workflow.
+- Ordering / throttle / deterministic cancel tests asserting single-fire + ordering of `OnShardCompleted` before `OnShardStopped`.
 
 ### Changed (Unreleased)
 
 - Ordered querying no longer relies on eager materialization by default; explicit streaming vs eager APIs clarify memory / latency trade-offs.
 - Eager ordered path now uses parallel per-shard buffering then reuses ordered merge enumerator for consistency.
+- `IMergeObserver` callbacks may now be invoked concurrently (thread-safety requirement documented).
+- `IMergeObserver` extended with `OnShardStopped`; `OnShardCompleted` now only signals successful completion.
 
 ### Fixed (Unreleased)
 
 - Potential under-prefetch (single-item buffering) replaced by proactive top-up loop ensuring shards are kept at `≤ prefetchPerShard` buffered items.
 - Ensured exceptions from any shard during ordered streaming propagate immediately and dispose all enumerators.
+- Ensured single-fire guarantee for shard stop events across success / cancel / fault paths.
+- Guarded observer callbacks against downstream exceptions (no pipeline impact).
 
 ### Deprecated (Unreleased)
 
@@ -37,6 +46,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Added deterministic sequence number in heap ordering to guarantee stable ordering across runs with duplicate keys.
 - Added cancellation tests validating prompt disposal.
 - Documentation and code comments aligned toward Step 5 (backpressure differentiation) groundwork.
+- Heap sampling throttle (`heapSampleEvery`) reduces observer overhead in hot path.
+- Added argument validation for broadcaster parameters (`channelCapacity`, `heapSampleEvery`, `prefetchPerShard`).
+- Added ordering, throttle, startup fault, and deterministic cancellation tests for observer lifecycle.
 
 ## [0.1.1] - 2025-08-26
 
