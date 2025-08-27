@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Attributes;
 
 using Shardis.Query;
-using Shardis.Query.Execution.InMemory;
+using Shardis.Query.InMemory.Execution;
 using Shardis.Query.Internals;
 
 [MemoryDiagnoser]

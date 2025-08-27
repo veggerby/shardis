@@ -53,7 +53,7 @@ public static class ServiceCollectionExtensions
         // Register selected router
         if (options.RouterFactory is not null)
         {
-            services.AddSingleton<IShardRouter<TKey, TSession>>(sp => options.RouterFactory(sp, options.Shards));
+            services.AddSingleton(sp => options.RouterFactory(sp, options.Shards));
         }
         else if (options.UseConsistentHashing)
         {
@@ -78,7 +78,7 @@ public static class ServiceCollectionExtensions
         // Merge observer (allow override before AddShardis)
         if (!services.Any(sd => sd.ServiceType == typeof(IMergeObserver)))
         {
-            services.AddSingleton<IMergeObserver>(NoOpMergeObserver.Instance);
+            services.AddSingleton(NoOpMergeObserver.Instance);
         }
         services.AddSingleton<IShardStreamBroadcaster<TSession>>(sp =>
         {
@@ -91,7 +91,7 @@ public static class ServiceCollectionExtensions
         {
             if (options.ShardMapStoreFactory is not null)
             {
-                services.AddSingleton<IShardMapStore<TKey>>(sp => options.ShardMapStoreFactory(sp));
+                services.AddSingleton(sp => options.ShardMapStoreFactory(sp));
             }
             else
             {
@@ -99,8 +99,8 @@ public static class ServiceCollectionExtensions
             }
         }
 
-        services.AddSingleton<IShardKeyHasher<TKey>>(sp => options.ShardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance);
-        services.AddSingleton<IShardisMetrics>(sp => NoOpShardisMetrics.Instance); // user can replace
+        services.AddSingleton(sp => options.ShardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance);
+        services.AddSingleton(sp => NoOpShardisMetrics.Instance); // user can replace
         if (options.RingHasher is not null)
         {
             services.AddSingleton(options.RingHasher);

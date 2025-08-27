@@ -88,7 +88,7 @@ public class BroadcasterStreamBenchmarks
         int count = 0;
         long first = -1;
         _sw.Restart();
-        await foreach (var item in broadcaster.QueryAllShardsAsync<int>(s => _shards[s].Produce()))
+        await foreach (var item in broadcaster.QueryAllShardsAsync(s => _shards[s].Produce()))
         {
             if (first < 0) { first = ElapsedUs(_sw); }
             count++;
@@ -111,7 +111,7 @@ public class BroadcasterStreamBenchmarks
         int count = 0;
         long first = -1;
         _sw.Restart();
-        await foreach (var item in broadcaster.QueryAllShardsAsync<int>(s => _shards[s].Produce()))
+        await foreach (var item in broadcaster.QueryAllShardsAsync(s => _shards[s].Produce()))
         {
             if (first < 0) { first = ElapsedUs(_sw); }
             count++;

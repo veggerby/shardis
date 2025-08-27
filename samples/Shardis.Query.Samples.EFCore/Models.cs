@@ -9,12 +9,9 @@ public sealed class Person
     public int Age { get; set; }
 }
 
-public sealed class PersonContext : DbContext
+public sealed class PersonContext(DbContextOptions<PersonContext> options, string dbPath) : DbContext(options)
 {
-    private readonly string _dbPath;
-    public PersonContext(DbContextOptions<PersonContext> options, string dbPath) : base(options)
-    {
-        _dbPath = dbPath;
-    }
+    private readonly string _dbPath = dbPath;
+
     public DbSet<Person> People => Set<Person>();
 }

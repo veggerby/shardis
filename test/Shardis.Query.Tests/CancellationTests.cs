@@ -1,3 +1,5 @@
+using Shardis.Query.InMemory.Execution;
+
 namespace Shardis.Query.Tests;
 
 public sealed class CancellationTests
@@ -7,11 +9,14 @@ public sealed class CancellationTests
     [Fact]
     public async Task Cancellation_StopsEnumeration()
     {
+        // arrange
         var shard = new List<object> { new Item(1), new Item(2), new Item(3) };
-        var exec = new Shardis.Query.Execution.InMemory.InMemoryShardQueryExecutor(new List<IEnumerable<object>> { shard }, MergeSequential);
+        var exec = new InMemoryShardQueryExecutor(new List<IEnumerable<object>> { shard }, MergeSequential);
         var q = ShardQuery.For<Item>(exec).Where(i => i.Id > 0);
         using var cts = new CancellationTokenSource();
         var list = new List<Item>();
+
+        // act
         try
         {
             await foreach (var item in q.WithCancellation(cts.Token))
@@ -24,6 +29,8 @@ public sealed class CancellationTests
         {
             // expected
         }
+
+        // assert
         list.Count.Should().BeGreaterThanOrEqualTo(1);
     }
 

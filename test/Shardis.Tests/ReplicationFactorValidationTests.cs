@@ -28,7 +28,7 @@ public class ReplicationFactorValidationTests
     public void ConsistentHashRouter_ShouldThrow_WhenReplicationFactorTooHigh()
     {
         // arrange
-        var store = new Shardis.Persistence.InMemoryShardMapStore<string>();
+        var store = new Persistence.InMemoryShardMapStore<string>();
         var shards = new List<IShard<string>> { new SimpleShard(new("s1"), "c1") };
 
         // act

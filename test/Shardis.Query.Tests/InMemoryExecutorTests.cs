@@ -1,3 +1,5 @@
+using Shardis.Query.InMemory.Execution;
+
 namespace Shardis.Query.Tests;
 
 public sealed class InMemoryExecutorTests
@@ -7,18 +9,22 @@ public sealed class InMemoryExecutorTests
     [Fact]
     public async Task InMemoryExecutor_AppliesWhereSelect_WithClosures()
     {
+        // arrange
         var shard1 = new List<object> { new Person(1, "Alice", 30), new Person(2, "Bob", 25) };
         var shard2 = new List<object> { new Person(3, "Carol", 40) };
         var shard3 = new List<object> { new Person(4, "Dave", 35), new Person(5, "Eve", 22) };
         var shards = new List<IEnumerable<object>> { shard1, shard2, shard3 };
-        var exec = new Shardis.Query.Execution.InMemory.InMemoryShardQueryExecutor(shards, Merge);
+        var exec = new InMemoryShardQueryExecutor(shards, Merge);
 
         var minAge = 30;
         var q = ShardQuery.For<Person>(exec)
                           .Where(p => p.Age >= minAge)
                           .Select(p => p.Name);
 
+        // act
         var list = await q.ToListAsync();
+
+        // assert
         list.Should().BeEquivalentTo(new[] { "Alice", "Carol", "Dave" });
     }
 

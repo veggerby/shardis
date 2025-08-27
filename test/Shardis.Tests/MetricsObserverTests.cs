@@ -46,20 +46,22 @@ public class MetricsObserverTests
     [Fact]
     public async Task Unordered_ObserverCounts_AreCoherent()
     {
+        // arrange
         var det = Determinism.Create(Seed);
         int shards = 3, items = 150;
         var schedules = det.MakeDelays(shards, Skew.Mild, TimeSpan.FromMilliseconds(1), steps: items);
         var shardObjs = Enumerable.Range(0, shards).Select(i => new IntShard(i, schedules, items, det)).Cast<IShard<int>>().ToArray();
-
         var obs = new CountingObserver();
         var bc = new ShardStreamBroadcaster<IShard<int>, int>(shardObjs, channelCapacity: 64, observer: obs);
 
+        // act
         int total = 0;
-        await foreach (var it in bc.QueryAllShardsAsync<int>(s => ((IntShard)shardObjs[s]).Stream()))
+        await foreach (var it in bc.QueryAllShardsAsync(s => ((IntShard)shardObjs[s]).Stream()))
         {
             total++;
         }
 
+        // assert
         total.Should().Be(shards * items);
         Interlocked.Read(ref obs.Items).Should().Be(total);
         Interlocked.Read(ref obs.WaitStarts).Should().Be(Interlocked.Read(ref obs.WaitStops));
@@ -70,20 +72,23 @@ public class MetricsObserverTests
     [Fact]
     public async Task Unordered_Unbounded_NoBackpressureWaits()
     {
+        // arrange
         var det = Determinism.Create(Seed);
         int shards = 2, items = 50;
         var schedules = det.MakeDelays(shards, Skew.None, TimeSpan.FromMilliseconds(1), steps: items);
         var shardObjs = Enumerable.Range(0, shards).Select(i => new IntShard(i, schedules, items, det)).Cast<IShard<int>>().ToArray();
-
         var obs = new CountingObserver();
         // unbounded: no capacity passed
         var bc = new ShardStreamBroadcaster<IShard<int>, int>(shardObjs, observer: obs);
+
+        // act
         int total = 0;
-        await foreach (var it in bc.QueryAllShardsAsync<int>(s => ((IntShard)shardObjs[s]).Stream()))
+        await foreach (var it in bc.QueryAllShardsAsync(s => ((IntShard)shardObjs[s]).Stream()))
         {
             total++;
         }
 
+        // assert
         total.Should().Be(shards * items);
         Interlocked.Read(ref obs.WaitStarts).Should().Be(0);
         Interlocked.Read(ref obs.WaitStops).Should().Be(0);
@@ -92,19 +97,22 @@ public class MetricsObserverTests
     [Fact]
     public async Task OrderedStreaming_HeapSamples_And_Items_ArePositive_AndLifecycleConsistent()
     {
+        // arrange
         var det = Determinism.Create(Seed);
         int shards = 4, items = 200;
         var schedules = det.MakeDelays(shards, Skew.Mild, TimeSpan.FromMilliseconds(1), steps: items);
         var shardObjs = Enumerable.Range(0, shards).Select(i => new IntShard(i, schedules, items, det)).Cast<IShard<int>>().ToArray();
-
         var obs = new CountingObserver();
         var bc = new ShardStreamBroadcaster<IShard<int>, int>(shardObjs, observer: obs, heapSampleEvery: 1);
+
+        // act
         int total = 0;
-        await foreach (var it in bc.QueryAllShardsOrderedStreamingAsync<int, int>(s => ((IntShard)shardObjs[s]).Stream(), x => x, prefetchPerShard: 2))
+        await foreach (var it in bc.QueryAllShardsOrderedStreamingAsync(s => ((IntShard)shardObjs[s]).Stream(), x => x, prefetchPerShard: 2))
         {
             total++;
         }
 
+        // assert
         total.Should().Be(shards * items);
         Interlocked.Read(ref obs.Items).Should().Be(total);
         Interlocked.Read(ref obs.HeapSamples).Should().BeGreaterThan(0);

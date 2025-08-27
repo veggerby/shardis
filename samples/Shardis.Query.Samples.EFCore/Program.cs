@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-using Shardis.Query.Execution.EFCore;
+using Shardis.Query.EFCore.Execution;
 
 namespace Shardis.Query.Samples.EFCore;
 

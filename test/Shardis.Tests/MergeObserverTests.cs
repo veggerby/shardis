@@ -22,7 +22,7 @@ public class MergeObserverTests
             }
         }
 
-        private sealed class DummyExecutor : Shardis.Querying.Linq.IShardQueryExecutor<string>
+        private sealed class DummyExecutor : IShardQueryExecutor<string>
         {
             public IAsyncEnumerable<T> Execute<T>(string session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull => throw new NotSupportedException();
             public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(string session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr, Func<T, TKey> keySelector) where T : notnull => throw new NotSupportedException();

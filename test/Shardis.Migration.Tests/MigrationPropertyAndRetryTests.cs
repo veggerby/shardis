@@ -194,11 +194,11 @@ public class MigrationPropertyAndRetryTests
         snap.swapped.Should().Be(2);
     }
 
-    private sealed class FlakyVerificationStrategy<TKey> : IVerificationStrategy<TKey> where TKey : notnull, IEquatable<TKey>
+    private sealed class FlakyVerificationStrategy<TKey>(int failuresBeforeSuccess) : IVerificationStrategy<TKey> where TKey : notnull, IEquatable<TKey>
     {
-        private readonly int _failuresBeforeSuccess;
+        private readonly int _failuresBeforeSuccess = failuresBeforeSuccess;
         private int _attempts;
-        public FlakyVerificationStrategy(int failuresBeforeSuccess) => _failuresBeforeSuccess = failuresBeforeSuccess;
+
         public Task<bool> VerifyAsync(KeyMove<TKey> move, CancellationToken ct)
             => Task.FromResult(Interlocked.Increment(ref _attempts) > _failuresBeforeSuccess);
     }
@@ -223,11 +223,11 @@ public class MigrationPropertyAndRetryTests
         snap.retries.Should().BeGreaterThanOrEqualTo(2);
     }
 
-    private sealed class FlakySwapper<TKey> : IShardMapSwapper<TKey> where TKey : notnull, IEquatable<TKey>
+    private sealed class FlakySwapper<TKey>(IShardMapSwapper<TKey> inner, int failures) : IShardMapSwapper<TKey> where TKey : notnull, IEquatable<TKey>
     {
-        private readonly IShardMapSwapper<TKey> _inner;
-        private int _failuresLeft;
-        public FlakySwapper(IShardMapSwapper<TKey> inner, int failures) { _inner = inner; _failuresLeft = failures; }
+        private readonly IShardMapSwapper<TKey> _inner = inner;
+        private int _failuresLeft = failures;
+
         public Task SwapAsync(IReadOnlyList<KeyMove<TKey>> batch, CancellationToken ct)
         {
             if (Interlocked.Decrement(ref _failuresLeft) >= 0)

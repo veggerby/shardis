@@ -124,7 +124,7 @@ public class MigrationThroughputBenchmarks
 
         _mover = new InMemoryDataMover<string>();
         _verification = new FullEqualityVerificationStrategy<string>(_mover);
-        _swapper = new InMemoryMapSwapper<string>(new Shardis.Persistence.InMemoryShardMapStore<string>());
+        _swapper = new InMemoryMapSwapper<string>(new Persistence.InMemoryShardMapStore<string>());
         _checkpoint = new InMemoryCheckpointStore<string>();
         var metrics = new NoOpShardMigrationMetrics(); // eliminate metric overhead
         var options = new ShardMigrationOptions

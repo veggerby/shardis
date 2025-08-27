@@ -1,9 +1,8 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-using Shardis.Query.Execution.EFCore;
+using Shardis.Query.EFCore.Execution;
 using Shardis.Query.Internals;
 
 namespace Shardis.Query.Tests;
@@ -16,6 +15,7 @@ public sealed class EfCoreDiagnosticsTests
     [Fact]
     public async Task NonTranslatablePredicate_RaisesDiagnosticEvent()
     {
+        // arrange
         var events = new List<EventId>();
         var conn = new SqliteConnection("DataSource=:memory:");
         conn.Open();
@@ -39,8 +39,12 @@ public sealed class EfCoreDiagnosticsTests
         ctx.SaveChanges();
         var exec = new EfCoreShardQueryExecutor(1, _ => ctx, (s, ct) => UnorderedMerge.Merge(s, ct));
         var q = ShardQuery.For<Person>(exec).Where(p => Helper(p));
+
+        // act
         var agg = await Assert.ThrowsAsync<AggregateException>(async () => await q.ToListAsync());
         var inner = agg.InnerExceptions.OfType<InvalidOperationException>().FirstOrDefault();
+
+        // assert
         inner.Should().NotBeNull();
         inner!.Message.Should().Contain("could not be translated");
         events.Should().NotBeEmpty();

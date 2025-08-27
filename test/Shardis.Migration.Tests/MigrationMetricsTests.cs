@@ -7,7 +7,10 @@ public class MigrationMetricsTests
     [Fact]
     public void SimpleMetrics_Accumulates_Counters()
     {
+        // arrange
         var m = new SimpleShardMigrationMetrics();
+
+        // act
         m.IncPlanned(); m.IncPlanned(4);
         m.IncCopied(2);
         m.IncVerified();
@@ -17,6 +20,8 @@ public class MigrationMetricsTests
         m.SetActiveCopy(5);
         m.SetActiveVerify(7);
         var snap = m.Snapshot();
+
+        // assert
         snap.planned.Should().Be(5);
         snap.copied.Should().Be(2);
         snap.verified.Should().Be(1);
@@ -30,8 +35,12 @@ public class MigrationMetricsTests
     [Fact]
     public void NoOpMetrics_DoNothing()
     {
+        // arrange
         var m = new NoOpShardMigrationMetrics();
+
+        // act
         m.IncPlanned(100); // should not throw
-        // No observable state to assert (intentional no-op)
+
+        // assert (no observable state - intentional no-op)
     }
 }

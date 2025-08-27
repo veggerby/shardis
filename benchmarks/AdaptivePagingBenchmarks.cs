@@ -3,7 +3,6 @@ using BenchmarkDotNet.Attributes;
 using Marten;
 
 using Shardis.Marten;
-using Shardis.Query.Marten;
 
 namespace Shardis.Benchmarks;
 
