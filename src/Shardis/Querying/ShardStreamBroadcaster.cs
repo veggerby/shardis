@@ -235,9 +235,9 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
         CancellationToken cancellationToken = default)
         where TKey : IComparable<TKey>
     {
-    return Execute();
+        return Execute();
 
-    async IAsyncEnumerable<ShardItem<TResult>> Execute()
+        async IAsyncEnumerable<ShardItem<TResult>> Execute()
         {
             var shardEnumerators = new List<IShardisAsyncEnumerator<TResult>>();
             var shardIds = new List<ShardId>();
@@ -245,13 +245,13 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
             foreach (var shard in _shards)
             {
                 var session = shard.CreateSession();
-        var stream = query(session);
-        shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(shard.ShardId, shardIndex++, stream.GetAsyncEnumerator(cancellationToken)));
+                var stream = query(session);
+                shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(shard.ShardId, shardIndex++, stream.GetAsyncEnumerator(cancellationToken)));
                 shardIds.Add(shard.ShardId);
             }
             if (prefetchPerShard < 1) throw new ArgumentOutOfRangeException(nameof(prefetchPerShard));
             var probe = new ObserverMergeProbe(Observer, _heapSampleEvery);
-        await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard, cancellationToken, probe);
+            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard, cancellationToken, probe);
             while (await ordered.MoveNextAsync().ConfigureAwait(false))
             {
                 TryObserver(o => o.OnItemYielded(ordered.Current.ShardId));
@@ -268,15 +268,15 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
         CancellationToken cancellationToken = default)
         where TKey : IComparable<TKey>
     {
-    return Execute();
+        return Execute();
 
-    async IAsyncEnumerable<ShardItem<TResult>> Execute()
+        async IAsyncEnumerable<ShardItem<TResult>> Execute()
         {
             var bufferTasks = _shards.Select(async (shard, idx) =>
             {
                 var session = shard.CreateSession();
                 var list = new List<TResult>();
-        await foreach (var item in query(session).WithCancellation(cancellationToken).ConfigureAwait(false))
+                await foreach (var item in query(session).WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     list.Add(item);
                 }
@@ -288,11 +288,11 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
             var shardIds = new List<ShardId>();
             foreach (var buf in perShardBuffers)
             {
-        shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(buf.ShardId, buf.idx, ToAsyncEnumerable(buf.list).GetAsyncEnumerator(cancellationToken)));
+                shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(buf.ShardId, buf.idx, ToAsyncEnumerable(buf.list).GetAsyncEnumerator(cancellationToken)));
                 shardIds.Add(buf.ShardId);
             }
             var probe = new ObserverMergeProbe(Observer, _heapSampleEvery);
-        await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard: 1, cancellationToken, probe);
+            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard: 1, cancellationToken, probe);
             while (await ordered.MoveNextAsync().ConfigureAwait(false))
             {
                 TryObserver(o => o.OnItemYielded(ordered.Current.ShardId));

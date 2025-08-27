@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Querying.Linq;
+using Shardis.Testing;
 using Shardis.Tests.TestHelpers;
 
 namespace Shardis.Tests;
@@ -31,19 +32,22 @@ public class OrderedStreamingMergeTests
         var shards = new List<IShard<string>> { shardA, shardB };
         var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards);
 
-        var data = new Dictionary<string, (int[] values, TimeSpan[] delays)>
+        var det = Determinism.Create(1337);
+        // deterministic delay schedule: shard B slower than A via skew
+        var schedules = det.MakeDelays(2, Skew.Mild, TimeSpan.FromMilliseconds(10), steps: 3);
+        var data = new Dictionary<string, (int[] values, int shardIndex)>
         {
-            ["A"] = (new[] { 1, 1, 2 }, new[] { TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(60), TimeSpan.FromMilliseconds(20) }),
-            ["B"] = (new[] { 1, 2, 2 }, new[] { TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(15), TimeSpan.FromMilliseconds(25) })
+            ["A"] = (new[] { 1, 1, 2 }, 0),
+            ["B"] = (new[] { 1, 2, 2 }, 1)
         };
 
         IAsyncEnumerable<int> Query(string session) => Execute(session);
         async IAsyncEnumerable<int> Execute(string session)
         {
-            var (values, delays) = data[session];
+            var (values, shardIndex) = data[session];
             for (int i = 0; i < values.Length; i++)
             {
-                if (i < delays.Length) { await Task.Delay(delays[i]); }
+                await det.DelayForShardAsync(schedules, shardIndex, i);
                 yield return values[i];
             }
         }
