@@ -31,15 +31,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Testing", "src\Shar
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query", "src\Shardis.Query\Shardis.Query.csproj", "{20DB065B-91D2-4C32-9AEA-CA93FCF67EF1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query.InMemory", "src\Shardis.Query.InMemory\Shardis.Query.InMemory.csproj", "{INMEM-PROJ-GUID}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query.InMemory", "src\Shardis.Query.InMemory\Shardis.Query.InMemory.csproj", "{9788DFCF-1A10-B38F-BADB-028F43B45383}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query.EFCore", "src\Shardis.Query.EFCore\Shardis.Query.EFCore.csproj", "{EFCORE-PROJ-GUID}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query.EFCore", "src\Shardis.Query.EFCore\Shardis.Query.EFCore.csproj", "{06749BCE-97E3-904A-56D6-32CCF09C29BE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query.Samples.EFCore", "samples\Shardis.Query.Samples.EFCore\Shardis.Query.Samples.EFCore.csproj", "{D25F7384-C478-452C-B0EB-311DF7D4EAB0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query.Tests", "test\Shardis.Query.Tests\Shardis.Query.Tests.csproj", "{8B8B9475-583B-4C89-9AA9-84548F2ED404}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.PublicApi.Tests", "test\Shardis.PublicApi.Tests\Shardis.PublicApi.Tests.csproj", "{A1F0E6D9-5E3E-4E1A-9E1C-5F2C0B5B7C11}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Query.Marten", "src\Shardis.Query.Marten\Shardis.Query.Marten.csproj", "{0BA55295-2A34-49C3-8A42-D47860996D1F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -219,6 +221,18 @@ Global
 		{A1F0E6D9-5E3E-4E1A-9E1C-5F2C0B5B7C11}.Release|x64.Build.0 = Release|Any CPU
 		{A1F0E6D9-5E3E-4E1A-9E1C-5F2C0B5B7C11}.Release|x86.ActiveCfg = Release|Any CPU
 		{A1F0E6D9-5E3E-4E1A-9E1C-5F2C0B5B7C11}.Release|x86.Build.0 = Release|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Debug|x64.Build.0 = Debug|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Debug|x86.Build.0 = Debug|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Release|x64.ActiveCfg = Release|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Release|x64.Build.0 = Release|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Release|x86.ActiveCfg = Release|Any CPU
+		{0BA55295-2A34-49C3-8A42-D47860996D1F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -238,5 +252,6 @@ Global
 		{D25F7384-C478-452C-B0EB-311DF7D4EAB0} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 		{8B8B9475-583B-4C89-9AA9-84548F2ED404} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 		{A1F0E6D9-5E3E-4E1A-9E1C-5F2C0B5B7C11} = {3EF50925-C550-461B-9B75-6C4B80627735}
+		{0BA55295-2A34-49C3-8A42-D47860996D1F} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 	EndGlobalSection
 EndGlobal
