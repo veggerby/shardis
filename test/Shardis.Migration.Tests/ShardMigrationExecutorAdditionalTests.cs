@@ -347,32 +347,3 @@ public class ShardMigrationExecutorAdditionalTests
         snap.retries.Should().BeGreaterThanOrEqualTo(2); // k1 transient retries
     }
 }
-
-// helper checkpoint stores for tests (keep in same file-scoped namespace)
-internal sealed class CountingCheckpointStore<TKey> : IShardMigrationCheckpointStore<TKey>
-    where TKey : notnull, IEquatable<TKey>
-{
-    private readonly InMemoryCheckpointStore<TKey> _inner = new();
-    public int PersistCount { get; private set; }
-    public Task<MigrationCheckpoint<TKey>?> LoadAsync(Guid planId, CancellationToken ct) => _inner.LoadAsync(planId, ct);
-    public Task PersistAsync(MigrationCheckpoint<TKey> checkpoint, CancellationToken ct)
-    {
-        PersistCount++;
-        return _inner.PersistAsync(checkpoint, ct);
-    }
-}
-
-internal sealed class InspectableCheckpointStore<TKey> : IShardMigrationCheckpointStore<TKey>
-    where TKey : notnull, IEquatable<TKey>
-{
-    private readonly List<MigrationCheckpoint<TKey>> _persisted = [];
-    public IReadOnlyList<MigrationCheckpoint<TKey>> Persisted => _persisted;
-    public IEnumerable<int> PersistedIndexes => _persisted.Select(p => p.LastProcessedIndex);
-    public MigrationCheckpoint<TKey>? LastPersisted => _persisted.LastOrDefault();
-    public Task<MigrationCheckpoint<TKey>?> LoadAsync(Guid planId, CancellationToken ct) => Task.FromResult<MigrationCheckpoint<TKey>?>(null);
-    public Task PersistAsync(MigrationCheckpoint<TKey> checkpoint, CancellationToken ct)
-    {
-        _persisted.Add(checkpoint);
-        return Task.CompletedTask;
-    }
-}

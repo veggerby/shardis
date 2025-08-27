@@ -33,8 +33,8 @@ Mandatory:
 - Remove unused usings; keep ordering consistent.
 - Primary constructors where useful.
 - Whitespace matters:
-  - Separate logical blocks clearly.
-  - Use vertical space generously for test sections.'
+  - Separate logical blocks clearly with vertical space.
+  - Use vertical space generously for test sections.
 
 Prohibited:
 - Generated banner comments / AI disclaimers.
