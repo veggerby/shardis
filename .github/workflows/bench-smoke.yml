@@ -1,0 +1,21 @@
+name: Bench Smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  bench-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore Shardis.sln
+      - name: Build
+        run: dotnet build --configuration Release --no-restore Shardis.sln
+      - name: Run merge smoke benchmark
+        run: dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *MergeEnumeratorBenchmarks.OrderedStreaming_FirstItemLatency* --maxIterationCount 1 --minIterationCount 1 --warmupCount 0 || true

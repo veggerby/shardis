@@ -31,11 +31,19 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
         {
             throw new ArgumentException("Shard collection must not be empty", nameof(shards));
         }
+        if (channelCapacity.HasValue && channelCapacity.Value < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(channelCapacity), "Channel capacity must be >= 1 if specified.");
+        }
+        if (heapSampleEvery < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(heapSampleEvery), "heapSampleEvery must be >= 1");
+        }
 
         _shards = shards;
         _channelCapacity = channelCapacity;
         Observer = observer ?? NoOpMergeObserver.Instance;
-        _heapSampleEvery = heapSampleEvery < 1 ? 1 : heapSampleEvery;
+        _heapSampleEvery = heapSampleEvery;
     }
 
     /// <summary>
@@ -68,6 +76,7 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
             var shardTasks = _shards.Select(shard => Task.Run(async () =>
             {
                 var session = shard.CreateSession();
+                ShardStopReason reason = ShardStopReason.Completed;
                 try
                 {
                     await foreach (var item in query(session).WithCancellation(cancellationToken).ConfigureAwait(false))
@@ -92,6 +101,16 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
+                    reason = ShardStopReason.Canceled;
+                }
+                catch (Exception)
+                {
+                    reason = ShardStopReason.Faulted;
+                    throw;
+                }
+                finally
+                {
+                    TryObserver(o => o.OnShardStopped(shard.ShardId, reason));
                 }
             }, cancellationToken)).ToList();
 
@@ -146,6 +165,7 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
             {
                 var session = shard.CreateSession();
                 var executor = shard.QueryExecutor;
+                ShardStopReason reason = ShardStopReason.Completed;
                 try
                 {
                     var resultStream = executor.Execute(session, queryExpression);
@@ -156,6 +176,16 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
+                    reason = ShardStopReason.Canceled;
+                }
+                catch (Exception)
+                {
+                    reason = ShardStopReason.Faulted;
+                    throw;
+                }
+                finally
+                {
+                    TryObserver(o => o.OnShardStopped(shard.ShardId, reason));
                 }
             }, cancellationToken)).ToList();
 
@@ -205,9 +235,9 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
         CancellationToken cancellationToken = default)
         where TKey : IComparable<TKey>
     {
-        return Execute(cancellationToken);
+    return Execute();
 
-        async IAsyncEnumerable<ShardItem<TResult>> Execute([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    async IAsyncEnumerable<ShardItem<TResult>> Execute()
         {
             var shardEnumerators = new List<IShardisAsyncEnumerator<TResult>>();
             var shardIds = new List<ShardId>();
@@ -215,18 +245,19 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
             foreach (var shard in _shards)
             {
                 var session = shard.CreateSession();
-                var stream = query(session);
-                shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(shard.ShardId, shardIndex++, stream.GetAsyncEnumerator(ct)));
+        var stream = query(session);
+        shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(shard.ShardId, shardIndex++, stream.GetAsyncEnumerator(cancellationToken)));
                 shardIds.Add(shard.ShardId);
             }
-            var probe = new ObserverMergeProbe(Observer);
-            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard, ct, probe);
+            if (prefetchPerShard < 1) throw new ArgumentOutOfRangeException(nameof(prefetchPerShard));
+            var probe = new ObserverMergeProbe(Observer, _heapSampleEvery);
+        await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard, cancellationToken, probe);
             while (await ordered.MoveNextAsync().ConfigureAwait(false))
             {
                 TryObserver(o => o.OnItemYielded(ordered.Current.ShardId));
                 yield return ordered.Current;
             }
-            foreach (var id in shardIds) { TryObserver(o => o.OnShardCompleted(id)); }
+            foreach (var id in shardIds) { TryObserver(o => o.OnShardCompleted(id)); TryObserver(o => o.OnShardStopped(id, ShardStopReason.Completed)); }
         }
     }
 
@@ -237,15 +268,15 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
         CancellationToken cancellationToken = default)
         where TKey : IComparable<TKey>
     {
-        return Execute(cancellationToken);
+    return Execute();
 
-        async IAsyncEnumerable<ShardItem<TResult>> Execute([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    async IAsyncEnumerable<ShardItem<TResult>> Execute()
         {
             var bufferTasks = _shards.Select(async (shard, idx) =>
             {
                 var session = shard.CreateSession();
                 var list = new List<TResult>();
-                await foreach (var item in query(session).WithCancellation(ct).ConfigureAwait(false))
+        await foreach (var item in query(session).WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     list.Add(item);
                 }
@@ -257,17 +288,17 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
             var shardIds = new List<ShardId>();
             foreach (var buf in perShardBuffers)
             {
-                shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(buf.ShardId, buf.idx, ToAsyncEnumerable(buf.list).GetAsyncEnumerator(ct)));
+        shardEnumerators.Add(new ShardisAsyncShardEnumerator<TResult>(buf.ShardId, buf.idx, ToAsyncEnumerable(buf.list).GetAsyncEnumerator(cancellationToken)));
                 shardIds.Add(buf.ShardId);
             }
-            var probe = new ObserverMergeProbe(Observer);
-            await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard: 1, ct, probe);
+            var probe = new ObserverMergeProbe(Observer, _heapSampleEvery);
+        await using var ordered = new ShardisAsyncOrderedEnumerator<TResult, TKey>(shardEnumerators, keySelector, prefetchPerShard: 1, cancellationToken, probe);
             while (await ordered.MoveNextAsync().ConfigureAwait(false))
             {
                 TryObserver(o => o.OnItemYielded(ordered.Current.ShardId));
                 yield return ordered.Current;
             }
-            foreach (var id in shardIds) { TryObserver(o => o.OnShardCompleted(id)); }
+            foreach (var id in shardIds) { TryObserver(o => o.OnShardCompleted(id)); TryObserver(o => o.OnShardStopped(id, ShardStopReason.Completed)); }
 
             static async IAsyncEnumerable<TResult> ToAsyncEnumerable(IEnumerable<TResult> source)
             {

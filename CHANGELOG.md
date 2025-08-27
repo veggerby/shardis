@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Internal merge probe hook (`IOrderedMergeProbe`) for test/diagnostic observation of heap size.
 - Parallelized eager ordered path (`QueryAllShardsOrderedEagerAsync`) materializing per shard concurrently before merge.
 - Expanded test suite: duplicate-key determinism, early emission (first item before slow shards complete), heap bound enforcement, cancellation hygiene, exception propagation.
+- Merge observer lifecycle extension: `IMergeObserver.OnShardStopped(ShardId, ShardStopReason)` with reasons (`Completed|Canceled|Faulted`).
+- Backpressure instrumentation hooks (`OnBackpressureWaitStart/Stop`) for unordered/channel path.
+- Heap size sampling callbacks for ordered merge with configurable throttle (`heapSampleEvery`).
+- Deterministic cancellation & startup fault tests covering stop reason emission.
 
 ### Changed (Unreleased)
 

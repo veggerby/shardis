@@ -1,6 +1,6 @@
 using System.Diagnostics;
-
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 
 using Shardis.Model;
 using Shardis.Querying;
@@ -10,6 +10,7 @@ namespace Shardis.Benchmarks;
 
 [MemoryDiagnoser]
 [BenchmarkCategory("merge")]
+[Config(typeof(Config))]
 public class MergeEnumeratorBenchmarks
 {
     [Params(2, 4, 8)] public int Shards { get; set; }
@@ -44,7 +45,8 @@ public class MergeEnumeratorBenchmarks
             count++;
             if (firstItemMicros < 0) { firstItemMicros = sw.ElapsedTicks * 1_000_000 / Stopwatch.Frequency; }
         }
-        return count + (int)(firstItemMicros & 0); // keep count as primary metric; side channel via diagnoser/logs pending
+    FirstItemMicros = firstItemMicros;
+        return count;
     }
 
     [Benchmark(Description = "UnorderedStreaming_TotalItems")]
@@ -58,7 +60,31 @@ public class MergeEnumeratorBenchmarks
             count++;
             if (firstItemMicros < 0) { firstItemMicros = sw.ElapsedTicks * 1_000_000 / Stopwatch.Frequency; }
         }
-        return count + (int)(firstItemMicros & 0);
+        FirstItemMicros = firstItemMicros;
+        return count;
+    }
+    public long FirstItemMicros { get; private set; }
+
+    private sealed class Config : ManualConfig { }
+
+    [Benchmark(Description = "OrderedStreaming_FirstItemLatency_us")]
+    public long OrderedStreaming_FirstItemLatency()
+    {
+        // Re-run a tiny ordered session to isolate first item cost
+        var shard = new TestShard(0, "s0", 10, 1);
+        var small = new ShardStreamBroadcaster<IShard<int>, int>(new[] { shard });
+        var sw = Stopwatch.StartNew();
+        long first = -1;
+        var task = small.QueryAllShardsOrderedStreamingAsync<int, int>(_ => shard.Stream(), x => x).GetAsyncEnumerator();
+        try
+        {
+            if (task.MoveNextAsync().AsTask().GetAwaiter().GetResult())
+            {
+                first = sw.ElapsedTicks * 1_000_000 / Stopwatch.Frequency;
+            }
+        }
+        finally { task.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
+        return first;
     }
 
     private sealed class TestShard(int index, string id, int count, int delayFactor) : IShard<int>

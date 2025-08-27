@@ -32,16 +32,17 @@ Memory scales as: `O(shards × prefetchPerShard)` items resident in the heap.
 
 ## Observer & Metrics
 
-`IMergeObserver` receives callbacks for item yield, shard completion, backpressure waits and heap size samples. Wire adapters to Prometheus/OpenTelemetry by translating:
+`IMergeObserver` receives callbacks for item yield, shard completion (success only), shard stopped (any terminal state), backpressure waits and heap size samples. Wire adapters to Prometheus/OpenTelemetry by translating:
 
 | Callback | Suggested Metric |
 |----------|------------------|
 | OnItemYielded | Counter: `shardis.merge.items_total{shard}` |
 | OnShardCompleted | Histogram/summary: `shardis.merge.shard_duration_seconds{shard}` (duration tracked externally) |
+| OnShardStopped(reason) | Counter by reason: `shardis.merge.shards_stopped_total{reason}` |
 | OnBackpressureWaitStart/Stop | Counter (increment on Stop): `shardis.merge.backpressure_blocks_total` & timer for blocked seconds |
 | OnHeapSizeSample | Gauge: `shardis.merge.heap_size` |
 
-Sampling frequency for heap size is per inserted item; down-sample in adapter if needed.
+Sampling frequency for heap size is per inserted item by default; you can reduce via broadcaster `heapSampleEvery` constructor arg or down-sample in the adapter.
 
 ### Quick Defaults
 
