@@ -13,7 +13,11 @@ using Shardis.Model;
 /// <param name="Failed">Number of permanently failed keys.</param>
 /// <param name="Elapsed">Total elapsed wall-clock time.</param>
 public sealed record MigrationSummary(Guid PlanId, int Planned, int Done, int Failed, TimeSpan Elapsed);
-internal sealed class ShardMigrationExecutor<TKey>(
+/// <summary>
+/// Orchestrates execution of a migration plan: copy, optional interleaved verify, and batched swap with retry and checkpointing.
+/// Public for benchmarking and advanced scenarios; general consumption may wrap this in higher-level services later.
+/// </summary>
+public sealed class ShardMigrationExecutor<TKey>(
     IShardDataMover<TKey> mover,
     IVerificationStrategy<TKey> verification,
     IShardMapSwapper<TKey> swapper,
@@ -33,6 +37,13 @@ internal sealed class ShardMigrationExecutor<TKey>(
 
     private const int CheckpointVersion = 1;
 
+    /// <summary>
+    /// Executes the specified migration plan to completion (or until cancellation), applying copy, verify and swap phases.
+    /// </summary>
+    /// <param name="plan">The migration plan to execute.</param>
+    /// <param name="progress">Optional progress reporter throttled to at most one event per second.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Summary with counts of completed and failed moves.</returns>
     public async Task<MigrationSummary> ExecuteAsync(
         MigrationPlan<TKey> plan,
         IProgress<MigrationProgressEvent>? progress,

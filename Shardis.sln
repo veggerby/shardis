@@ -27,8 +27,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Migration", "src\Sh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Migration.Tests", "test\Shardis.Migration.Tests\Shardis.Migration.Tests.csproj", "{810851DA-A230-46B0-A3F1-30DE420B1ED0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Migration.Benchmarks", "benchmarks\Shardis.Migration.Benchmarks\Shardis.Migration.Benchmarks.csproj", "{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -147,18 +145,6 @@ Global
 		{810851DA-A230-46B0-A3F1-30DE420B1ED0}.Release|x64.Build.0 = Release|Any CPU
 		{810851DA-A230-46B0-A3F1-30DE420B1ED0}.Release|x86.ActiveCfg = Release|Any CPU
 		{810851DA-A230-46B0-A3F1-30DE420B1ED0}.Release|x86.Build.0 = Release|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Debug|x64.Build.0 = Debug|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Debug|x86.Build.0 = Debug|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Release|x64.ActiveCfg = Release|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Release|x64.Build.0 = Release|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Release|x86.ActiveCfg = Release|Any CPU
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -173,6 +159,5 @@ Global
 		{6E3C5A3D-0D2E-4A6B-9E25-2F6A9B7A2E4C} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 		{FAF7AD58-7FA6-4053-99C1-92E597AF8FB7} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 		{810851DA-A230-46B0-A3F1-30DE420B1ED0} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
-		{30C20EC9-9229-4FAC-AC6D-9AF1B9D6E3F4} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 	EndGlobalSection
 EndGlobal
