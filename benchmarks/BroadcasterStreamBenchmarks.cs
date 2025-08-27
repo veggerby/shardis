@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Querying.Linq;
+using Shardis.Testing;
 
 namespace Shardis.Benchmarks;
 
@@ -30,10 +31,17 @@ public class BroadcasterStreamBenchmarks
 
     private ShardStreamBroadcaster<IShard<string>, string> _broadcaster = null!;
     private Dictionary<string, BenchShard> _bySession = null!; // session -> shard
+    private Determinism _det = null!;
+
+    [Params(1337)]
+    public int Seed { get; set; }
 
     [GlobalSetup]
     public void Setup()
     {
+        _det = Determinism.Create(Seed);
+
+        // deterministic delay schedules (fast vs slow profile)
         var fast = new BenchShard("fast", "fs", Enumerable.Repeat(TimeSpan.FromMilliseconds(1), 50));
         var slow = new BenchShard("slow", "ss", Enumerable.Repeat(TimeSpan.FromMilliseconds(5), 50));
         _broadcaster = new([fast, slow]);

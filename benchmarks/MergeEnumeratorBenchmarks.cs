@@ -1,10 +1,12 @@
 using System.Diagnostics;
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Querying.Linq;
+using Shardis.Testing;
 
 namespace Shardis.Benchmarks;
 
@@ -17,19 +19,22 @@ public class MergeEnumeratorBenchmarks
     [Params(1000, 10000)] public int ItemsPerShard { get; set; }
     [Params(1, 3, 10)] public int SkewFactor { get; set; } // multiplier for slowest shard delay
     [Params(1, 2, 4)] public int PrefetchPerShard { get; set; }
+    [Params(1337)] public int Seed { get; set; }
 
     private ShardStreamBroadcaster<IShard<int>, int> _broadcaster = null!;
     private TestShard[] _shards = null!;
+    private Determinism _det = null!;
+    private TimeSpan[][] _delaySchedules = null!;
 
     [GlobalSetup]
     public void Setup()
     {
+        _det = Determinism.Create(Seed);
+        _delaySchedules = _det.MakeDelays(Shards, SkewFactor switch { 1 => Skew.None, 3 => Skew.Mild, 10 => Skew.Harsh, _ => Skew.None }, TimeSpan.FromMilliseconds(1), steps: ItemsPerShard);
         _shards = new TestShard[Shards];
         for (int i = 0; i < Shards; i++)
         {
-            // Slow last shard by skew factor relative to base 0 delay; use small delay to amplify differences
-            int delay = i == Shards - 1 && SkewFactor > 1 ? SkewFactor : 1;
-            _shards[i] = new TestShard(i, $"s{i}", ItemsPerShard, delay);
+            _shards[i] = new TestShard(i, $"s{i}", ItemsPerShard, _delaySchedules, _det);
         }
         _broadcaster = new ShardStreamBroadcaster<IShard<int>, int>(_shards);
     }
@@ -45,7 +50,7 @@ public class MergeEnumeratorBenchmarks
             count++;
             if (firstItemMicros < 0) { firstItemMicros = sw.ElapsedTicks * 1_000_000 / Stopwatch.Frequency; }
         }
-    FirstItemMicros = firstItemMicros;
+        FirstItemMicros = firstItemMicros;
         return count;
     }
 
@@ -71,7 +76,9 @@ public class MergeEnumeratorBenchmarks
     public long OrderedStreaming_FirstItemLatency()
     {
         // Re-run a tiny ordered session to isolate first item cost
-        var shard = new TestShard(0, "s0", 10, 1);
+        var det = Determinism.Create(Seed);
+        var schedules = det.MakeDelays(1, Skew.None, TimeSpan.FromMilliseconds(1), steps: 10);
+        var shard = new TestShard(0, "s0", 10, schedules, det);
         var small = new ShardStreamBroadcaster<IShard<int>, int>(new[] { shard });
         var sw = Stopwatch.StartNew();
         long first = -1;
@@ -87,7 +94,7 @@ public class MergeEnumeratorBenchmarks
         return first;
     }
 
-    private sealed class TestShard(int index, string id, int count, int delayFactor) : IShard<int>
+    private sealed class TestShard(int index, string id, int count, TimeSpan[][] schedules, Determinism det) : IShard<int>
     {
         public ShardId ShardId { get; } = new(id);
         public int CreateSession() => index;
@@ -96,10 +103,8 @@ public class MergeEnumeratorBenchmarks
         {
             for (int i = 0; i < count; i++)
             {
-                if (delayFactor > 1 && i % 50 == 0)
-                {
-                    await Task.Delay(delayFactor); // coarse slowing
-                }
+                // deterministic per-item delay schedule
+                await det.DelayForShardAsync(schedules, index, i);
                 yield return i;
             }
         }

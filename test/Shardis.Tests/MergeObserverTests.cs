@@ -36,11 +36,11 @@ public class MergeObserverTests
         public ConcurrentBag<ShardId> ItemShards = new();
         public ConcurrentBag<ShardId> Completed = new();
         public ConcurrentBag<(ShardId, ShardStopReason)> Stopped = new();
-    public ConcurrentQueue<(string Event, ShardId Id, ShardStopReason? Reason)> Sequence = new();
+        public ConcurrentQueue<(string Event, ShardId Id, ShardStopReason? Reason)> Sequence = new();
         public int BackpressureStarts; public int BackpressureStops; public ConcurrentBag<int> HeapSizes = new();
-    public void OnItemYielded(ShardId shardId) { ItemShards.Add(shardId); }
-    public void OnShardCompleted(ShardId shardId) { Completed.Add(shardId); Sequence.Enqueue(("Completed", shardId, null)); }
-    public void OnShardStopped(ShardId shardId, ShardStopReason reason) { Stopped.Add((shardId, reason)); Sequence.Enqueue(("Stopped", shardId, reason)); }
+        public void OnItemYielded(ShardId shardId) { ItemShards.Add(shardId); }
+        public void OnShardCompleted(ShardId shardId) { Completed.Add(shardId); Sequence.Enqueue(("Completed", shardId, null)); }
+        public void OnShardStopped(ShardId shardId, ShardStopReason reason) { Stopped.Add((shardId, reason)); Sequence.Enqueue(("Stopped", shardId, reason)); }
         public void OnBackpressureWaitStart() => Interlocked.Increment(ref BackpressureStarts);
         public void OnBackpressureWaitStop() => Interlocked.Increment(ref BackpressureStops);
         public void OnHeapSizeSample(int size) => HeapSizes.Add(size);
@@ -56,7 +56,7 @@ public class MergeObserverTests
             new TestShard("B", 5, 1)
         };
         var observer = new RecordingObserver();
-    var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, observer: observer, heapSampleEvery: 1);
+        var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, observer: observer, heapSampleEvery: 1);
 
         IAsyncEnumerable<int> Query(string session) => ((TestShard)shards.First(s => s.CreateSession() == session)).Stream();
 
@@ -71,10 +71,10 @@ public class MergeObserverTests
         Assert.Equal(10, results.Count);
         Assert.Equal(10, observer.ItemShards.Count);
         Assert.Equal(2, observer.Completed.Distinct().Count());
-    Assert.True(observer.HeapSizes.Count > 0);
+        Assert.True(observer.HeapSizes.Count > 0);
         Assert.All(observer.HeapSizes, s => Assert.InRange(s, 0, 2));
-    Assert.Equal(2, observer.Stopped.Count);
-    Assert.All(observer.Stopped, s => Assert.Equal(ShardStopReason.Completed, s.Item2));
+        Assert.Equal(2, observer.Stopped.Count);
+        Assert.All(observer.Stopped, s => Assert.Equal(ShardStopReason.Completed, s.Item2));
         // ordering: Completed must precede Stopped for each shard
         foreach (var shardId in observer.Completed)
         {
@@ -108,7 +108,7 @@ public class MergeObserverTests
         var shards = new IShard<string>[] { new TestShard("A", 5, 0) };
         var observer = new RecordingObserver();
         var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, observer: observer);
-        IAsyncEnumerable<int> Faulting(string _) => throw new InvalidOperationException("boom-start");
+        static IAsyncEnumerable<int> Faulting(string _) => throw new InvalidOperationException("boom-start");
         Exception? ex = null;
         try
         {
@@ -164,9 +164,9 @@ public class MergeObserverTests
     private sealed class ThrowingObserver : IMergeObserver
     {
         public int Throws;
-    public void OnItemYielded(ShardId shardId) { Throws++; throw new InvalidOperationException("boom"); }
-    public void OnShardCompleted(ShardId shardId) { throw new InvalidOperationException("boom"); }
-    public void OnShardStopped(ShardId shardId, ShardStopReason reason) { }
+        public void OnItemYielded(ShardId shardId) { Throws++; throw new InvalidOperationException("boom"); }
+        public void OnShardCompleted(ShardId shardId) { throw new InvalidOperationException("boom"); }
+        public void OnShardStopped(ShardId shardId, ShardStopReason reason) { }
         public void OnBackpressureWaitStart() { throw new InvalidOperationException("boom"); }
         public void OnBackpressureWaitStop() { throw new InvalidOperationException("boom"); }
         public void OnHeapSizeSample(int size) { throw new InvalidOperationException("boom"); }
@@ -188,10 +188,10 @@ public class MergeObserverTests
     [Fact]
     public async Task Unordered_Cancel_Reports_Stopped_With_Canceled()
     {
-    var shards = new IShard<string>[] { new TestShard("A", 10_000, 0) };
+        var shards = new IShard<string>[] { new TestShard("A", 10_000, 0) };
         var observer = new RecordingObserver();
-    // Use bounded channel to keep producer from fully completing before cancellation but allow cancellation to interrupt WriteAsync.
-    var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, channelCapacity: 32, observer: observer);
+        // Use bounded channel to keep producer from fully completing before cancellation but allow cancellation to interrupt WriteAsync.
+        var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, channelCapacity: 32, observer: observer);
         using var cts = new CancellationTokenSource();
         IAsyncEnumerable<int> Query(string session) => ((TestShard)shards.First()).Stream();
         int seen = 0;
@@ -211,7 +211,7 @@ public class MergeObserverTests
         }
         Assert.Single(observer.Stopped); // ensure exactly one stop recorded
         var stop = observer.Stopped.First();
-    Assert.True(stop.Item2 is ShardStopReason.Canceled or ShardStopReason.Completed, $"Unexpected stop reason {stop.Item2}");
+        Assert.True(stop.Item2 is ShardStopReason.Canceled or ShardStopReason.Completed, $"Unexpected stop reason {stop.Item2}");
     }
 
     private sealed class InfiniteShard(string id) : IShard<string>
