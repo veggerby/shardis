@@ -2,15 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+  <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Shardis.Benchmarks</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" PrivateAssets="All" />
+  <PackageReference Include="BenchmarkDotNet" />
     <ProjectReference Include="../src/Shardis/Shardis.csproj" />
+  <ProjectReference Include="../src/Shardis.Migration/Shardis.Migration.csproj" />
   </ItemGroup>
 
 </Project>

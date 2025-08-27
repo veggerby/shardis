@@ -13,7 +13,7 @@ public class RouterMetricsTests
         private readonly object _lock = new();
         public int Hits { get; private set; }
         public int Misses { get; private set; }
-        public List<(string router, string shard, bool existing)> Events { get; } = new();
+        public List<(string router, string shard, bool existing)> Events { get; } = [];
 
         public void RouteHit(string router, string shardId, bool existingAssignment)
         {

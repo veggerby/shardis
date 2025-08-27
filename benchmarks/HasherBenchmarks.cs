@@ -1,5 +1,4 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
 
 using Shardis.Hashing;
 
@@ -7,6 +6,7 @@ namespace Shardis.Benchmarks;
 
 [MemoryDiagnoser]
 [RankColumn]
+[BenchmarkCategory("hasher")]
 public class HasherBenchmarks
 {
     private readonly IShardRingHasher _default = DefaultShardRingHasher.Instance;
@@ -42,10 +42,4 @@ public class HasherBenchmarks
     }
 }
 
-public static class HashProgram
-{
-    public static void Main(string[] args)
-    {
-        BenchmarkRunner.Run<HasherBenchmarks>();
-    }
-}
+// Entry point removed; central benchmark switcher in Program.cs handles execution.

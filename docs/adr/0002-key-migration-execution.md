@@ -172,3 +172,42 @@ Copying (transient) → retry Copying → Failed
 Verifying (mismatch) → retry Verifying → Failed
 Swapping (partial failure) → retry Swapping → rollback → Copied | Failed
 ```
+
+---
+
+## References
+
+Namespaces & representative public types introduced by this ADR implementation:
+
+* `Shardis.Migration.Model`
+  * `KeyMove<TKey>`
+  * `KeyMoveState`
+  * `MigrationPlan<TKey>`
+  * `MigrationCheckpoint<TKey>`
+  * `TopologySnapshot<TKey>`
+* `Shardis.Migration.Execution`
+  * `ShardMigrationExecutor<TKey>`
+  * `MigrationProgressEvent`
+  * `ShardMigrationOptions`
+  * `MigrationSummary`
+* `Shardis.Migration.Abstractions`
+  * `IShardMigrationPlanner<TKey>`
+  * `IShardDataMover<TKey>`
+  * `IShardMapSwapper<TKey>`
+  * `IShardMigrationCheckpointStore<TKey>`
+  * `IVerificationStrategy<TKey>`
+  * `IShardMigrationMetrics`
+* `Shardis.Migration.InMemory` (reference implementations for tests / samples)
+  * `InMemoryMigrationPlanner<TKey>`
+  * `InMemoryCheckpointStore<TKey>`
+  * `InMemoryDataMover<TKey>`
+  * `InMemoryMapSwapper<TKey>`
+  * `FullEqualityVerificationStrategy<TKey>`
+  * `HashOnlyVerificationStrategy<TKey>`
+* `Shardis.Migration.Instrumentation`
+  * `NoOpShardMigrationMetrics`
+  * `SimpleShardMigrationMetrics`
+* `Shardis.Migration`
+  * `ServiceCollectionExtensions.AddShardisMigration<TKey>()`
+
+All types adhere to determinism and thread-safety guidelines outlined in ADR 0001 & project contribution rules. Future extensions (durable checkpoint stores, streaming plans) will add additional namespaces or types and update this section accordingly.
