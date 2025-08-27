@@ -36,42 +36,7 @@ public class StreamingMergeTests
     }
 
     // Observers / probes -------------------------------------------------
-    public sealed class YieldRecordingObserver : IMergeObserver
-    {
-        private long _seq;
-        public ConcurrentQueue<(long seq, long tUs, ShardId shard)> Events { get; } = new();
-        public void OnItemYielded(ShardId shard) => Events.Enqueue((Interlocked.Increment(ref _seq), TimestampUs(), shard));
-        public void OnShardCompleted(ShardId shard) { }
-        public void OnShardStopped(ShardId shard, ShardStopReason reason) { }
-        public void OnBackpressureWaitStart() { }
-        public void OnBackpressureWaitStop() { }
-        public void OnHeapSizeSample(int _) { }
-        private static long TimestampUs() => (long)(Stopwatch.GetTimestamp() * (1_000_000.0 / Stopwatch.Frequency));
-    }
-
-    public sealed class CompletionObserver : IMergeObserver
-    {
-        public ConcurrentBag<ShardId> Completed { get; } = new();
-        public ConcurrentBag<(ShardId, ShardStopReason)> Stopped { get; } = new();
-        public void OnShardCompleted(ShardId s) => Completed.Add(s);
-        public void OnShardStopped(ShardId s, ShardStopReason r) => Stopped.Add((s, r));
-        public void OnItemYielded(ShardId _) { }
-        public void OnBackpressureWaitStart() { }
-        public void OnBackpressureWaitStop() { }
-        public void OnHeapSizeSample(int _) { }
-    }
-
-    public sealed class FirstItemProbe
-    {
-        private Stopwatch? _sw;
-        public long Us { get; private set; } = -1;
-        public void Start() => _sw = Stopwatch.StartNew();
-        public void Hit()
-        {
-            if (Us >= 0 || _sw is null) return;
-            Us = (long)(_sw.ElapsedTicks * (1_000_000.0 / Stopwatch.Frequency));
-        }
-    }
+    // Helper test observers moved to dedicated files (YieldRecordingObserver, CompletionObserver, FirstItemProbe, CompositeObserver)
 
     // 1) Streaming-ness test ---------------------------------------------
     [Fact]
@@ -208,14 +173,4 @@ public class StreamingMergeTests
     }
 
     // Composite observer to fan out events without allocation churn
-    private sealed class CompositeObserver(IMergeObserver[] observers) : IMergeObserver
-    {
-        private readonly IMergeObserver[] _observers = observers;
-        public void OnItemYielded(ShardId shardId) { foreach (var o in _observers) o.OnItemYielded(shardId); }
-        public void OnShardCompleted(ShardId shardId) { foreach (var o in _observers) o.OnShardCompleted(shardId); }
-        public void OnShardStopped(ShardId shardId, ShardStopReason reason) { foreach (var o in _observers) o.OnShardStopped(shardId, reason); }
-        public void OnBackpressureWaitStart() { foreach (var o in _observers) o.OnBackpressureWaitStart(); }
-        public void OnBackpressureWaitStop() { foreach (var o in _observers) o.OnBackpressureWaitStop(); }
-        public void OnHeapSizeSample(int size) { foreach (var o in _observers) o.OnHeapSizeSample(size); }
-    }
 }

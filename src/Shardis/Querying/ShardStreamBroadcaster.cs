@@ -10,7 +10,7 @@ namespace Shardis.Querying;
 /// </summary>
 /// <typeparam name="TShard">Concrete shard type.</typeparam>
 /// <typeparam name="TSession">The type of session used for querying shards.</typeparam>
-public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<TSession> where TShard : IShard<TSession>
+public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<TSession> where TShard : IShard<TSession>
 {
     private readonly IEnumerable<TShard> _shards;
     private readonly int? _channelCapacity;
@@ -260,31 +260,20 @@ public partial class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroa
             }
         }
     }
-}
 
-internal sealed class ObserverMergeProbe : IOrderedMergeProbe
-{
-    private readonly IMergeObserver _observer;
-    private readonly int _sampleEvery;
-    private int _counter;
-    public ObserverMergeProbe(IMergeObserver observer, int sampleEvery = 1)
-    {
-        _observer = observer;
-        _sampleEvery = sampleEvery < 1 ? 1 : sampleEvery;
-        _counter = 0;
-    }
-    public void OnHeapSize(int size)
-    {
-        if ((++_counter % _sampleEvery) != 0) { return; }
-        try { _observer.OnHeapSizeSample(size); } catch { /* swallow */ }
-    }
-}
-
-partial class ShardStreamBroadcaster<TShard, TSession>
-{
     private void TryObserver(Action<IMergeObserver> invoke)
     {
-        if (ReferenceEquals(Observer, NoOpMergeObserver.Instance)) { return; }
-        try { invoke(Observer); } catch { /* observer faults must not impact pipeline */ }
+        if (ReferenceEquals(Observer, NoOpMergeObserver.Instance))
+        {
+            return;
+        }
+        try
+        {
+            invoke(Observer);
+        }
+        catch
+        {
+            // observer faults must not impact pipeline
+        }
     }
 }
