@@ -6,7 +6,58 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
-_No changes yet._
+### Added (Unreleased)
+
+- Streaming globally ordered query API: `QueryAllShardsOrderedStreamingAsync<TResult,TKey>` with bounded per-shard prefetch (`prefetchPerShard`).
+- Proactive k-way merge enumerator (`ShardisAsyncOrderedEnumerator`) supporting deterministic tie-break `(key, shardIndex, sequence)` and bounded memory.
+- Internal merge probe hook (`IOrderedMergeProbe`) for test/diagnostic observation of heap size.
+- Parallelized eager ordered path (`QueryAllShardsOrderedEagerAsync`) materializing per shard concurrently before merge.
+- Expanded test suite: duplicate-key determinism, early emission (first item before slow shards complete), heap bound enforcement, cancellation hygiene, exception propagation.
+
+### Changed (Unreleased)
+
+- Ordered querying no longer relies on eager materialization by default; explicit streaming vs eager APIs clarify memory / latency trade-offs.
+- Eager ordered path now uses parallel per-shard buffering then reuses ordered merge enumerator for consistency.
+
+### Fixed (Unreleased)
+
+- Potential under-prefetch (single-item buffering) replaced by proactive top-up loop ensuring shards are kept at `≤ prefetchPerShard` buffered items.
+- Ensured exceptions from any shard during ordered streaming propagate immediately and dispose all enumerators.
+
+### Deprecated (Unreleased)
+
+- Legacy `QueryAllShardsOrderedAsync` marked obsolete in favor of `QueryAllShardsOrderedStreamingAsync` and `QueryAllShardsOrderedEagerAsync`.
+
+### Internal / Quality (Unreleased)
+
+- Added deterministic sequence number in heap ordering to guarantee stable ordering across runs with duplicate keys.
+- Added cancellation tests validating prompt disposal.
+- Documentation and code comments aligned toward Step 5 (backpressure differentiation) groundwork.
+
+## [0.1.1] - 2025-08-26
+
+### Added (0.1.1)
+
+- Initial shard migration scaffold (`Shardis.Migration` package):
+  - `IShardMigrator<TKey,TSession>` abstraction + `DefaultShardMigrator<TKey,TSession>` baseline implementation (plan + execute skeleton).
+  - `ShardMigrationPlan<TKey>` immutable plan type.
+  - In-memory migration components (checkpoint / planner helpers) for tests.
+  - Migration metrics abstraction hooks (counters planned: plan.keys, key.committed, key.failed, duration histogram scaffolding).
+  - ADR & design docs (`MIGRATION.md`, `docs/adr/0002-key-migration-execution.md`) outlining phases, idempotency, data integrity tiers, dry-run roadmap.
+- Unit tests covering planning invariants, retries, checkpoint persistence, and idempotent plan re-execution.
+
+### Changed (0.1.1)
+
+- Map store interfaces extended to support migration planning scenarios (non-breaking additions).
+
+### Internal / Quality (0.1.1)
+
+- Introduced structured migration backlog and task breakdown docs.
+- Added benchmarks project placeholder for future migration throughput measurements.
+
+### Notes (0.1.1)
+
+- Data copy & verification pipeline is not yet implemented (Tier 0: mapping changes only). Future releases will layer read / write / checksum phases and dry-run.
 
 ## [0.1.0] - 2025-08-25
 
