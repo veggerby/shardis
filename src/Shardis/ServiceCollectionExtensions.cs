@@ -53,7 +53,7 @@ public static class ServiceCollectionExtensions
         // Register selected router
         if (options.RouterFactory is not null)
         {
-            services.AddSingleton(sp => options.RouterFactory(sp, options.Shards));
+            services.AddSingleton<IShardRouter<TKey, TSession>>(sp => options.RouterFactory(sp, options.Shards));
         }
         else if (options.UseConsistentHashing)
         {
