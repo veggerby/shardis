@@ -52,3 +52,14 @@ Start here, then profile:
 * Unordered Streaming: `channelCapacity = 256` (halve/double while watching backpressure wait count & total blocked time).
 * If backpressure wait count is high (> a few per second) and blocked time grows, increase capacity (unordered) or prefetch (ordered) modestly.
 * Track two core dials via observer: total blocked duration (sum of wait windows) and number of waits.
+
+## Streaming & Fairness Guarantees (Tested)
+
+Validated via deterministic test suite (`StreamingMergeTests`):
+
+* Streaming ordered merge yields items before slow shards finish (`OrderedStreaming_YieldsBeforeSlowShardCompletes`).
+* Unordered streaming maintains progress for fast shards under harsh skew; no starvation beyond bounded dry spells (`UnorderedStreaming_FastShards_AreNotStarved_UnderSkew`).
+* Ordered eager path defers first yield until full materialization (`OrderedEager_DoesNotYieldUntilMaterializationCompletes`).
+* Channel capacity variations (32 / 128 / 512) do not induce starvation; longest observed fast-shard dry spell scales within a small multiple of capacity (`UnorderedStreaming_CapacityDoesNotCauseStarvation`).
+
+Guarantees rely on fixed seed (1337), deterministic per-shard delay schedules (no wall-clock sleeps), and cancellation timeouts to ensure reliability in CI.
