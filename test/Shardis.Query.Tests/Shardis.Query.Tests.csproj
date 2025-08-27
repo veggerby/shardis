@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="All" />
+    <PackageReference Include="NSubstitute" PrivateAssets="All" />
+    <PackageReference Include="xunit" PrivateAssets="All" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="All" />
+  <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="AwesomeAssertions" />
+    <Using Include="NSubstitute" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Shardis.Query/Shardis.Query.csproj" />
+    <ProjectReference Include="../../src/Shardis.Query.InMemory/Shardis.Query.InMemory.csproj" />
+    <ProjectReference Include="../../src/Shardis.Query.EFCore/Shardis.Query.EFCore.csproj" />
+  <ProjectReference Include="../../src/Shardis.Marten/Shardis.Marten.csproj" />
+  </ItemGroup>
+</Project>
