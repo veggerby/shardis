@@ -16,8 +16,7 @@ Benchmark sources live under `benchmarks/` (single project `Shardis.Benchmarks`)
 - `RouterBenchmarks` (category `router`) – Default vs Consistent routers routing 10k deterministic keys.
 - `HasherBenchmarks` (category `hasher`) – ring hasher micro-benchmarks over 50k seeded random values.
 - `MigrationThroughputBenchmarks` (category `migration`) – end-to-end migration executor throughput across a controlled concurrency matrix.
-
-The Broadcaster benchmarks mentioned previously are not currently included; re‑introduce when streaming merge optimization work resumes.
+- `BroadcasterStreamBenchmarks` (category `broadcaster`) – streaming broadcaster throughput & fairness under shard speed skew (fast vs slow producers, configurable item count / delay). Used to evaluate backpressure and merge latency.
 
 ## Running
 
@@ -41,6 +40,7 @@ By category:
 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories router
 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories hasher
 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories migration
+dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories broadcaster
 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories migration,router
 ```
 
@@ -133,9 +133,10 @@ Interpretation:
 
 ## Roadmap Ideas
 
-- Bench streaming query merge enumerators (ordered vs unordered).
+- Bench streaming query merge enumerators (ordered vs unordered) – category `merge` (planned).
 - Benchmark migration planning overhead.
 - Benchmark map store implementations (InMemory vs Redis vs SQL).
+- Add broadcaster channel capacity sweep (param) for backpressure tuning.
 
 ## Interpreting Changes
 
