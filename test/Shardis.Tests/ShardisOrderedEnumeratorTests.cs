@@ -22,6 +22,7 @@ public class ShardisOrderedEnumeratorTests
         var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard1, shard2],
             keySelector: x => x,
+            prefetchPerShard: 1,
             cancellationToken: CancellationToken.None);
 
         // act
@@ -45,7 +46,8 @@ public class ShardisOrderedEnumeratorTests
 
         var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard1, shard2],
-            keySelector: x => x);
+            keySelector: x => x,
+            prefetchPerShard: 1);
 
         // act
         var hasMore = await enumerator.MoveNextAsync();
@@ -66,7 +68,8 @@ public class ShardisOrderedEnumeratorTests
 
         var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard],
-            keySelector: x => x);
+            keySelector: x => x,
+            prefetchPerShard: 1);
 
         // act
         var results = new List<ShardItem<int>>();
@@ -93,6 +96,7 @@ public class ShardisOrderedEnumeratorTests
         var enumerator = new ShardisAsyncOrderedEnumerator<int, int>(
             [shard],
             keySelector: x => x,
+            prefetchPerShard: 1,
             cancellationToken: cts.Token);
 
         cts.Cancel();
@@ -114,7 +118,7 @@ public class ShardisOrderedEnumeratorTests
         // arrange
         var shard1 = new TestShardisEnumerator<(int k, string v)>([(1, "a"), (2, "b")], "s1");
         var shard2 = new TestShardisEnumerator<(int k, string v)>([(1, "c"), (2, "d")], "s2");
-        var enumerator = new ShardisAsyncOrderedEnumerator<(int k, string v), int>([shard1, shard2], x => x.k);
+        var enumerator = new ShardisAsyncOrderedEnumerator<(int k, string v), int>([shard1, shard2], x => x.k, prefetchPerShard: 1);
 
         // act
         var items = new List<ShardItem<(int k, string v)>>();
