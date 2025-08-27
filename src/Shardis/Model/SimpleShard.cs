@@ -25,17 +25,17 @@ public sealed class SimpleShard : ISimpleShard
     /// </summary>
     /// <param name="shardId">The unique identifier of the shard.</param>
     /// <param name="connectionString">The connection string for the shard.</param>
-    /// <param name="queryExecutor">Optional query executor enabling LINQ broadcast operations.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="shardId"/> is null or whitespace.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
+    /// <param name="queryExecutor">Optional query executor enabling LINQ operations.</param>
     public SimpleShard(ShardId shardId, string connectionString, IShardQueryExecutor<string>? queryExecutor = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shardId.Value, nameof(shardId));
         ArgumentNullException.ThrowIfNull(connectionString, nameof(connectionString));
-
+        _queryExecutor = queryExecutor ?? NoOpQueryExecutor.Instance;
         ShardId = shardId;
         ConnectionString = connectionString;
-        _queryExecutor = queryExecutor ?? NoOpQueryExecutor.Instance;
+
     }
 
     /// <summary>
@@ -56,9 +56,7 @@ public sealed class SimpleShard : ISimpleShard
     private sealed class NoOpQueryExecutor : IShardQueryExecutor<string>
     {
         public static readonly NoOpQueryExecutor Instance = new();
-        public IAsyncEnumerable<T> Execute<T>(string session, Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull
-            => throw new NotSupportedException("No query executor configured for this shard.");
-        public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(string session, Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr, Func<T, TKey> keySelector) where T : notnull
-            => throw new NotSupportedException("No query executor configured for this shard.");
+        public IAsyncEnumerable<T> Execute<T>(string session, Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull => throw new NotSupportedException();
+        public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(string session, Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr, Func<T, TKey> keySelector) where T : notnull => throw new NotSupportedException();
     }
 }

@@ -23,13 +23,11 @@
   <ItemGroup>
     <PackageReference Include="Marten" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="../Shardis.Query.Marten/Shardis.Query.Marten.csproj" />
-  </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Shardis.Query.Marten/Shardis.Query.Marten.csproj" />
     <ProjectReference Include="..\Shardis\Shardis.csproj" />
-  <ProjectReference Include="..\Shardis.Query\Shardis.Query.csproj" />
+    <ProjectReference Include="..\Shardis.Query\Shardis.Query.csproj" />
   </ItemGroup>
 
 </Project>

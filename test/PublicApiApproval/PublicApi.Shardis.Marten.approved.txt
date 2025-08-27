@@ -1,0 +1,24 @@
+[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
+[assembly: System.Resources.NeutralResourcesLanguage("en")]
+namespace Shardis.Marten
+{
+    public sealed class MartenQueryExecutor : Shardis.Querying.Linq.IShardQueryExecutor<Marten.IDocumentSession>
+    {
+        public static readonly Shardis.Marten.MartenQueryExecutor Instance;
+        public System.Collections.Generic.IAsyncEnumerable<T> Execute<T>(Marten.IDocumentSession session, System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<T>, System.Linq.IQueryable<T>>> expr)
+            where T :  notnull { }
+        public System.Collections.Generic.IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(Marten.IDocumentSession session, System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<T>, System.Linq.IOrderedQueryable<T>>> orderedExpr, System.Func<T, TKey> keySelector)
+            where T :  notnull { }
+        public Shardis.Marten.MartenQueryExecutor WithAdaptivePaging(int minPageSize = 64, int maxPageSize = 8192, double targetBatchMilliseconds = 75, double growFactor = 1.5, double shrinkFactor = 0.5, Shardis.Query.Diagnostics.IAdaptivePagingObserver? observer = null) { }
+        public Shardis.Marten.MartenQueryExecutor WithMaterializer(Shardis.Query.Marten.IQueryableShardMaterializer materializer) { }
+        public Shardis.Marten.MartenQueryExecutor WithMetrics(Shardis.Query.Diagnostics.IQueryMetricsObserver metrics) { }
+        public Shardis.Marten.MartenQueryExecutor WithPageSize(int pageSize) { }
+    }
+    public sealed class MartenShard : Shardis.Model.IShard<Marten.IDocumentSession>
+    {
+        public MartenShard(Shardis.Model.ShardId shardId, Marten.IDocumentStore store) { }
+        public Shardis.Querying.Linq.IShardQueryExecutor<Marten.IDocumentSession> QueryExecutor { get; }
+        public Shardis.Model.ShardId ShardId { get; }
+        public Marten.IDocumentSession CreateSession() { }
+    }
+}

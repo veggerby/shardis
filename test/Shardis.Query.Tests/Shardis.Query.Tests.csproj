@@ -11,6 +11,7 @@
     <PackageReference Include="NSubstitute" PrivateAssets="All" />
     <PackageReference Include="xunit" PrivateAssets="All" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="All" />
+  <PackageReference Include="Microsoft.EntityFrameworkCore" />
   <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
   <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>

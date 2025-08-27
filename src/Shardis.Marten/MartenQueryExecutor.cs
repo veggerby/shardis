@@ -37,8 +37,9 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
         int maxPageSize = 8192,
         double targetBatchMilliseconds = 75,
         double growFactor = 1.5,
-        double shrinkFactor = 0.5)
-        => new(_metrics, new Shardis.Query.Marten.AdaptiveMartenMaterializer(minPageSize, maxPageSize, targetBatchMilliseconds, growFactor, shrinkFactor));
+    double shrinkFactor = 0.5,
+    Shardis.Query.Diagnostics.IAdaptivePagingObserver? observer = null)
+    => new(_metrics, new Shardis.Query.Marten.AdaptiveMartenMaterializer(minPageSize, maxPageSize, targetBatchMilliseconds, growFactor, shrinkFactor, observer));
 
     /// <summary>
     /// Executes an unordered Marten LINQ query.

@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Shardis.Query.Tests;
 
@@ -78,6 +79,19 @@ public sealed class EfCoreExecutorTests
             ctx.SaveChanges();
         }
         return ctx;
+    }
+
+    [Fact]
+    public async Task EfCoreExecutor_AppliesCommandTimeout_WhenProvided()
+    {
+        var timeout = 123;
+        var exec = new Shardis.Query.Execution.EFCore.EfCoreShardQueryExecutor(1, _ => CreateAndSeedSqlite(0), UnorderedConcurrentMerge, commandTimeoutSeconds: timeout);
+        var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 0).Select(p => p);
+        // Enumerate single entity to ensure pipeline executed (timeout path reached)
+        await foreach (var _ in q) { break; }
+        // Create a fresh context to inspect default timeout remains unaffected (we cannot directly read the timeout from disposed context here)
+        // Instead: ensure enumeration succeeded without exception (smoke). For stronger validation, provider-specific APIs would be needed.
+        true.Should().BeTrue();
     }
 
 

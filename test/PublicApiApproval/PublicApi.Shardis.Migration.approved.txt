@@ -1,0 +1,146 @@
+[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
+[assembly: System.Resources.NeutralResourcesLanguage("en")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Benchmarks")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Migration.Tests")]
+namespace Shardis.Migration.Abstractions
+{
+    public interface IShardDataMover<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        System.Threading.Tasks.Task CopyAsync(Shardis.Migration.Model.KeyMove<TKey> move, System.Threading.CancellationToken ct);
+        System.Threading.Tasks.Task<bool> VerifyAsync(Shardis.Migration.Model.KeyMove<TKey> move, System.Threading.CancellationToken ct);
+    }
+    public interface IShardMapSwapper<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        System.Threading.Tasks.Task SwapAsync(System.Collections.Generic.IReadOnlyList<Shardis.Migration.Model.KeyMove<TKey>> verifiedBatch, System.Threading.CancellationToken ct);
+    }
+    public interface IShardMigrationCheckpointStore<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        System.Threading.Tasks.Task<Shardis.Migration.Model.MigrationCheckpoint<TKey>?> LoadAsync(System.Guid planId, System.Threading.CancellationToken ct);
+        System.Threading.Tasks.Task PersistAsync(Shardis.Migration.Model.MigrationCheckpoint<TKey> checkpoint, System.Threading.CancellationToken ct);
+    }
+    public interface IShardMigrationMetrics
+    {
+        void IncCopied(long delta = 1);
+        void IncFailed(long delta = 1);
+        void IncPlanned(long delta = 1);
+        void IncRetries(long delta = 1);
+        void IncSwapped(long delta = 1);
+        void IncVerified(long delta = 1);
+        void SetActiveCopy(int value);
+        void SetActiveVerify(int value);
+    }
+    public interface IShardMigrationPlanner<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        System.Threading.Tasks.Task<Shardis.Migration.Model.MigrationPlan<TKey>> CreatePlanAsync(Shardis.Migration.Model.TopologySnapshot<TKey> from, Shardis.Migration.Model.TopologySnapshot<TKey> to, System.Threading.CancellationToken ct);
+    }
+    public interface IVerificationStrategy<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        System.Threading.Tasks.Task<bool> VerifyAsync(Shardis.Migration.Model.KeyMove<TKey> move, System.Threading.CancellationToken ct);
+    }
+}
+namespace Shardis.Migration.Execution
+{
+    public sealed class MigrationProgressEvent : System.IEquatable<Shardis.Migration.Execution.MigrationProgressEvent>
+    {
+        public MigrationProgressEvent(System.Guid PlanId, int Total, int Copied, int Verified, int Swapped, int Failed, int ActiveCopy, int ActiveVerify, System.DateTimeOffset TimestampUtc) { }
+        public int ActiveCopy { get; init; }
+        public int ActiveVerify { get; init; }
+        public int Copied { get; init; }
+        public int Failed { get; init; }
+        public System.Guid PlanId { get; init; }
+        public int Swapped { get; init; }
+        public System.DateTimeOffset TimestampUtc { get; init; }
+        public int Total { get; init; }
+        public int Verified { get; init; }
+    }
+    public sealed class MigrationSummary : System.IEquatable<Shardis.Migration.Execution.MigrationSummary>
+    {
+        public MigrationSummary(System.Guid PlanId, int Planned, int Done, int Failed, System.TimeSpan Elapsed) { }
+        public int Done { get; init; }
+        public System.TimeSpan Elapsed { get; init; }
+        public int Failed { get; init; }
+        public System.Guid PlanId { get; init; }
+        public int Planned { get; init; }
+    }
+    public sealed class ShardMigrationExecutor<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public ShardMigrationExecutor(Shardis.Migration.Abstractions.IShardDataMover<TKey> mover, Shardis.Migration.Abstractions.IVerificationStrategy<TKey> verification, Shardis.Migration.Abstractions.IShardMapSwapper<TKey> swapper, Shardis.Migration.Abstractions.IShardMigrationCheckpointStore<TKey> checkpointStore, Shardis.Migration.Abstractions.IShardMigrationMetrics metrics, Shardis.Migration.Execution.ShardMigrationOptions options, System.Func<System.DateTimeOffset>? timeProvider = null) { }
+        public System.Exception? LastCheckpointPersistException { get; }
+        public System.Threading.Tasks.Task<Shardis.Migration.Execution.MigrationSummary> ExecuteAsync(Shardis.Migration.Model.MigrationPlan<TKey> plan, System.IProgress<Shardis.Migration.Execution.MigrationProgressEvent>? progress, System.Threading.CancellationToken ct) { }
+    }
+    public sealed class ShardMigrationOptions
+    {
+        public ShardMigrationOptions() { }
+        public int CheckpointFlushEveryTransitions { get; init; }
+        public System.TimeSpan CheckpointFlushInterval { get; init; }
+        public int CopyConcurrency { get; init; }
+        public bool EnableDryRunHashSampling { get; init; }
+        public bool ForceSwapOnVerificationFailure { get; init; }
+        public bool InterleaveCopyAndVerify { get; init; }
+        public int MaxRetries { get; init; }
+        public System.TimeSpan RetryBaseDelay { get; init; }
+        public int SwapBatchSize { get; init; }
+        public int VerifyConcurrency { get; init; }
+    }
+}
+namespace Shardis.Migration.Model
+{
+    public enum KeyMoveState
+    {
+        Planned = 0,
+        Copying = 1,
+        Copied = 2,
+        Verifying = 3,
+        Verified = 4,
+        Swapping = 5,
+        Done = 6,
+        Failed = 7,
+    }
+    public readonly struct KeyMove<TKey> : System.IEquatable<Shardis.Migration.Model.KeyMove<TKey>>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public KeyMove(Shardis.Model.ShardKey<TKey> Key, Shardis.Model.ShardId Source, Shardis.Model.ShardId Target) { }
+        public Shardis.Model.ShardKey<TKey> Key { get; init; }
+        public Shardis.Model.ShardId Source { get; init; }
+        public Shardis.Model.ShardId Target { get; init; }
+        public override string ToString() { }
+    }
+    public sealed class MigrationCheckpoint<TKey> : System.IEquatable<Shardis.Migration.Model.MigrationCheckpoint<TKey>>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public MigrationCheckpoint(System.Guid planId, int version, System.DateTimeOffset updatedAtUtc, System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardKey<TKey>, Shardis.Migration.Model.KeyMoveState> states, int lastProcessedIndex) { }
+        public int LastProcessedIndex { get; }
+        public System.Guid PlanId { get; }
+        public System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardKey<TKey>, Shardis.Migration.Model.KeyMoveState> States { get; }
+        public System.DateTimeOffset UpdatedAtUtc { get; }
+        public int Version { get; }
+    }
+    public sealed class MigrationPlan<TKey> : System.IEquatable<Shardis.Migration.Model.MigrationPlan<TKey>>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public MigrationPlan(System.Guid planId, System.DateTimeOffset createdAtUtc, System.Collections.Generic.IEnumerable<Shardis.Migration.Model.KeyMove<TKey>> moves) { }
+        public System.DateTimeOffset CreatedAtUtc { get; }
+        public System.Collections.Generic.IReadOnlyList<Shardis.Migration.Model.KeyMove<TKey>> Moves { get; }
+        public System.Guid PlanId { get; }
+    }
+    public sealed class TopologySnapshot<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public TopologySnapshot(System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardKey<TKey>, Shardis.Model.ShardId> assignments) { }
+        public System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardKey<TKey>, Shardis.Model.ShardId> Assignments { get; }
+    }
+}
+namespace Shardis.Migration
+{
+    public static class ServiceCollectionExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisMigration<TKey>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Shardis.Migration.Execution.ShardMigrationOptions>? configure = null)
+            where TKey :  notnull, System.IEquatable<TKey> { }
+    }
+}

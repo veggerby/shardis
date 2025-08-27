@@ -1,0 +1,363 @@
+[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
+[assembly: System.Resources.NeutralResourcesLanguage("en")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Tests")]
+namespace Shardis.Hashing
+{
+    public static class DefaultShardKeyHasher<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public static Shardis.Hashing.IShardKeyHasher<TKey> Instance { get; }
+    }
+    public sealed class DefaultShardRingHasher : Shardis.Hashing.IShardRingHasher
+    {
+        public static readonly Shardis.Hashing.IShardRingHasher Instance;
+        public uint Hash(string value) { }
+    }
+    public sealed class Fnv1aShardRingHasher : Shardis.Hashing.IShardRingHasher
+    {
+        public static readonly Shardis.Hashing.IShardRingHasher Instance;
+        public uint Hash(string value) { }
+    }
+    public interface IShardKeyHasher<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        uint ComputeHash(Shardis.Model.ShardKey<TKey> key);
+    }
+    public interface IShardRingHasher
+    {
+        uint Hash(string value);
+    }
+    public static class ShardHasher
+    {
+        public static uint HashBytes(byte[] bytes) { }
+        public static uint HashString(string key) { }
+    }
+}
+namespace Shardis.Instrumentation
+{
+    public interface IShardisMetrics
+    {
+        void RouteHit(string router, string shardId, bool existingAssignment);
+        void RouteMiss(string router);
+    }
+    public sealed class MetricShardisMetrics : Shardis.Instrumentation.IShardisMetrics
+    {
+        public MetricShardisMetrics() { }
+        public void RouteHit(string router, string shardId, bool existingAssignment) { }
+        public void RouteMiss(string router) { }
+    }
+}
+namespace Shardis.Migration
+{
+    public class DefaultShardMigrator<TKey, TSession> : Shardis.Migration.IShardMigrator<TKey, TSession>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public DefaultShardMigrator() { }
+        public System.Threading.Tasks.Task ExecutePlanAsync(Shardis.Migration.ShardMigrationPlan<TKey> plan, System.Func<Shardis.Model.ShardKey<TKey>, System.Threading.Tasks.Task>? perKeyCallback = null) { }
+        public System.Threading.Tasks.Task MigrateAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, Shardis.Model.ShardKey<TKey> shardKey) { }
+        public System.Threading.Tasks.Task<Shardis.Migration.ShardMigrationPlan<TKey>> PlanAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, System.Collections.Generic.IEnumerable<Shardis.Model.ShardKey<TKey>> keys) { }
+    }
+    public interface IShardMigrator<TKey, TSession>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        System.Threading.Tasks.Task ExecutePlanAsync(Shardis.Migration.ShardMigrationPlan<TKey> plan, System.Func<Shardis.Model.ShardKey<TKey>, System.Threading.Tasks.Task>? perKeyCallback = null);
+        System.Threading.Tasks.Task MigrateAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, Shardis.Model.ShardKey<TKey> shardKey);
+        System.Threading.Tasks.Task<Shardis.Migration.ShardMigrationPlan<TKey>> PlanAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, System.Collections.Generic.IEnumerable<Shardis.Model.ShardKey<TKey>> keys);
+    }
+    public sealed class ShardMigrationPlan<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public ShardMigrationPlan(Shardis.Model.ShardId source, Shardis.Model.ShardId target, System.Collections.Generic.IEnumerable<Shardis.Model.ShardKey<TKey>> keys) { }
+        public System.Collections.Generic.IReadOnlyList<Shardis.Model.ShardKey<TKey>> Keys { get; }
+        public Shardis.Model.ShardId SourceShardId { get; }
+        public Shardis.Model.ShardId TargetShardId { get; }
+    }
+}
+namespace Shardis.Model
+{
+    public interface IShardSessionProvider<TSession>
+    {
+        TSession GetSession(Shardis.Model.ShardId shardId);
+    }
+    public interface IShard<TSession>
+    {
+        Shardis.Querying.Linq.IShardQueryExecutor<TSession> QueryExecutor { get; }
+        Shardis.Model.ShardId ShardId { get; }
+        TSession CreateSession();
+    }
+    public interface ISimpleShard : Shardis.Model.IShard<string>
+    {
+        string ConnectionString { get; }
+    }
+    public readonly struct ShardId : System.IEquatable<Shardis.Model.ShardId>
+    {
+        public ShardId(string value) { }
+        public string Value { get; }
+        public override string ToString() { }
+    }
+    public readonly struct ShardKey<TKey> : System.IEquatable<Shardis.Model.ShardKey<TKey>>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public ShardKey(TKey value) { }
+        public TKey Value { get; }
+        public override string ToString() { }
+    }
+    public readonly struct ShardMap<TKey> : System.IEquatable<Shardis.Model.ShardMap<TKey>>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public ShardMap(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId) { }
+        public Shardis.Model.ShardId ShardId { get; }
+        public Shardis.Model.ShardKey<TKey> ShardKey { get; }
+        public override string ToString() { }
+    }
+    public class Shard<TSession> : Shardis.Model.IShard<TSession>
+    {
+        public Shard(Shardis.Model.ShardId shardId, Shardis.Model.IShardSessionProvider<TSession> sessionProvider, Shardis.Querying.Linq.IShardQueryExecutor<TSession>? queryExecutor = null) { }
+        public Shardis.Querying.Linq.IShardQueryExecutor<TSession> QueryExecutor { get; }
+        public Shardis.Model.ShardId ShardId { get; }
+        public TSession CreateSession() { }
+        public override string ToString() { }
+    }
+    public sealed class SimpleShard : Shardis.Model.IShard<string>, Shardis.Model.ISimpleShard
+    {
+        public SimpleShard(Shardis.Model.ShardId shardId, string connectionString, Shardis.Querying.Linq.IShardQueryExecutor<string>? queryExecutor = null) { }
+        public string ConnectionString { get; }
+        public Shardis.Querying.Linq.IShardQueryExecutor<string> QueryExecutor { get; }
+        public Shardis.Model.ShardId ShardId { get; }
+        public string CreateSession() { }
+        public override string ToString() { }
+    }
+}
+namespace Shardis.Persistence
+{
+    public interface IShardMapStore<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        Shardis.Model.ShardMap<TKey> AssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId);
+        bool TryAssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId, out Shardis.Model.ShardMap<TKey> shardMap);
+        bool TryGetOrAdd(Shardis.Model.ShardKey<TKey> shardKey, System.Func<Shardis.Model.ShardId> valueFactory, out Shardis.Model.ShardMap<TKey> shardMap);
+        bool TryGetShardIdForKey(Shardis.Model.ShardKey<TKey> shardKey, out Shardis.Model.ShardId shardId);
+    }
+    public class InMemoryShardMapStore<TKey> : Shardis.Persistence.IShardMapStore<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public InMemoryShardMapStore() { }
+        public Shardis.Model.ShardMap<TKey> AssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId) { }
+        public bool TryAssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId, out Shardis.Model.ShardMap<TKey> shardMap) { }
+        public bool TryGetOrAdd(Shardis.Model.ShardKey<TKey> shardKey, System.Func<Shardis.Model.ShardId> valueFactory, out Shardis.Model.ShardMap<TKey> shardMap) { }
+        public bool TryGetShardIdForKey(Shardis.Model.ShardKey<TKey> shardKey, out Shardis.Model.ShardId shardId) { }
+    }
+}
+namespace Shardis.Querying
+{
+    public interface IMergeObserver
+    {
+        void OnBackpressureWaitStart();
+        void OnBackpressureWaitStop();
+        void OnHeapSizeSample(int size);
+        void OnItemYielded(Shardis.Model.ShardId shardId);
+        void OnShardCompleted(Shardis.Model.ShardId shardId);
+        void OnShardStopped(Shardis.Model.ShardId shardId, Shardis.Querying.ShardStopReason reason);
+    }
+    public interface IShardBroadcaster<TSession>
+    {
+        System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<TResult>> QueryAllShardsAsync<TResult>(System.Func<TSession, System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<TResult>>> query, System.Threading.CancellationToken cancellationToken = default);
+    }
+    public interface IShardStreamBroadcaster<TSession>
+    {
+        System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsAsync<TResult>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Threading.CancellationToken cancellationToken = default);
+        [System.Obsolete("Use QueryAllShardsOrderedStreamingAsync (streaming) or QueryAllShardsOrderedEager" +
+            "Async (explicit) instead. Will be removed in vNext.")]
+        System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsOrderedAsync<TResult, TKey>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TKey> keySelector, System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey>;
+        System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsOrderedEagerAsync<TResult, TKey>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TKey> keySelector, System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey>;
+        System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsOrderedStreamingAsync<TResult, TKey>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TKey> keySelector, int prefetchPerShard = 1, System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey>;
+        System.Collections.Generic.IAsyncEnumerable<TProjected> QueryAndProjectAsync<TResult, TProjected>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TProjected> selector, System.Threading.CancellationToken cancellationToken = default);
+    }
+    public interface IShardisAsyncEnumerator<T> : System.Collections.Generic.IAsyncEnumerator<Shardis.Querying.ShardItem<T>>, System.IAsyncDisposable
+    {
+        bool HasValue { get; }
+        bool IsComplete { get; }
+        bool IsPrimed { get; }
+        int ShardCount { get; }
+    }
+    public interface IShardisAsyncMergeEnumerator<T> : Shardis.Querying.IShardisAsyncEnumerator<T>, System.Collections.Generic.IAsyncEnumerator<Shardis.Querying.ShardItem<T>>, System.IAsyncDisposable { }
+    public interface IShardisAsyncOrderedEnumerator<T> : Shardis.Querying.IShardisAsyncEnumerator<T>, System.Collections.Generic.IAsyncEnumerator<Shardis.Querying.ShardItem<T>>, System.IAsyncDisposable { }
+    public class ShardBroadcaster<TShard, TSession> : Shardis.Querying.IShardBroadcaster<TSession>
+        where TShard : Shardis.Model.IShard<TSession>
+    {
+        public ShardBroadcaster(System.Collections.Generic.IEnumerable<TShard> shards, int maxDegreeOfParallelism = 20) { }
+        public System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<TResult>> QueryAllShardsAsync<TResult>(System.Func<TSession, System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<TResult>>> query, System.Threading.CancellationToken cancellationToken = default) { }
+    }
+    public readonly struct ShardItem<TItem> : System.IEquatable<Shardis.Querying.ShardItem<TItem>>
+    {
+        public ShardItem(Shardis.Model.ShardId ShardId, TItem Item) { }
+        public TItem Item { get; init; }
+        public Shardis.Model.ShardId ShardId { get; init; }
+    }
+    public enum ShardStopReason
+    {
+        Completed = 0,
+        Canceled = 1,
+        Faulted = 2,
+    }
+    public static class ShardStreamBroadcasterExtensions
+    {
+        public static System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardId, System.Collections.Generic.IAsyncEnumerable<T>> GroupByShard<T>(this System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<T>> source) { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Querying.ShardStreamBroadcasterExtensions.<MergeOrdered>d__0<T, TKey>))]
+        public static System.Collections.Generic.IAsyncEnumerable<T> MergeOrdered<T, TKey>(this System.Collections.Generic.IAsyncEnumerable<T> source, System.Func<T, TKey> keySelector, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey> { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Querying.ShardStreamBroadcasterExtensions.<MergeSortedBy>d__1<T, TKey>))]
+        public static System.Collections.Generic.IAsyncEnumerable<T> MergeSortedBy<T, TKey>(this System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<T>> shardStreams, System.Func<T, TKey> keySelector, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey> { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Querying.ShardStreamBroadcasterExtensions.<QueryAndMergeSortedByAsync>d__3<TSession, T, TKey>))]
+        public static System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<T>> QueryAndMergeSortedByAsync<TSession, T, TKey>(this Shardis.Querying.IShardStreamBroadcaster<TSession> broadcaster, System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<T>> query, System.Func<T, TKey> keySelector, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey> { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Querying.ShardStreamBroadcasterExtensions.<QueryAndProjectAsync>d__6<TSession, T, TResult>))]
+        public static System.Collections.Generic.IAsyncEnumerable<TResult> QueryAndProjectAsync<TSession, T, TResult>(this Shardis.Querying.IShardStreamBroadcaster<TSession> broadcaster, System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<T>> query, System.Func<T, TResult> selector, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default) { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Querying.ShardStreamBroadcasterExtensions.<QueryMergedAsync>d__2<TSession, T>))]
+        public static System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<T>> QueryMergedAsync<TSession, T>(this Shardis.Querying.IShardStreamBroadcaster<TSession> broadcaster, System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<T>> query, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default) { }
+        public static Shardis.Querying.IShardisAsyncEnumerator<T> ToShardisEnumerator<T>(this System.Collections.Generic.IAsyncEnumerable<T> source, Shardis.Model.ShardId shardId) { }
+    }
+    public class ShardStreamBroadcaster<TShard, TSession> : Shardis.Querying.IShardStreamBroadcaster<TSession>
+        where TShard : Shardis.Model.IShard<TSession>
+    {
+        public ShardStreamBroadcaster(System.Collections.Generic.IEnumerable<TShard> shards) { }
+        public ShardStreamBroadcaster(System.Collections.Generic.IEnumerable<TShard> shards, int? channelCapacity = default, Shardis.Querying.IMergeObserver? observer = null, int heapSampleEvery = 1) { }
+        public System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsAsync<TResult>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Threading.CancellationToken cancellationToken = default) { }
+        [System.Obsolete("Use QueryAllShardsOrderedStreamingAsync or QueryAllShardsOrderedEagerAsync explic" +
+            "itly.")]
+        public System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsOrderedAsync<TResult, TKey>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TKey> keySelector, System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey> { }
+        public System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsOrderedEagerAsync<TResult, TKey>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TKey> keySelector, System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey> { }
+        public System.Collections.Generic.IAsyncEnumerable<Shardis.Querying.ShardItem<TResult>> QueryAllShardsOrderedStreamingAsync<TResult, TKey>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TKey> keySelector, int prefetchPerShard = 1, System.Threading.CancellationToken cancellationToken = default)
+            where TKey : System.IComparable<TKey> { }
+        public System.Collections.Generic.IAsyncEnumerable<TProjected> QueryAndProjectAsync<TResult, TProjected>(System.Func<TSession, System.Collections.Generic.IAsyncEnumerable<TResult>> query, System.Func<TResult, TProjected> selector, System.Threading.CancellationToken cancellationToken = default) { }
+    }
+}
+namespace Shardis.Querying.Linq
+{
+    public interface IOrderedShardQueryable<T> : Shardis.Querying.Linq.IShardQueryable<T> { }
+    public interface ISelectShardQueryable<TSource, TResult> : Shardis.Querying.Linq.IShardQueryable<TResult> { }
+    public interface IShardQueryExecutor<TSession>
+    {
+        System.Collections.Generic.IAsyncEnumerable<T> Execute<T>(TSession session, System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<T>, System.Linq.IQueryable<T>>> linqExpr)
+            where T :  notnull;
+        System.Collections.Generic.IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(TSession session, System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<T>, System.Linq.IOrderedQueryable<T>>> orderedExpr, System.Func<T, TKey> keySelector)
+            where T :  notnull;
+    }
+    public interface IShardQueryOrchestrator
+    {
+        System.Collections.Generic.IAsyncEnumerable<T> ExecuteAsyncEnumerable<T>(Shardis.Querying.Linq.ShardQueryPlan<T> plan, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Collections.Generic.List<T>> ExecuteToListAsync<T>(Shardis.Querying.Linq.ShardQueryPlan<T> plan, System.Threading.CancellationToken cancellationToken = default);
+    }
+    public interface IShardQueryable<T> { }
+    public interface IWhereShardQueryable<T> : Shardis.Querying.Linq.IShardQueryable<T> { }
+    public class ShardProvider : System.Linq.IQueryProvider
+    {
+        public ShardProvider() { }
+        public System.Linq.IQueryable CreateQuery(System.Linq.Expressions.Expression expression) { }
+        public System.Linq.IQueryable<TElement> CreateQuery<TElement>(System.Linq.Expressions.Expression expression) { }
+        public object Execute(System.Linq.Expressions.Expression expression) { }
+        public TResult Execute<TResult>(System.Linq.Expressions.Expression expression) { }
+    }
+    public static class ShardQuery
+    {
+        public static Shardis.Querying.Linq.IShardQueryable<T> For<T>() { }
+    }
+    public sealed class ShardQueryOptions : System.IEquatable<Shardis.Querying.Linq.ShardQueryOptions>
+    {
+        public ShardQueryOptions() { }
+        public bool AllowPartialFailures { get; init; }
+        public System.Threading.CancellationToken CancellationToken { get; init; }
+        public bool EnableTracing { get; init; }
+        public int? MaxShardConcurrency { get; init; }
+    }
+    public sealed class ShardQueryPlan<T>
+    {
+        public ShardQueryPlan() { }
+        public void AddFilter(System.Linq.Expressions.Expression<System.Func<T, bool>> predicate) { }
+        public void SetOrderBy<TKey>(System.Linq.Expressions.Expression<System.Func<T, TKey>> keySelector, bool descending = false) { }
+        public void SetSelector<TResult>(System.Linq.Expressions.Expression<System.Func<T, TResult>> selector) { }
+        public Shardis.Querying.Linq.ShardQueryPlan<TResult> Transform<TResult>() { }
+    }
+    public static class ShardQueryableExtensions
+    {
+        public static Shardis.Querying.Linq.IShardQueryable<T> OrderBy<T, TKey>(this Shardis.Querying.Linq.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TKey>> keySelector)
+            where TKey : System.IComparable<TKey> { }
+        public static Shardis.Querying.Linq.IShardQueryable<T> ThenBy<T, TKey>(this Shardis.Querying.Linq.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TKey>> keySelector)
+            where TKey : System.IComparable<TKey> { }
+        public static Shardis.Querying.Linq.IShardQueryable<T> Where<T>(this Shardis.Querying.Linq.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, bool>> predicate) { }
+    }
+    public class ShardQueryable<T> : System.Collections.Generic.IEnumerable<T>, System.Collections.IEnumerable, System.Linq.IQueryable, System.Linq.IQueryable<T>
+    {
+        public ShardQueryable(System.Linq.IQueryProvider provider) { }
+        public ShardQueryable(System.Linq.IQueryProvider provider, System.Linq.Expressions.Expression expression) { }
+        public System.Type ElementType { get; }
+        public System.Linq.Expressions.Expression Expression { get; }
+        public System.Linq.IQueryProvider Provider { get; }
+        public System.Collections.Generic.IEnumerator<T> GetEnumerator() { }
+    }
+}
+namespace Shardis.Routing
+{
+    public class ConsistentHashShardRouter<TShard, TKey, TSession> : Shardis.Routing.IShardRouter<TKey, TSession>
+        where TShard : Shardis.Model.IShard<TSession>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public ConsistentHashShardRouter(Shardis.Persistence.IShardMapStore<TKey> shardMapStore, System.Collections.Generic.IEnumerable<TShard> availableShards, Shardis.Hashing.IShardKeyHasher<TKey> shardKeyHasher, int replicationFactor = 100, Shardis.Hashing.IShardRingHasher? ringHasher = null, Shardis.Instrumentation.IShardisMetrics? metrics = null) { }
+        public void AddShard(TShard shard) { }
+        public bool RemoveShard(Shardis.Model.ShardId shardId) { }
+        public Shardis.ShardAssignmentResult<TSession> Route(Shardis.Model.ShardKey<TKey> shardKey) { }
+        public Shardis.Model.IShard<TSession> RouteToShard(Shardis.Model.ShardKey<TKey> shardKey) { }
+    }
+    public class DefaultShardRouter<TKey, TSession> : Shardis.Routing.IShardRouter<TKey, TSession>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public DefaultShardRouter(Shardis.Persistence.IShardMapStore<TKey> shardMapStore, System.Collections.Generic.IEnumerable<Shardis.Model.IShard<TSession>> availableShards, Shardis.Hashing.IShardKeyHasher<TKey>? shardKeyHasher = null, Shardis.Instrumentation.IShardisMetrics? metrics = null) { }
+        public Shardis.ShardAssignmentResult<TSession> Route(Shardis.Model.ShardKey<TKey> shardKey) { }
+        public Shardis.Model.IShard<TSession> RouteToShard(Shardis.Model.ShardKey<TKey> shardKey) { }
+    }
+    public interface IShardRouter<TKey, TSession>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        Shardis.Model.IShard<TSession> RouteToShard(Shardis.Model.ShardKey<TKey> shardKey);
+    }
+}
+namespace Shardis
+{
+    public static class ServiceCollectionExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardis<TShard, TKey, TSession>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Shardis.ShardisOptions<TShard, TKey, TSession>> configure)
+            where TShard : Shardis.Model.IShard<TSession>
+            where TKey :  notnull, System.IEquatable<TKey> { }
+    }
+    public readonly struct ShardAssignmentResult<TSession> : System.IEquatable<Shardis.ShardAssignmentResult<TSession>>
+    {
+        public ShardAssignmentResult(Shardis.Model.IShard<TSession> shard, bool wasExisting) { }
+        public Shardis.Model.IShard<TSession> Shard { get; }
+        public bool WasExistingAssignment { get; }
+    }
+    public class ShardisException : System.Exception
+    {
+        public ShardisException() { }
+        public ShardisException(string message) { }
+        public ShardisException(string message, System.Exception innerException) { }
+    }
+    public class ShardisOptions<TShard, TKey, TSession>
+        where TShard : Shardis.Model.IShard<TSession>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public ShardisOptions() { }
+        public int ReplicationFactor { get; set; }
+        public Shardis.Hashing.IShardRingHasher? RingHasher { get; set; }
+        public System.Func<System.IServiceProvider, System.Collections.Generic.IEnumerable<TShard>, Shardis.Routing.IShardRouter<TKey, TSession>>? RouterFactory { get; set; }
+        public Shardis.Hashing.IShardKeyHasher<TKey>? ShardKeyHasher { get; set; }
+        public System.Func<System.IServiceProvider, Shardis.Persistence.IShardMapStore<TKey>>? ShardMapStoreFactory { get; set; }
+        public System.Collections.Generic.IList<TShard> Shards { get; }
+        public bool UseConsistentHashing { get; set; }
+    }
+}
