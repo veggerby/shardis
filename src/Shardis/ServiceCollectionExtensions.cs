@@ -78,7 +78,7 @@ public static class ServiceCollectionExtensions
         // Merge observer (allow override before AddShardis)
         if (!services.Any(sd => sd.ServiceType == typeof(IMergeObserver)))
         {
-            services.AddSingleton(NoOpMergeObserver.Instance);
+            services.AddSingleton<IMergeObserver>(NoOpMergeObserver.Instance);
         }
         services.AddSingleton<IShardStreamBroadcaster<TSession>>(sp =>
         {
