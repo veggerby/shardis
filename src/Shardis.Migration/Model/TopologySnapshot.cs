@@ -6,7 +6,10 @@ using Shardis.Model;
 /// Represents a snapshot of shard ownership for a set of keys at a point in time.
 /// This is a minimal placeholder; a richer topology model can replace it later.
 /// </summary>
-/// <remarks>Initializes a new instance of the <see cref="TopologySnapshot{TKey}"/> class.</remarks>
+/// <remarks>
+/// Initial design driven by ADR 0002; future enhancements may introduce range-based or segmented snapshots.
+/// Initializes a new instance of the <see cref="TopologySnapshot{TKey}"/> class.
+/// </remarks>
 public sealed class TopologySnapshot<TKey>(IReadOnlyDictionary<ShardKey<TKey>, ShardId> assignments)
     where TKey : notnull, IEquatable<TKey>
 {

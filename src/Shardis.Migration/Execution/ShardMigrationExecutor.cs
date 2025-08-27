@@ -17,6 +17,9 @@ public sealed record MigrationSummary(Guid PlanId, int Planned, int Done, int Fa
 /// Orchestrates execution of a migration plan: copy, optional interleaved verify, and batched swap with retry and checkpointing.
 /// Public for benchmarking and advanced scenarios; general consumption may wrap this in higher-level services later.
 /// </summary>
+/// <remarks>
+/// See ADR 0002 (Key Migration Execution Model) for design rationale, invariants and extension points.
+/// </remarks>
 public sealed class ShardMigrationExecutor<TKey>(
     IShardDataMover<TKey> mover,
     IVerificationStrategy<TKey> verification,
