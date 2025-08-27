@@ -40,8 +40,15 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Shard assignments are persistent, predictable, and optimized for horizontal scalability.
 - 📊 **Instrumentation Hooks**
   Plug in metrics (counters, tracing) by replacing the default no-op metrics service.
+  Ordered and unordered streaming paths are covered by metrics observer tests (item counts, heap samples, backpressure waits) ensuring instrumentation stability.
 - 🔄 **Consistent Hashing Option**
   Choose between simple sticky routing and a consistent hashing ring with configurable replication factor & pluggable ring hashers.
+- 📥 **Ordered & Unordered Streaming Queries**
+  Low-latency unordered fan-out plus deterministic k‑way heap merge (bounded prefetch) for globally ordered streaming.
+- 📈 **Adaptive Paging (Marten)**
+  Deterministic latency-targeted page size adjustments with oscillation & final-size telemetry.
+- 🧪 **Central Public API Snapshots**
+  Consolidated multi-assembly approval tests ensure stable public surface; drift produces clear `.received` diffs.
 
 ---
 
@@ -195,6 +202,36 @@ Consistent hash router only records a miss if `TryGetOrAdd` actually created the
 - Supports optional bounded channel capacity (backpressure) – unbounded by default.
 - Cancels remaining work early for short‑circuit operations (`AnyAsync`, `FirstAsync`).
 - Guarantees that consumer observation order is the actual arrival order (no artificial reordering unless using ordered merge utilities).
+- Emits lifecycle callbacks via `IMergeObserver`:
+  - `OnItemYielded(shardId)` – after an item is yielded to the consumer.
+  - `OnShardCompleted(shardId)` – shard produced all items successfully.
+  - `OnShardStopped(shardId, reason)` – exactly once per shard with `Completed|Canceled|Faulted`.
+  - `OnBackpressureWaitStart/Stop()` – unordered path only when bounded channel is full.
+  - `OnHeapSizeSample(size)` – ordered merge heap sampling (throttled by `heapSampleEvery`).
+
+#### Minimal Observer Example
+
+```csharp
+using Shardis.Querying;
+using Shardis.Model;
+
+public sealed class LoggingObserver : IMergeObserver
+{
+    private int _count;
+    public void OnItemYielded(ShardId shardId) => Interlocked.Increment(ref _count);
+    public void OnShardCompleted(ShardId shardId) => Console.WriteLine($"Shard {shardId} completed.");
+    public void OnShardStopped(ShardId shardId, ShardStopReason reason) => Console.WriteLine($"Shard {shardId} stopped: {reason} (items so far={_count}).");
+    public void OnBackpressureWaitStart() { }
+    public void OnBackpressureWaitStop() { }
+    public void OnHeapSizeSample(int size) => Console.WriteLine($"Heap size: {size}");
+}
+
+// Wiring:
+var observer = new LoggingObserver();
+var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, channelCapacity: 64, observer: observer, heapSampleEvery: 10);
+```
+
+Observer implementations MUST be thread-safe; callbacks can occur concurrently.
 
 ### Ordered vs Combined Enumeration
 
@@ -284,11 +321,11 @@ Use these to compare (by `--anyCategories`):
 - `router`: Default vs Consistent hash routing cost
 - `hasher`: Different ring hash algorithms (Default vs FNV-1a) & replication factor impact
 - `migration`: Migration executor throughput across concurrency / batch matrix
-- `broadcaster`: Fast vs slow shard streaming (fairness, interleaving, backpressure sensitivity)
+- `broadcaster`: Fast vs slow shard streaming (fairness, interleaving, backpressure sensitivity). This suite remains as a baseline ahead of the upcoming ordered vs unordered merge benchmarks.
 
-Planned:
+Planned (in active design):
 
-- `merge`: Ordered vs unordered streaming merge enumerators (k‑way heap vs combined interleave)
+- `merge`: Ordered vs unordered streaming merge enumerators (k‑way heap vs combined interleave) – will complement (not replace) the broadcaster suite to show impact of global ordering.
 
 After optimization: routing hot path avoids double hashing (via `TryGetOrAdd`) and maintains constant single miss emission under high contention.
 
@@ -320,6 +357,16 @@ Additional invariants covered:
 - Deterministic ordering for duplicate keys in ordered merge
 - Statistical ring distribution bounds (coefficient of variation heuristic)
 - Non-empty broadcaster shard enforcement & null parameter guards
+
+### Public API Stability
+
+All public surfaces across assemblies are snapshotted via `Shardis.PublicApi.Tests` using PublicApiGenerator. Baselines live under `test/PublicApiApproval/*.approved.txt` (committed). When an intentional API change is made:
+
+1. Run `dotnet test -c Debug -p:PublicApi` (or simply `dotnet test`).
+2. A `.received` file will be written alongside the affected `.approved` file.
+3. Inspect the diff; if intentional, replace the `.approved` content with the `.received` content and delete the `.received` file (the test does this automatically on next green run).
+
+The test auto-creates missing `.approved` files (first run does not fail). Only stable, documented APIs should be added—avoid leaking internal abstractions.
 
 ---
 
@@ -358,6 +405,211 @@ Utility enumerators:
 - `ShardisAsyncCombinedEnumerator` – simple interleaving without ordering guarantees.
 
 Higher-level fluent query API (LINQ-like) is under active design (see `docs/api.md` & `docs/linq.md`).
+
+### LINQ MVP (Where / Select Only)
+
+Experimental minimal provider (see ADR 0003 cross-link) allows composing simple per-shard filters and a single projection and executing unordered:
+
+```csharp
+var exec = /* IShardQueryExecutor implementation (e.g. InMemory / EFCore) */;
+var q = Shardis.Query.ShardQuery.For<Person>(exec)
+                               .Where(p => p.Age >= 30)
+                               .Select(p => new { p.Name, p.Age });
+await foreach (var row in q) { Console.WriteLine($"{row.Name} ({row.Age})"); }
+```
+
+Constraints (MVP):
+
+- Only `Where` (multiple) + single terminal `Select`.
+- No ordering operators; use `ShardStreamBroadcaster.QueryAllShardsOrderedStreamingAsync` for global ordering or order after materialization.
+- Unordered merge semantics identical to `QueryAllShardsAsync`.
+- Cancellation respected mid-stream.
+
+Future work (tracked): join support, ordering pushdown, aggregation.
+
+#### Provider Matrix (MVP)
+
+| Provider | Package | Where | Select | Ordering | Cancellation | Metrics Hooks |
+|----------|---------|-------|--------|----------|--------------|---------------|
+| InMemory | `Shardis.Query.InMemory` | ✅ | ✅ | ❌ (post-filter only) | Cooperative (no throw) | ✅ (OnShardStart/Stop/Items/Completed/Canceled) |
+| EF Core  | `Shardis.Query.EFCore`   | ✅ server-side | ✅ server-side | ❌ (use ordered streaming merge for global order) | Cooperative | ✅ |
+| Marten (adapter)* | `Shardis.Marten` | ✅ | ✅ | Backend native only (no global merge) | Cooperative | (planned) |
+
+Ordering: for global ordering across shards use `QueryAllShardsOrderedStreamingAsync(keySelector)` (streaming k-way merge) or materialize then order.
+
+### Adaptive Paging & Provider Capabilities
+
+| Provider | Unordered Streaming | Ordered Merge Compatible | Native Pagination | Adaptive Paging | Notes |
+|----------|---------------------|---------------------------|------------------|-----------------|-------|
+| InMemory | Yes (in-process)    | Yes                       | N/A              | N/A             | Uses compiled expression pipelines. |
+| EF Core  | Yes (IAsyncEnumerable) | Yes                    | Yes (Skip/Take)  | Not yet         | Relies on underlying provider translation. |
+| Marten   | Yes (paged)         | Yes                       | Yes              | Yes             | Fixed or adaptive paging materializer. |
+
+Adaptive paging (Marten) grows/shrinks page size within configured bounds to keep batch latency near a target window. It is deterministic (pure function of prior elapsed times) and never exceeds `maxPageSize`. Choose:
+
+- Fixed page size: predictable memory footprint, steady workload.
+- Adaptive: heterogeneous shard performance, aims to reduce tail latency without overfetching.
+
+### Cancellation Semantics (Queries)
+
+| Aspect | InMemory | EF Core | Marten (Fixed) | Marten (Adaptive) |
+|--------|----------|---------|----------------|-------------------|
+| Mid-item check | Between MoveNext calls | Provider awaits next row | Before each page & per item | Before each page & per item |
+| On cancel effect | Stops yielding, completes gracefully | Stops enumeration, disposes | Stops paging loop | Stops paging loop, retains last page decision state |
+| Exception surface | None (cooperative) | OperationCanceledException may bubble internally then swallowed | Swallows after signaling metrics | Same as fixed |
+
+Guidance: always pass a token with timeout for interactive workloads; enumerators honor cancellation promptly.
+
+*Marten executor currently requires a PostgreSQL instance; tests are scaffolded and skipped in CI when no connection is available.
+
+#### Unordered Merge Non-Determinism
+
+Unordered execution intentionally interleaves per-shard results based on arrival timing. For identical logical inputs, interleaving order may vary across runs. Applications requiring deterministic global ordering must either:
+
+1. Use an ordered merge (`ShardisAsyncOrderedEnumerator`) supplying a stable key selector, or
+2. Materialize then order results explicitly.
+
+#### Cancellation Semantics
+
+All executors observe `CancellationToken` cooperatively. Enumeration stops early without throwing unless the underlying provider surfaces an `OperationCanceledException`. Metrics observers receive `OnCanceled` exactly once.
+
+#### Query Benchmarks
+
+Run the new query benchmark suite:
+
+```bash
+dotnet run -c Release -p benchmarks/Shardis.Benchmarks.csproj --filter *QueryBenchmarks*
+```
+
+### Multi-Provider Example (InMemory vs EF vs Marten)
+
+```csharp
+// InMemory
+var inMemExec = new InMemoryShardQueryExecutor(new[] { shard1Objects, shard2Objects }, UnorderedMerge.Merge);
+var inMemQuery = ShardQuery.For<Person>(inMemExec).Where(p => p.Age >= 30).Select(p => p.Name);
+var names1 = await inMemQuery.ToListAsync();
+
+// EF Core (Sqlite)
+var efExec = new EfCoreShardQueryExecutor(2, shardId => CreateSqliteContext(shardId), UnorderedMerge.Merge);
+var efQuery = ShardQuery.For<Person>(efExec).Where(p => p.Age >= 30).Select(p => p.Name);
+var names2 = await efQuery.ToListAsync();
+
+// Marten (single shard adapter for now)
+using var session = documentStore.LightweightSession();
+var martenNames = await MartenQueryExecutor.Instance
+  .Execute(session, q => q.Where(p => p.Age >= 30).Select(p => p))
+  .Select(p => p.Name)
+  .ToListAsync();
+
+// NOTE: Unordered merge => arrival-order, not globally deterministic across shards.
+```
+
+**Important:** Unordered execution is intentionally non-deterministic. For deterministic ordering across shards use an ordered merge (`QueryAllShardsOrderedStreamingAsync`) or materialize then order.
+
+### Exception Semantics
+
+Shardis executors use a cooperative cancellation model: when cancellation is requested the async iterator stops yielding without throwing unless the underlying provider surfaces an `OperationCanceledException`. Translation/database/provider exceptions are propagated unchanged. Consumers requiring explicit cancellation signaling should inspect the token externally.
+
+### Ordered Merge
+
+For deterministic cross-shard ordering use `OrderedMergeHelper.Merge` supplying a key selector. Each shard stream must already be locally ordered by that key. The merge performs a streaming k-way heap merge (O(log n) per item, where n = shard count) without materializing full result sets.
+
+### Provider Matrix
+
+| Package | Dependency | Where/Select | Streaming | Ordering | Notes |
+|---------|------------|-------------|-----------|----------|-------|
+| Shardis.Query | none | ✔️ | n/a | n/a | Core query model & merge helpers |
+| Shardis.Query.InMemory | none | ✔️ | ✔️ | ❌ | Dev/test executor |
+| Shardis.Query.EFCore | EF Core | ✔️ | ✔️ | ❌ | Server-side translation (Sqlite tests) |
+| Shardis.Query.Marten | Marten | ✔️ | ✔️ (paged/native) | ❌ | Async/paged materializer |
+
+### Backpressure
+
+`UnorderedMerge` uses an **unbounded** channel by default for lowest latency. Provide a `channelCapacity` (e.g. 64–256) to enforce backpressure and cap memory:
+
+```csharp
+var broadcaster = new ShardStreamBroadcaster<MyShard, MySession>(shards, channelCapacity: 128);
+await foreach (var item in broadcaster.QueryAllShardsAsync(s => Query(s))) { /* ... */ }
+
+// Or directly via helper returning merged stream (capacity 128 example):
+var merged = UnorderedMergeHelper.Merge(shardStreams, channelCapacity: 128);
+await foreach (var row in merged) { /* consume */ }
+
+// Minimal helper creation showing explicit capacity tradeoff
+var merge = UnorderedMergeHelper.Merge(shardStreams, channelCapacity: 128); // capacity => more memory, fewer producer stalls (lower tail latency)
+```
+
+Guidance:
+
+- 0 / null (unbounded): lowest per-item latency, potential burst amplification.
+- 32–64: balance memory vs throughput for medium fan-out.
+- 128–256: higher sustained throughput where producers are faster than consumer.
+- >512 rarely justified unless profiling shows persistent producer starvation.
+
+Backpressure wait events are surfaced via `IMergeObserver.OnBackpressureWaitStart/Stop` so instrumentation can record stall time. Ordered (k-way) merges and unbounded unordered merges emit zero wait events by design.
+
+### Query Telemetry & Adaptive Paging
+
+Two observer surfaces exist:
+
+| Interface | Purpose |
+|-----------|---------|
+| `IQueryMetricsObserver` | Lifecycle + item counters (shard start/stop, items produced, completion, cancellation). |
+| `IAdaptivePagingObserver` | Adaptive Marten paging decisions (previous size, next size, last batch latency). |
+
+Marten executor can switch between fixed and adaptive paging:
+
+```csharp
+var fixedExec = MartenQueryExecutor.Instance.WithPageSize(256);
+var adaptiveExec = MartenQueryExecutor.Instance.WithAdaptivePaging(
+  minPageSize: 64,
+  maxPageSize: 1024,
+  targetBatchMilliseconds: 50,
+  observer: myAdaptiveObserver);
+```
+
+Adaptive strategy grows/shrinks page size deterministically based on prior batch latency relative to a target window. It never exceeds bounds and emits a decision event only when the page size changes.
+
+Additional telemetry (adaptive):
+
+- `OnOscillationDetected(shardId, decisionsInWindow, window)` – high churn signal; consider narrowing grow/shrink factors or widening latency target.
+- `OnFinalPageSize(shardId, finalSize, totalDecisions)` – emitted once per shard enumeration for tuning & dashboards.
+
+### Benchmark Allocation Guard
+
+CI runs a smoke allocation benchmark comparing fixed vs adaptive Marten paging. A JSON exporter is parsed and a markdown delta report (`ADAPTIVE-ALLOC-DELTA.md`) is uploaded. Environment thresholds:
+
+- `ADAPTIVE_ALLOC_MAX_PCT` (default 20) – percentage delta guard
+- `ADAPTIVE_ALLOC_MIN_BYTES` (default 4096 B/op) – ignore noise below this absolute per-op allocation
+
+Currently advisory / non-blocking. After several green runs remove the fallback `|| echo` in the workflow to make regressions fail the job.
+
+### Merge Modes & Tuning
+
+See `docs/merge-modes.md` for a full matrix. Quick guidance:
+
+```csharp
+// Unordered streaming (arrival order, lowest latency)
+await foreach (var item in broadcaster.QueryAllShardsAsync(s => Query(s))) { /* ... */ }
+
+// Ordered streaming (bounded memory k-way merge)
+await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(s => Query(s), keySelector: x => x.Timestamp, prefetchPerShard: 2)) { /* ... */ }
+
+// Tuning prefetch:
+// 1 => minimal latency & memory (default)
+// 2 => balanced latency vs throughput
+// 4 => higher throughput if shards intermittently stall
+
+int prefetch = isLowLatencyScenario ? 1 : 2; // rarely >4
+await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(s => Query(s), x => x.Id, prefetch)) { }
+```
+
+// Cancellation & Observability
+// Early / mid-stream cancellation is tested (no deadlocks, resources released, no leaks via WeakReference probe).
+// Metrics observer tests assert heap sampling (>0 for ordered), symmetric backpressure wait events for bounded channels,
+// and zero wait events for unbounded / ordered streaming scenarios.
+
+Memory scale: O(shards × prefetch). Increase only if profiling shows the merge heap frequently empty while shards are still producing (starvation).
 
 ---
 

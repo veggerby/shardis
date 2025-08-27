@@ -1,0 +1,108 @@
+[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
+[assembly: System.Resources.NeutralResourcesLanguage("en")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Query.EFCore")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Query.InMemory")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Query.Tests")]
+namespace Shardis.Query.Diagnostics
+{
+    public interface IAdaptivePagingObserver
+    {
+        void OnFinalPageSize(int shardId, int finalSize, int totalDecisions);
+        void OnOscillationDetected(int shardId, int decisionsInWindow, System.TimeSpan window);
+        void OnPageDecision(int shardId, int previousSize, int nextSize, System.TimeSpan lastBatchLatency);
+    }
+    public interface IQueryMetricsObserver
+    {
+        void OnCanceled();
+        void OnCompleted();
+        void OnItemsProduced(int shardId, int count);
+        void OnShardStart(int shardId);
+        void OnShardStop(int shardId);
+    }
+    public sealed class NoopAdaptivePagingObserver : Shardis.Query.Diagnostics.IAdaptivePagingObserver
+    {
+        public static readonly Shardis.Query.Diagnostics.IAdaptivePagingObserver Instance;
+        public void OnFinalPageSize(int shardId, int finalSize, int totalDecisions) { }
+        public void OnOscillationDetected(int shardId, int decisionsInWindow, System.TimeSpan window) { }
+        public void OnPageDecision(int shardId, int previousSize, int nextSize, System.TimeSpan lastBatchLatency) { }
+    }
+    public sealed class NoopQueryMetricsObserver : Shardis.Query.Diagnostics.IQueryMetricsObserver
+    {
+        public static readonly Shardis.Query.Diagnostics.IQueryMetricsObserver Instance;
+        public void OnCanceled() { }
+        public void OnCompleted() { }
+        public void OnItemsProduced(int shardId, int count) { }
+        public void OnShardStart(int shardId) { }
+        public void OnShardStop(int shardId) { }
+    }
+}
+namespace Shardis.Query.Execution
+{
+    public interface IShardQueryExecutor
+    {
+        Shardis.Query.IShardQueryCapabilities Capabilities { get; }
+        System.Collections.Generic.IAsyncEnumerable<TResult> ExecuteAsync<TResult>(Shardis.Query.QueryModel model, System.Threading.CancellationToken ct = default);
+    }
+}
+namespace Shardis.Query
+{
+    public interface IShardQueryCapabilities
+    {
+        bool SupportsOrdering { get; }
+        bool SupportsPagination { get; }
+    }
+    public interface IShardQueryable<out T> : System.Collections.Generic.IAsyncEnumerable<T>
+    {
+        Shardis.Query.Execution.IShardQueryExecutor Executor { get; }
+        Shardis.Query.QueryModel Model { get; }
+    }
+    public static class OrderedMergeHelper
+    {
+        public static System.Collections.Generic.IAsyncEnumerable<T> Merge<T, TKey>(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Threading.CancellationToken ct = default)
+            where TKey : System.IComparable<TKey> { }
+    }
+    public sealed class QueryModel
+    {
+        public System.Linq.Expressions.LambdaExpression? Select { get; }
+        public System.Type SourceType { get; }
+        public System.Collections.Generic.IReadOnlyList<System.Linq.Expressions.LambdaExpression> Where { get; }
+        public Shardis.Query.QueryModel WithSelect(System.Linq.Expressions.LambdaExpression projector) { }
+        public Shardis.Query.QueryModel WithWhere(System.Linq.Expressions.LambdaExpression predicate) { }
+        public static Shardis.Query.QueryModel Create(System.Type sourceType) { }
+    }
+    public static class ShardQuery
+    {
+        public static Shardis.Query.IShardQueryable<T> For<T>(Shardis.Query.Execution.IShardQueryExecutor executor) { }
+    }
+    public static class ShardQueryableConsumptionExtensions
+    {
+        public static System.Collections.Generic.IAsyncEnumerable<T> ToAsyncEnumerable<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
+        public static System.Threading.Tasks.Task<System.Collections.Generic.List<T>> ToListAsync<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
+    }
+    public static class ShardQueryableExtensions
+    {
+        public static Shardis.Query.IShardQueryable<T> Where<T>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, bool>> predicate) { }
+    }
+    public static class ShardQueryableOrderingGuards
+    {
+        public static Shardis.Query.IShardQueryable<T> OrderBy<T, TKey>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TKey>> _) { }
+        public static Shardis.Query.IShardQueryable<T> OrderByDescending<T, TKey>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TKey>> _) { }
+        public static Shardis.Query.IShardQueryable<T> ThenBy<T, TKey>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TKey>> _) { }
+        public static Shardis.Query.IShardQueryable<T> ThenByDescending<T, TKey>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TKey>> _) { }
+    }
+    public static class ShardQueryableSelectExtensions
+    {
+        public static Shardis.Query.IShardQueryable<TResult> Select<T, TResult>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TResult>> selector) { }
+    }
+    public static class UnorderedMergeHelper
+    {
+        public static System.Collections.Generic.IAsyncEnumerable<object> Merge(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<object>> sources, System.Threading.CancellationToken ct = default, int? channelCapacity = default) { }
+    }
+}
+namespace Shardis.Query.Internals
+{
+    public static class UnorderedMerge
+    {
+        public static System.Collections.Generic.IAsyncEnumerable<object> Merge(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<object>> sources, System.Threading.CancellationToken ct = default, int? channelCapacity = default) { }
+    }
+}

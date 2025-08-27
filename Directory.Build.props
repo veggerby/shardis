@@ -16,11 +16,11 @@
     <AssemblyInformationalVersion>$(Version)</AssemblyInformationalVersion>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  <Company>Shardis Project</Company>
-  <Authors>Jesper Veggerby</Authors>
-  <PackageLicenseExpression>MIT</PackageLicenseExpression>
-  <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
-  <PackageIcon>icon.png</PackageIcon>
+    <Company>Shardis Project</Company>
+    <Authors>Jesper Veggerby</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
   <ItemGroup>
     <!-- SourceLink reference (version managed centrally) -->

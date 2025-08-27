@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Linq.Expressions;
 
 namespace Shardis.Querying.Linq;
@@ -8,8 +9,12 @@ namespace Shardis.Querying.Linq;
 /// stream results without buffering the full sequence unless required by terminal operations.
 /// </summary>
 /// <typeparam name="TSession">The session type for the shard backend.</typeparam>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public interface IShardQueryExecutor<TSession>
 {
+    // TODO(Consolidation): This generic executor is slated for unification with the non-generic cross-shard
+    // query model executor surface (Execution.IShardQueryExecutor). Retained temporarily to avoid broad
+    // refactor of broadcaster & LINQ path in this stabilization step. Track in issue: pending.
     /// <summary>
     /// Executes a LINQ pipeline returning an unordered asynchronous stream of results.
     /// </summary>

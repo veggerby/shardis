@@ -1,0 +1,159 @@
+using System.Collections;
+using System.Runtime.CompilerServices;
+
+using Shardis.Query.Internals;
+
+namespace Shardis.Query.Execution.InMemory;
+
+/// <summary>In-memory executor for development &amp; tests.</summary>
+public sealed class InMemoryShardQueryExecutor : IShardQueryExecutor
+{
+    private readonly IReadOnlyList<IEnumerable<object>> _shards;
+    private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge;
+    private readonly Shardis.Query.Diagnostics.IQueryMetricsObserver _metrics;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, CompiledPipeline> _pipelineCache = new();
+
+    private sealed record CompiledPipeline(Func<object, bool>? Where, Func<object, object> Select);
+    internal static int CompileCount;
+    /// <summary>Total number of compiled pipelines across all executor instances (for benchmark diagnostics).</summary>
+    public static int TotalCompiledPipelines => CompileCount;
+
+    /// <summary>Create a new in-memory executor.</summary>
+    /// <param name="shards">Shard sequences.</param>
+    /// <param name="merge">Unordered merge function.</param>
+    /// <param name="metrics">Optional metrics observer.</param>
+    public InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>> shards, Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> merge, Shardis.Query.Diagnostics.IQueryMetricsObserver? metrics = null)
+    {
+        _shards = shards ?? throw new ArgumentNullException(nameof(shards));
+        _merge = merge ?? throw new ArgumentNullException(nameof(merge));
+        _metrics = metrics ?? Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
+    }
+
+    /// <inheritdoc />
+    public IShardQueryCapabilities Capabilities => BasicQueryCapabilities.None;
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<TResult> ExecuteAsync<TResult>(QueryModel model, CancellationToken ct = default)
+    {
+        var tIn = model.SourceType;
+        var key = ComputeCacheKey(model);
+        var compiled = _pipelineCache.GetOrAdd(key, _ => CompilePipeline(model));
+        var per = _shards.Select((seq, shardId) => Project<TResult>(seq, tIn, model, compiled, shardId, ct)).Select(Box);
+        var merged = Cast<TResult>(_merge(per, ct), ct);
+        return WrapCompletion(merged, ct);
+    }
+
+    private static string ComputeCacheKey(QueryModel model)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append(model.SourceType.FullName).Append('|');
+        foreach (var w in model.Where)
+        {
+            sb.Append(w.Body.ToString()).Append(';');
+        }
+        sb.Append("|SEL|");
+        sb.Append(model.Select?.Body.ToString() ?? "ID");
+        return sb.ToString();
+    }
+
+    private static CompiledPipeline CompilePipeline(QueryModel model)
+    {
+        Interlocked.Increment(ref CompileCount);
+        var tIn = model.SourceType;
+        var param = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
+        var castIn = System.Linq.Expressions.Expression.Convert(param, tIn);
+
+        Func<object, bool>? whereDel = null;
+        if (model.Where.Count > 0)
+        {
+            System.Linq.Expressions.Expression? body = null;
+            foreach (var pred in model.Where)
+            {
+                var replaced = new ParameterReplaceVisitor(pred.Parameters[0], castIn).Visit(pred.Body);
+                body = body == null ? replaced : System.Linq.Expressions.Expression.AndAlso(body, replaced!);
+            }
+            whereDel = System.Linq.Expressions.Expression.Lambda<Func<object, bool>>(body!, param).Compile();
+        }
+
+        Func<object, object> selectDel;
+        if (model.Select != null)
+        {
+            var projBody = new ParameterReplaceVisitor(model.Select.Parameters[0], castIn).Visit(model.Select.Body)!;
+            selectDel = System.Linq.Expressions.Expression.Lambda<Func<object, object>>(System.Linq.Expressions.Expression.Convert(projBody, typeof(object)), param).Compile();
+        }
+        else
+        {
+            selectDel = o => o;
+        }
+        return new CompiledPipeline(whereDel, selectDel);
+    }
+
+    private sealed class ParameterReplaceVisitor(System.Linq.Expressions.ParameterExpression from, System.Linq.Expressions.Expression to) : System.Linq.Expressions.ExpressionVisitor
+    {
+        protected override System.Linq.Expressions.Expression VisitParameter(System.Linq.Expressions.ParameterExpression node) => node == from ? to : base.VisitParameter(node);
+    }
+
+    private IAsyncEnumerable<TResult> Project<TResult>(IEnumerable<object> src, Type tIn, QueryModel model, CompiledPipeline pipeline, int shardId, CancellationToken ct)
+    {
+        _metrics.OnShardStart(shardId);
+        var typed = CastToType(src, tIn);
+        var iter = ExecPipeline<TResult>(typed, pipeline, shardId, ct);
+        return iter;
+    }
+
+    private async IAsyncEnumerable<TResult> ExecPipeline<TResult>(IEnumerable<object> src, CompiledPipeline pipeline, int shardId, [EnumeratorCancellation] CancellationToken ct)
+    {
+        var produced = 0;
+        foreach (var o in src)
+        {
+            if (ct.IsCancellationRequested) { _metrics.OnCanceled(); yield break; }
+            if (pipeline.Where == null || pipeline.Where(o))
+            {
+                var projected = pipeline.Select(o);
+                produced++;
+                _metrics.OnItemsProduced(shardId, 1);
+                yield return (TResult)projected!;
+                await Task.Yield();
+            }
+        }
+        _metrics.OnShardStop(shardId);
+    }
+
+    private static IEnumerable<object> CastToType(IEnumerable<object> src, Type tIn)
+    {
+        // already object collection representing tIn instances
+        return src;
+    }
+
+    private static async IAsyncEnumerable<T> Cast<T>(IAsyncEnumerable<object> src, [EnumeratorCancellation] CancellationToken ct)
+    {
+        await foreach (var o in src.WithCancellation(ct)) { yield return (T)o!; }
+    }
+
+    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct)
+    {
+        var completed = false;
+        try
+        {
+            await foreach (var item in src.WithCancellation(ct)) { yield return item; }
+            completed = true;
+        }
+        finally
+        {
+            if (ct.IsCancellationRequested && !completed) { _metrics.OnCanceled(); }
+            else { _metrics.OnCompleted(); }
+        }
+    }
+
+    private static async IAsyncEnumerable<object> Box<T>(IAsyncEnumerable<T> src)
+    {
+        await foreach (var item in src.ConfigureAwait(false))
+        {
+            yield return item!;
+        }
+    }
+    private static async IAsyncEnumerable<T> ToAsync<T>(IEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct)
+    {
+        foreach (var i in src) { if (ct.IsCancellationRequested) yield break; yield return i; await Task.Yield(); }
+    }
+}

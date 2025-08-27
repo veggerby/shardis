@@ -6,7 +6,94 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
-_No changes yet._
+### Added (Unreleased)
+
+- Streaming globally ordered query API: `QueryAllShardsOrderedStreamingAsync<TResult,TKey>` with bounded per-shard prefetch (`prefetchPerShard`).
+- Proactive k-way merge enumerator (`ShardisAsyncOrderedEnumerator`) supporting deterministic tie-break `(key, shardIndex, sequence)` and bounded memory.
+- Internal merge probe hook (`IOrderedMergeProbe`) for test/diagnostic observation of heap size.
+- Parallelized eager ordered path (`QueryAllShardsOrderedEagerAsync`) materializing per shard concurrently before merge.
+- Expanded test suite: duplicate-key determinism, early emission (first item before slow shards complete), heap bound enforcement, cancellation hygiene, exception propagation.
+- Merge observer lifecycle extension: `IMergeObserver.OnShardStopped(ShardId, ShardStopReason)` with reasons (`Completed|Canceled|Faulted`).
+- Backpressure instrumentation hooks (`OnBackpressureWaitStart/Stop`) for unordered/channel path.
+- Heap size sampling callbacks for ordered merge with configurable throttle (`heapSampleEvery`).
+- Deterministic cancellation & startup fault tests covering stop reason emission.
+- First-item latency micro benchmark (time-to-first-item instrumentation).
+- Merge enumerator benchmark suite (`MergeEnumeratorBenchmarks`, category `merge`) comparing unordered streaming, ordered streaming (bounded prefetch) and ordered eager strategies across shard count, items/shard, skew, capacity (unordered only), and prefetch parameters.
+- Export of first-item latency percentiles (p50/p95) aggregated across benchmark runs to CSV: `merge-first-item-latency-all-methods-seed<seed>.csv`.
+- Broadcaster capacity sweep benchmarks (`BroadcasterStreamBenchmarks`, category `broadcaster`) including baseline and consumer-slow scenarios with first-item latency & backpressure wait/blocked metrics; CSV export with scenario + capacity percentiles (`broadcaster-capacity-sweep-seed<seed>.csv`).
+- README observer snippet & documented lifecycle callback semantics.
+- Bounded prefetch validation (`prefetchPerShard >= 1`) and broadcaster argument validation (`channelCapacity`, `heapSampleEvery`).
+- CI link-check workflow and benchmark smoke workflow.
+- Ordering / throttle / deterministic cancel tests asserting single-fire + ordering of `OnShardCompleted` before `OnShardStopped`.
+- Cancellation & leak test suite (unordered early-cancel, ordered streaming mid-cancel, small-capacity deadlock guard) with WeakReference-based `LeakProbe` and capped GC retry.
+- Metrics observer tests validating heap sampling (>0), lifecycle callbacks, backpressure wait symmetry and zero-wait invariants for unbounded / ordered streaming paths.
+- Category traits (`[Trait("category","cancellation")]`, `[Trait("category","metrics")]`) to enable selective CI shards.
+- Adaptive paging for Marten query executor with latency-targeted deterministic page adjustments (`WithAdaptivePaging`).
+- Adaptive paging telemetry (`IAdaptivePagingObserver`): `OnPageDecision`, `OnOscillationDetected`, `OnFinalPageSize`.
+- Consolidated multi-assembly Public API approval tests (`Shardis.PublicApi.Tests`) with auto baseline creation and drift `.received` snapshots.
+- Central public API baselines (`test/PublicApiApproval/*.approved.txt`) for all assemblies (core, migration, redis, query providers, testing, marten).
+- Allocation benchmark guard (adaptive vs fixed Marten paging) with JSON export + delta report (`ADAPTIVE_ALLOC_MAX_PCT`, `ADAPTIVE_ALLOC_MIN_BYTES`).
+- EF Core provider README & documented command timeout usage in samples.
+- README updates (adaptive paging guidance, telemetry expansion, allocation guard docs, ordered vs unordered merge guidance).
+
+### Changed (Unreleased)
+
+- Ordered querying no longer relies on eager materialization by default; explicit streaming vs eager APIs clarify memory / latency trade-offs.
+- Eager ordered path now uses parallel per-shard buffering then reuses ordered merge enumerator for consistency.
+- `IMergeObserver` callbacks may now be invoked concurrently (thread-safety requirement documented).
+- `IMergeObserver` extended with `OnShardStopped`; `OnShardCompleted` now only signals successful completion.
+- Public API approval moved from custom reflection snapshot in query tests to standardized PublicApiGenerator-based consolidated project (stable ordering & clearer diffs).
+- Adaptive paging materializer now records decision history to detect oscillation, emits final page size summary.
+
+### Fixed (Unreleased)
+
+- Potential under-prefetch (single-item buffering) replaced by proactive top-up loop ensuring shards are kept at `≤ prefetchPerShard` buffered items.
+- Ensured exceptions from any shard during ordered streaming propagate immediately and dispose all enumerators.
+- Ensured single-fire guarantee for shard stop events across success / cancel / fault paths.
+- Guarded observer callbacks against downstream exceptions (no pipeline impact).
+- Eliminated flaky public API approval failures caused by ordering drift (stable generator & normalization).
+
+### Deprecated (Unreleased)
+
+- Legacy `QueryAllShardsOrderedAsync` marked obsolete in favor of `QueryAllShardsOrderedStreamingAsync` and `QueryAllShardsOrderedEagerAsync`.
+
+### Internal / Quality (Unreleased)
+
+- Added deterministic sequence number in heap ordering to guarantee stable ordering across runs with duplicate keys.
+- Added cancellation tests validating prompt disposal.
+- Documentation and code comments aligned toward Step 5 (backpressure differentiation) groundwork.
+- Heap sampling throttle (`heapSampleEvery`) reduces observer overhead in hot path.
+- Added argument validation for broadcaster parameters (`channelCapacity`, `heapSampleEvery`, `prefetchPerShard`).
+- Added ordering, throttle, startup fault, and deterministic cancellation tests for observer lifecycle.
+- Deterministic per-shard delay schedules reused in benchmarks (seeded) for reproducible merge latency measurements.
+- Added `.gitignore` rule for `*.received.txt` (keeps transient diff artifacts out of commits).
+- Added PublicApiGenerator (v11.x) test dependency; baseline writer establishes approvals automatically on first run.
+- Allocation guard minimum-byte threshold reduces noise for trivial deltas.
+
+## [0.1.1] - 2025-08-26
+
+### Added (0.1.1)
+
+- Initial shard migration scaffold (`Shardis.Migration` package):
+  - `IShardMigrator<TKey,TSession>` abstraction + `DefaultShardMigrator<TKey,TSession>` baseline implementation (plan + execute skeleton).
+  - `ShardMigrationPlan<TKey>` immutable plan type.
+  - In-memory migration components (checkpoint / planner helpers) for tests.
+  - Migration metrics abstraction hooks (counters planned: plan.keys, key.committed, key.failed, duration histogram scaffolding).
+  - ADR & design docs (`MIGRATION.md`, `docs/adr/0002-key-migration-execution.md`) outlining phases, idempotency, data integrity tiers, dry-run roadmap.
+- Unit tests covering planning invariants, retries, checkpoint persistence, and idempotent plan re-execution.
+
+### Changed (0.1.1)
+
+- Map store interfaces extended to support migration planning scenarios (non-breaking additions).
+
+### Internal / Quality (0.1.1)
+
+- Introduced structured migration backlog and task breakdown docs.
+- Added benchmarks project placeholder for future migration throughput measurements.
+
+### Notes (0.1.1)
+
+- Data copy & verification pipeline is not yet implemented (Tier 0: mapping changes only). Future releases will layer read / write / checksum phases and dry-run.
 
 ## [0.1.0] - 2025-08-25
 

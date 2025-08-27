@@ -15,6 +15,14 @@
   <PackageReference Include="BenchmarkDotNet" />
     <ProjectReference Include="../src/Shardis/Shardis.csproj" />
   <ProjectReference Include="../src/Shardis.Migration/Shardis.Migration.csproj" />
+  <ProjectReference Include="../src/Shardis.Query/Shardis.Query.csproj" />
+  <ProjectReference Include="../src/Shardis.Query.InMemory/Shardis.Query.InMemory.csproj" />
+  <ProjectReference Include="../src/Shardis.Marten/Shardis.Marten.csproj" />
+  <ProjectReference Include="../src/Shardis.Query.Marten/Shardis.Query.Marten.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\Shardis.Testing\Shardis.Testing.csproj" />
   </ItemGroup>
 
 </Project>

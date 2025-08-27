@@ -7,19 +7,23 @@ internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerat
 {
     private readonly ShardId _shardId;
     private readonly IAsyncEnumerator<TItem> _enumerator;
+    private readonly int _shardIndex;
+    private long _sequence;
 
     public int ShardCount => 1; // Each ShardStream represents a single shard
     public bool HasValue { get; private set; } = false;
     public bool IsComplete { get; private set; } = false;
     public bool IsPrimed { get; private set; } = false;
     public ShardItem<TItem> Current { get; private set; } = default!;
+    public ShardId ShardId => _shardId;
 
-    public ShardisAsyncShardEnumerator(ShardId shardId, IAsyncEnumerator<TItem> enumerator)
+    public ShardisAsyncShardEnumerator(ShardId shardId, int shardIndex, IAsyncEnumerator<TItem> enumerator)
     {
         ArgumentNullException.ThrowIfNull(enumerator, nameof(enumerator));
 
         _shardId = shardId;
         _enumerator = enumerator;
+        _shardIndex = shardIndex;
     }
 
     public async ValueTask<bool> MoveNextAsync()
@@ -30,6 +34,7 @@ internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerat
         {
             Current = new(_shardId, _enumerator.Current);
             HasValue = true;
+            _sequence++;
             return true;
         }
 

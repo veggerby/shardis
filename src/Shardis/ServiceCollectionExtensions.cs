@@ -75,7 +75,17 @@ public static class ServiceCollectionExtensions
             });
         }
         services.AddSingleton<IShardBroadcaster<TSession>, ShardBroadcaster<TShard, TSession>>();
-        services.AddSingleton<IShardStreamBroadcaster<TSession>, ShardStreamBroadcaster<TShard, TSession>>();
+        // Merge observer (allow override before AddShardis)
+        if (!services.Any(sd => sd.ServiceType == typeof(IMergeObserver)))
+        {
+            services.AddSingleton<IMergeObserver>(NoOpMergeObserver.Instance);
+        }
+        services.AddSingleton<IShardStreamBroadcaster<TSession>>(sp =>
+        {
+            var observer = sp.GetRequiredService<IMergeObserver>();
+            var shards = sp.GetRequiredService<IEnumerable<TShard>>();
+            return new ShardStreamBroadcaster<TShard, TSession>(shards, observer: observer);
+        });
         // Map store registration (allow override)
         if (!services.Any(sd => sd.ServiceType == typeof(IShardMapStore<TKey>)))
         {
