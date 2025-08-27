@@ -416,8 +416,10 @@ Future work (tracked): join support, ordering pushdown, aggregation.
 | Provider | Package | Where | Select | Ordering | Cancellation | Metrics Hooks |
 |----------|---------|-------|--------|----------|--------------|---------------|
 | InMemory | `Shardis.Query.InMemory` | ✅ | ✅ | ❌ (post-filter only) | Cooperative (no throw) | ✅ (OnShardStart/Stop/Items/Completed/Canceled) |
-| EF Core  | `Shardis.Query.EFCore`   | ✅ server-side | ✅ server-side | ❌ | Cooperative | ✅ |
+| EF Core  | `Shardis.Query.EFCore`   | ✅ server-side | ✅ server-side | ❌ (use ordered streaming merge for global order) | Cooperative | ✅ |
 | Marten (adapter)* | `Shardis.Marten` | ✅ | ✅ | Backend native only (no global merge) | Cooperative | (planned) |
+
+Ordering: for global ordering across shards use `QueryAllShardsOrderedStreamingAsync(keySelector)` (streaming k-way merge) or materialize then order.
 
 ### Adaptive Paging & Provider Capabilities
 
@@ -507,9 +509,64 @@ For deterministic cross-shard ordering use `OrderedMergeHelper.Merge` supplying 
 
 ### Backpressure
 
-`UnorderedMerge` uses an unbounded channel by default. Supply a `channelCapacity` to bound memory (e.g. `UnorderedMerge.Merge(streams, ct, channelCapacity: 64)`). Lower capacity reduces peak memory but increases producer blocking; tune per workload.
+`UnorderedMerge` uses an **unbounded** channel by default for lowest latency. Provide a `channelCapacity` (e.g. 64–256) to enforce backpressure and cap memory:
 
-Measures end-to-end cost of composing and executing simple `Where`+`Select` against two shards vs a LINQ baseline (single in-process collection). Use for regression tracking (allocations & mean time).
+```csharp
+var broadcaster = new ShardStreamBroadcaster<MyShard, MySession>(shards, channelCapacity: 128);
+await foreach (var item in broadcaster.QueryAllShardsAsync(s => Query(s))) { /* ... */ }
+
+// Or directly via helper returning merged stream (capacity 128 example):
+var merged = UnorderedMergeHelper.Merge(shardStreams, channelCapacity: 128);
+await foreach (var row in merged) { /* consume */ }
+
+// Minimal helper creation showing explicit capacity tradeoff
+var merge = UnorderedMergeHelper.Merge(shardStreams, channelCapacity: 128); // capacity => more memory, fewer producer stalls (lower tail latency)
+```
+
+Guidance:
+
+- 0 / null (unbounded): lowest per-item latency, potential burst amplification.
+- 32–64: balance memory vs throughput for medium fan-out.
+- 128–256: higher sustained throughput where producers are faster than consumer.
+- >512 rarely justified unless profiling shows persistent producer starvation.
+
+Backpressure wait events are surfaced via `IMergeObserver.OnBackpressureWaitStart/Stop` so instrumentation can record stall time. Ordered (k-way) merges and unbounded unordered merges emit zero wait events by design.
+
+### Query Telemetry & Adaptive Paging
+
+Two observer surfaces exist:
+
+| Interface | Purpose |
+|-----------|---------|
+| `IQueryMetricsObserver` | Lifecycle + item counters (shard start/stop, items produced, completion, cancellation). |
+| `IAdaptivePagingObserver` | Adaptive Marten paging decisions (previous size, next size, last batch latency). |
+
+Marten executor can switch between fixed and adaptive paging:
+
+```csharp
+var fixedExec = MartenQueryExecutor.Instance.WithPageSize(256);
+var adaptiveExec = MartenQueryExecutor.Instance.WithAdaptivePaging(
+  minPageSize: 64,
+  maxPageSize: 1024,
+  targetBatchMilliseconds: 50,
+  observer: myAdaptiveObserver);
+```
+
+Adaptive strategy grows/shrinks page size deterministically based on prior batch latency relative to a target window. It never exceeds bounds and emits a decision event only when the page size changes.
+
+Additional telemetry (adaptive):
+
+- `OnOscillationDetected(shardId, decisionsInWindow, window)` – high churn signal; consider narrowing grow/shrink factors or widening latency target.
+- `OnFinalPageSize(shardId, finalSize, totalDecisions)` – emitted once per shard enumeration for tuning & dashboards.
+
+### Benchmark Allocation Guard
+
+CI runs a smoke allocation benchmark comparing fixed vs adaptive Marten paging. A JSON exporter is parsed and a markdown delta report (`ADAPTIVE-ALLOC-DELTA.md`) is uploaded. Environment thresholds:
+
+- `ADAPTIVE_ALLOC_MAX_PCT` (default 20) – percentage delta guard
+- `ADAPTIVE_ALLOC_MIN_BYTES` (default 4096 B/op) – ignore noise below this absolute per-op allocation
+
+Currently advisory / non-blocking. After several green runs remove the fallback `|| echo` in the workflow to make regressions fail the job.
 
 ### Merge Modes & Tuning
 

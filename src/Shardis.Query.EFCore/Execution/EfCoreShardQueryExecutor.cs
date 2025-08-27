@@ -48,20 +48,29 @@ public sealed class EfCoreShardQueryExecutor : IShardQueryExecutor
     {
         _metrics.OnShardStart(shardId);
         await using var ctx = _contextFactory(shardId);
-        // Command timeout not applied (extension method unavailable in current reference set) – placeholder for future.
+        // Apply optional command timeout (per shard) if specified.
+        if (_commandTimeoutSeconds is int secs && secs > 0)
+        {
+            try
+            {
+                ctx.Database.SetCommandTimeout(secs);
+            }
+            catch (Exception)
+            {
+                // Defensive: if provider does not support setting timeout, continue without failing the whole query.
+            }
+        }
         var setGeneric = typeof(DbContext).GetMethods().First(m => m.Name == nameof(DbContext.Set) && m.IsGenericMethodDefinition && m.GetParameters().Length == 0).MakeGenericMethod(tIn);
         var raw = setGeneric.Invoke(ctx, null)!;
         var q = (IQueryable)raw;
         var apply = typeof(QueryComposer).GetMethod(nameof(QueryComposer.ApplyQueryable))!.MakeGenericMethod(tIn, typeof(TResult));
         var applied = (IQueryable<TResult>)apply.Invoke(null, new object[] { q, model })!;
-        if (typeof(TResult).IsClass)
-        {
-            var asNoTracking = typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions)
-                .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-                .First(m => m.Name == nameof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
-                .MakeGenericMethod(typeof(TResult));
-            applied = (IQueryable<TResult>)asNoTracking.Invoke(null, new object[] { applied })!;
-        }
+        // Default to AsNoTracking for query performance / reduced change tracking overhead
+        var asNoTracking = typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .First(m => m.Name == nameof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
+            .MakeGenericMethod(typeof(TResult));
+        applied = (IQueryable<TResult>)asNoTracking.Invoke(null, new object[] { applied })!;
         var produced = 0;
         try
         {
