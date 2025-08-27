@@ -40,8 +40,6 @@ This file tracks the planned and proposed features for the Shardis sharding libr
 
 ---
 
----
-
 ## 🔧 High Priority (Next Up)
 
 ### Core Optimizations / Hardening
@@ -80,7 +78,6 @@ All previously listed high-impact optimizations have been completed (see Complet
 | Security & logging guidance doc | `dx` | What is safe to log; avoidance of leaking keys or shard assignments; hashing considerations. | _TBD_ |
 | OpenTelemetry tracing sample (routing + migration spans) | `dx` | Example wiring of spans around resolution, broadcast, migration phases. | _TBD_ |
 | Weighted / adaptive routing R&D placeholder | `experimental` | Follow-on after weighted interface: dynamic weight adjustment from metrics. | _TBD_ |
-
 
 ### Feature Enablement
 
