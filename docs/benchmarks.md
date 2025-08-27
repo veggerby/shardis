@@ -16,7 +16,7 @@ Benchmark sources live under `benchmarks/` (single project `Shardis.Benchmarks`)
 - `RouterBenchmarks` (category `router`) – Default vs Consistent routers routing 10k deterministic keys.
 - `HasherBenchmarks` (category `hasher`) – ring hasher micro-benchmarks over 50k seeded random values.
 - `MigrationThroughputBenchmarks` (category `migration`) – end-to-end migration executor throughput across a controlled concurrency matrix.
-- `BroadcasterStreamBenchmarks` (category `broadcaster`) – streaming broadcaster throughput & fairness under shard speed skew (fast vs slow producers, configurable item count / delay). Used to evaluate backpressure and merge latency.
+- `BroadcasterStreamBenchmarks` (category `broadcaster`) – evaluates the existing streaming broadcaster under shard speed skew (fast vs slow producers) and varying item pacing. Today it focuses on raw interleaving fairness & latency; it remains while ordered vs unordered merge benchmarks are being added (see planned `merge` category) so users can compare pre‑merge baseline behavior.
 
 ## Running
 

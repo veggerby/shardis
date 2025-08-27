@@ -284,11 +284,11 @@ Use these to compare (by `--anyCategories`):
 - `router`: Default vs Consistent hash routing cost
 - `hasher`: Different ring hash algorithms (Default vs FNV-1a) & replication factor impact
 - `migration`: Migration executor throughput across concurrency / batch matrix
-- `broadcaster`: Fast vs slow shard streaming (fairness, interleaving, backpressure sensitivity)
+- `broadcaster`: Fast vs slow shard streaming (fairness, interleaving, backpressure sensitivity). This suite remains as a baseline ahead of the upcoming ordered vs unordered merge benchmarks.
 
-Planned:
+Planned (in active design):
 
-- `merge`: Ordered vs unordered streaming merge enumerators (k‑way heap vs combined interleave)
+- `merge`: Ordered vs unordered streaming merge enumerators (k‑way heap vs combined interleave) – will complement (not replace) the broadcaster suite to show impact of global ordering.
 
 After optimization: routing hot path avoids double hashing (via `TryGetOrAdd`) and maintains constant single miss emission under high contention.
 
