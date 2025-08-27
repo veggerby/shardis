@@ -2,6 +2,19 @@
 
 > **Shardis**: _Bigger on the inside. Smarter on the outside._
 
+[![Build](https://github.com/veggerby/shardis/actions/workflows/publish.yml/badge.svg)](https://github.com/veggerby/shardis/actions)
+[![Coverage](https://codecov.io/gh/veggerby/shardis/branch/main/graph/badge.svg)](https://codecov.io/gh/veggerby/shardis)
+[![License](https://img.shields.io/github/license/veggerby/shardis)](./LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/veggerby/shardis)](https://github.com/veggerby/shardis/commits/main)
+[![Benchmarks](https://img.shields.io/badge/Benchmarks-BDN-informational)](./docs/benchmarks.md)
+[![Docs](https://img.shields.io/badge/Docs-index-blue)](./docs/index.md)
+
+<!-- NuGet badges (will show once packages are published) -->
+[![NuGet (Shardis)](https://img.shields.io/nuget/v/Shardis?label=Shardis&color=004880)](https://www.nuget.org/packages/Shardis/)
+[![NuGet (Shardis.Migration)](https://img.shields.io/nuget/v/Shardis.Migration?label=Shardis.Migration&color=004880)](https://www.nuget.org/packages/Shardis.Migration/)
+[![NuGet (Shardis.Redis)](https://img.shields.io/nuget/v/Shardis.Redis?label=Shardis.Redis&color=004880)](https://www.nuget.org/packages/Shardis.Redis/)
+[![NuGet (Shardis.Marten)](https://img.shields.io/nuget/v/Shardis.Marten?label=Shardis.Marten&color=004880)](https://www.nuget.org/packages/Shardis.Marten/)
+
 **Shardis** is a lightweight, scalable sharding framework for .NET designed to help developers partition and route aggregates across multiple databases cleanly and efficiently.
 Built for domain-driven systems, event sourcing architectures, and multi-tenant platforms, Shardis ensures that data routing remains deterministic, maintainable, and completely decoupled from business logic.
 
