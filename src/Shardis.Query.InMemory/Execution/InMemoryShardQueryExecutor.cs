@@ -14,7 +14,7 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
 {
     private readonly IReadOnlyList<IEnumerable<object>> _shards = shards ?? throw new ArgumentNullException(nameof(shards));
     private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge = merge ?? throw new ArgumentNullException(nameof(merge));
-    private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
+    private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Diagnostics.NoopQueryMetricsObserver.Instance;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, CompiledPipeline> _pipelineCache = new();
 
     private sealed record CompiledPipeline(Func<object, bool>? Where, Func<object, object> Select);
