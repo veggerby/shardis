@@ -11,9 +11,6 @@
 
 <!-- NuGet badges (will show once packages are published) -->
 [![NuGet (Shardis)](https://img.shields.io/nuget/v/Shardis?label=Shardis&color=004880)](https://www.nuget.org/packages/Shardis/)
-[![NuGet (Shardis.Migration)](https://img.shields.io/nuget/v/Shardis.Migration?label=Shardis.Migration&color=004880)](https://www.nuget.org/packages/Shardis.Migration/)
-[![NuGet (Shardis.Redis)](https://img.shields.io/nuget/v/Shardis.Redis?label=Shardis.Redis&color=004880)](https://www.nuget.org/packages/Shardis.Redis/)
-[![NuGet (Shardis.Marten)](https://img.shields.io/nuget/v/Shardis.Marten?label=Shardis.Marten&color=004880)](https://www.nuget.org/packages/Shardis.Marten/)
 
 **Shardis** is a lightweight, scalable sharding framework for .NET designed to help developers partition and route aggregates across multiple databases cleanly and efficiently.
 Built for domain-driven systems, event sourcing architectures, and multi-tenant platforms, Shardis ensures that data routing remains deterministic, maintainable, and completely decoupled from business logic.
@@ -69,6 +66,28 @@ Reference the Shardis project in your solution, or package it locally using your
 
 ## 🚀 Getting Started
 
+### Migration (recommended)
+
+For key migration, prefer the dedicated `Shardis.Migration` package which provides a planner and an executor with in-memory defaults suitable for tests and samples.
+
+Canonical DI usage:
+
+```csharp
+var services = new ServiceCollection()
+  .AddShardisMigration<string>()
+  .BuildServiceProvider();
+
+var planner = services.GetRequiredService<Shardis.Migration.Abstractions.IShardMigrationPlanner<string>>();
+var executor = services.GetRequiredService<Shardis.Migration.Execution.ShardMigrationExecutor<string>>();
+
+var from = new Shardis.Migration.Model.TopologySnapshot<string>(new Dictionary<Shardis.Model.ShardKey<string>, Shardis.Model.ShardId>());
+var to   = new Shardis.Migration.Model.TopologySnapshot<string>(new Dictionary<Shardis.Model.ShardKey<string>, Shardis.Model.ShardId>());
+var plan = await planner.CreatePlanAsync(from, to, CancellationToken.None);
+await executor.ExecuteAsync(plan, CancellationToken.None);
+```
+
+See `docs/MIGRATION.md` and `src/Shardis.Migration/README.md` for details and production guidance.
+
 Setting up a basic router:
 
 ```csharp
@@ -86,6 +105,9 @@ var shards = new[]
 };
 
 // Initialize the shard router
+
+### Using Dependency Injection
+
 var shardRouter = new DefaultShardRouter(
     shardMapStore: new InMemoryShardMapStore(),
     availableShards: shards
@@ -372,23 +394,15 @@ The test auto-creates missing `.approved` files (first run does not fail). Only 
 
 ## 🔄 Migration (Scaffolding)
 
-Two layers exist:
+Migration implementation now lives in the dedicated `Shardis.Migration` package. The core repository no longer exposes the previous migration stub. For migration work, prefer the `Shardis.Migration` executor which provides an end-to-end execution pipeline (copy, verify, swap) with checkpointing and metrics.
 
-1. Core stub (`IShardMigrator`, `DefaultShardMigrator`, `ShardMigrationPlan`) – minimal plan + per-key callback iteration (non-production; placeholder to avoid breaking API later).
-2. Dedicated migration framework (`Shardis.Migration` project) – executor, planner, mover, checkpoint, metrics (active development per ADR 0002 / docs in `docs/migration/`).
+Quick start:
 
-Current core stub behavior:
+1. Add the migration services in your composition root:
+  `services.AddShardisMigration<TKey>();`
+2. Use the planner / executor from the package to create a plan and execute it with durable components (data mover, verifier, swapper, checkpoint store).
 
-- Builds a simple plan (source → target, ordered keys).
-- Iterates keys and invokes optional callback (no data copy, no map mutation, no verification, no metrics).
-
-Next actions (tracked in backlog):
-
-1. Unify guidance: mark `DefaultShardMigrator` `[Obsolete]` once the full executor is stabilized.
-2. Integrate adapter so `IShardMigrator` can delegate to executor implementations.
-3. Add metrics + checkpoint wiring via `Shardis.Migration` when enabled.
-
-Until then: use the migration project APIs for real key movement; the core stub is intentionally inert and safe for experimentation only.
+See `docs/MIGRATION.md`, `docs/adr/0002-key-migration-execution.md` and the `Shardis.Migration` README for examples and operational guidance.
 
 ---
 

@@ -59,6 +59,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Internal / Quality (Unreleased)
 
+### Removed (Unreleased)
+
+- `DefaultShardMigrator<TKey,TSession>` removed from the core `Shardis` project: this type has been intentionally deleted to avoid duplicate migration pathways and to make `Shardis.Migration` the single, canonical migration executor. This is a breaking change for any consumer who depended on the core stub; the recommended replacement is the `Shardis.Migration` package and its `ShardMigrationExecutor<T>` execution pipeline (register via `AddShardisMigration<T>()`). The removal was considered low-risk since the core stub was a lightweight, non-production scaffold.
+
 - Added deterministic sequence number in heap ordering to guarantee stable ordering across runs with duplicate keys.
 - Added cancellation tests validating prompt disposal.
 - Documentation and code comments aligned toward Step 5 (backpressure differentiation) groundwork.

@@ -1,34 +1,63 @@
 # Shardis.Redis
 
-Redis-backed shard map store for Shardis.
+Redis-backed map store and helpers for Shardis (connection helpers and sample `RedisShard`).
 
-## Features
+[![NuGet](https://img.shields.io/nuget/v/Shardis.Redis.svg)](https://www.nuget.org/packages/Shardis.Redis/)
+[![Downloads](https://img.shields.io/nuget/dt/Shardis.Redis.svg)](https://www.nuget.org/packages/Shardis.Redis/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/veggerby/shardis/blob/main/LICENSE)
 
-- Redis key/value persistence for shard assignments
-- Atomic first-assignment (`SET NX`) semantics
-- `TryGetOrAdd` fast path
-
-## Installation
+## Install
 
 ```bash
-dotnet add package Shardis.Redis
+dotnet add package Shardis.Redis --version 0.1.*
 ```
 
-## Usage
+## When to use
+
+- Your shard-local store is Redis and you need a map store or connection helpers.
+
+## What’s included
+
+- `RedisShard` sample implementation and `RedisShardMapStore<T>` helpers.
+
+## Quick start
 
 ```csharp
-services.AddSingleton<IShardMapStore<string>>(_ => new RedisShardMapStore<string>("localhost:6379"));
-services.AddShardis<MyShard, string, Session>(o =>
-{
-    o.Shards.Add(new MyShard("shard-a"));
-    o.Shards.Add(new MyShard("shard-b"));
-});
+// register a Redis-backed shard map store
+services.AddSingleton<IShardMapStore<string>>(sp => new RedisShardMapStore<string>("localhost:6379"));
+
+// create a shard map store directly
+var store = new RedisShardMapStore<string>("localhost:6379");
 ```
 
-## Notes
+## Integration notes
 
-Keys are stored under `shardmap:<key>` with the shard id as value.
+- Depends on StackExchange.Redis; see csproj for version pins.
 
-## License
+## Samples & tests
 
-MIT
+- Samples: [samples](https://github.com/veggerby/shardis/tree/main/samples)
+- Tests: [tests](https://github.com/veggerby/shardis/tree/main/test)
+
+## Configuration / Options
+
+- Connection string: provide the Redis endpoint(s) to `RedisShardMapStore<T>`.
+- Timeouts and retry policies should be configured in the `ConnectionMultiplexer`.
+
+## Capabilities & limits
+
+- ✅ Provides atomic CAS-style operations for shard map persistence.
+- ⚠️ Network partitions and Redis availability affect assignment consistency; use durable checkpointing for migration operations.
+
+## Versioning & compatibility
+
+- SemVer; see CHANGELOG: [CHANGELOG](https://github.com/veggerby/shardis/blob/main/CHANGELOG.md)
+
+## Contributing
+
+- PRs welcome. See [CONTRIBUTING](https://github.com/veggerby/shardis/blob/main/CONTRIBUTING.md)
+
+## Links
+
+- NuGet: [Shardis.Redis on NuGet](https://www.nuget.org/packages/Shardis.Redis/)
+- License: [LICENSE](https://github.com/veggerby/shardis/blob/main/LICENSE)

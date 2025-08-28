@@ -21,7 +21,7 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
     private readonly Func<int, DbContext> _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
     private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge = merge ?? throw new ArgumentNullException(nameof(merge));
     private readonly IShardQueryCapabilities _caps = new BasicQueryCapabilities(ordering: false, pagination: false);
-    private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
+    private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Diagnostics.NoopQueryMetricsObserver.Instance;
     private readonly int? _commandTimeoutSeconds = commandTimeoutSeconds;
 
     /// <inheritdoc />
@@ -60,7 +60,7 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
         // Default to AsNoTracking for query performance / reduced change tracking overhead
         var asNoTracking = typeof(EntityFrameworkQueryableExtensions)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-            .First(m => m.Name == nameof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
+            .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
             .MakeGenericMethod(typeof(TResult));
         applied = (IQueryable<TResult>)asNoTracking.Invoke(null, new object[] { applied })!;
         var produced = 0;

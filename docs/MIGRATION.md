@@ -18,9 +18,8 @@ This document formalizes the approach for safely reassigning keys (and associate
 
 | Type | Status | Purpose |
 |------|--------|---------|
-| `IShardMigrator<TKey,TSession>` | ✅ (scaffold) | Plans & executes key moves. |
-| `DefaultShardMigrator<TKey,TSession>` | ✅ | Baseline implementation (no data copy yet). |
-| `ShardMigrationPlan<TKey>` | ✅ | Immutable plan: source, target, key set. |
+| `IShardMigrationPlanner<TKey>` / `ShardMigrationExecutor<TKey>` | ✅ | Planner + executor pair: build deterministic plans and execute them using pluggable mover/verification/swapper implementations. |
+| `MigrationPlan<TKey>` | ✅ | Immutable plan: source, target, key set (defined in `Shardis.Migration.Model`). |
 | `IShardDataTransfer<TKey,TSession>` | 🚧 | Backend-specific data fetch + write abstraction. |
 | `IShardMigrationAuditor` | 🚧 | Records events (start, key copied, committed, failed). |
 | `IShardMigrationLocker` | 🚧 | Optional: coordinate concurrent migrations (advisory lock). |
@@ -30,7 +29,7 @@ This document formalizes the approach for safely reassigning keys (and associate
 ## High-Level Flow (Target State)
 
 1. Discover candidate keys (external query or supplied list).
-2. `PlanAsync` produces `ShardMigrationPlan<TKey>`.
+2. `PlanAsync` produces `MigrationPlan<TKey>`.
 3. (Optional) Dry-run validation: ensure all keys currently map to source.
 4. Execute in phases per key:
    1. Read entity/data from source (`IShardDataTransfer.ReadAsync`).
@@ -141,9 +140,24 @@ No partial destructive operations; mapping change is final boundary.
 ## Usage (Current Scaffold)
 
 ```csharp
-var migrator = new DefaultShardMigrator<string, string>();
-var plan = await migrator.PlanAsync(sourceShard, targetShard, keys);
-await migrator.ExecutePlanAsync(plan, key => Task.CompletedTask); // callback per key
+// Recommended: use the dedicated migration package + executor as the single, canonical path.
+// Register migration components (tests/samples can use the in-memory defaults) and run the
+// executor produced by the package. This keeps the core library surface minimal and
+// delegates execution to the purpose-built executor with checkpointing, verification and
+// swapper implementations.
+
+// Canonical (DI) usage — prefer the dedicated `Shardis.Migration` package:
+// var services = new ServiceCollection()
+//     .AddShardisMigration<string>()
+//     .BuildServiceProvider();
+// var planner = services.GetRequiredService<IShardMigrationPlanner<string>>();
+// var executor = services.GetRequiredService<ShardMigrationExecutor<string>>();
+// var from = new TopologySnapshot<string>(new Dictionary<ShardKey<string>, ShardId>());
+// var to   = new TopologySnapshot<string>(new Dictionary<ShardKey<string>, ShardId>());
+// var plan = await planner.CreatePlanAsync(from, to, CancellationToken.None);
+// await executor.ExecuteAsync(plan, CancellationToken.None);
+
+// See `Shardis.Migration` README and ADR-0002 for detailed examples and production guidance.
 ```
 
 Future (planned):

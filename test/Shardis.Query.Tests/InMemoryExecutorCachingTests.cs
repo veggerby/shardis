@@ -34,7 +34,7 @@ public sealed class InMemoryExecutorCachingTests
         var shard1 = new object[] { new Person { Id = 1, Age = 50 }, new Person { Id = 2, Age = 20 } };
         var shard2 = new object[] { new Person { Id = 3, Age = 70 } };
         var obs = new RecordingObserver();
-        var exec = new InMemoryShardQueryExecutor(new[] { shard1, shard2 }, (s, ct) => Shardis.Query.Internals.UnorderedMerge.Merge(s, ct), obs);
+        var exec = new InMemoryShardQueryExecutor(new[] { shard1, shard2 }, (s, ct) => UnorderedMerge.Merge(s, ct), obs);
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age > 30);
 
         // act

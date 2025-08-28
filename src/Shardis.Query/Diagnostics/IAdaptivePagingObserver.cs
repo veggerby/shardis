@@ -20,17 +20,3 @@ public interface IAdaptivePagingObserver
     /// <param name="totalDecisions">Total number of size change decisions made.</param>
     void OnFinalPageSize(int shardId, int finalSize, int totalDecisions);
 }
-
-/// <summary>No-op implementation.</summary>
-public sealed class NoopAdaptivePagingObserver : IAdaptivePagingObserver
-{
-    /// <summary>Singleton instance.</summary>
-    public static readonly IAdaptivePagingObserver Instance = new NoopAdaptivePagingObserver();
-    private NoopAdaptivePagingObserver() { }
-    /// <inheritdoc />
-    public void OnPageDecision(int shardId, int previousSize, int nextSize, TimeSpan lastBatchLatency) { }
-    /// <inheritdoc />
-    public void OnOscillationDetected(int shardId, int decisionsInWindow, TimeSpan window) { }
-    /// <inheritdoc />
-    public void OnFinalPageSize(int shardId, int finalSize, int totalDecisions) { }
-}
