@@ -18,7 +18,7 @@ This file tracks the planned and proposed features for the Shardis sharding libr
 | Metrics interface (`IShardisMetrics`) + counter impl | ✅ Done | `infra` | Hookable routing metrics (hits, misses, new/existing). |
 | DI options surface (`AddShardis` + options) | ✅ Done | `dx` | Configurable router strategy, hashers, replication factor, stores. |
 | Benchmarks project | ✅ Done | `infra` | Baseline performance harness (routers, hashers). |
-| Migration scaffolding (`IShardMigrator`, plan/execute) | ✅ Done | `core` | Foundation for future safe key moves. |
+| Migration scaffolding (planner + executor) | ✅ Done | `core` | Foundation for future safe key moves. Use the `Shardis.Migration` package for runtime execution. |
 | Documentation overhaul (README, index, migration, metrics) | ✅ Done | `dx` | Core concepts + roadmap captured. |
 | Assertion unification (AwesomeAssertions) | ✅ Done | `dx` | Standardized on external AwesomeAssertions package. |
 | Fluent query prototype (`ShardQuery` internal) | 🧪 Prototype | `dx` | Early LINQ-style API (ordering & provider integration pending). |

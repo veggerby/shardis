@@ -95,7 +95,7 @@ Update `README.md` / `docs/` when adding: new DI options, public abstractions, o
 
 ---
 ## 9. Migration & Future Work (Scaffolding)
-When extending migration (`IShardMigrator`):
+When extending migration (use `Shardis.Migration` extensions / `IShardMigrationPlanner` / `ShardMigrationExecutor`):
 - Keep planning vs execution distinct.
 - Ensure idempotency: re-running a plan should not duplicate work.
 - Document data integrity guarantees.
