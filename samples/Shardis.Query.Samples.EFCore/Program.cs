@@ -26,7 +26,7 @@ internal static class Program
                     : new[] { new Person { Id = 3, Name = "Carol", Age = 42 }, new Person { Id = 4, Name = "Dave", Age = 31 } });
                 return ctx;
             },
-            merge: (streams, ct) => Shardis.Query.UnorderedMergeHelper.Merge(streams, ct));
+            merge: (streams, ct) => UnorderedMergeHelper.Merge(streams, ct));
 
         var q = ShardQuery.For<Person>(exec)
                           .Where(p => p.Age >= 30)

@@ -124,7 +124,7 @@ public sealed class EfCoreExecutorTests
     }
 
     private static IAsyncEnumerable<object> UnorderedConcurrentMerge(IEnumerable<IAsyncEnumerable<object>> streams, CancellationToken ct)
-        => Shardis.Query.Internals.UnorderedMerge.Merge(streams, ct);
+        => Internals.UnorderedMerge.Merge(streams, ct);
 
     private static async IAsyncEnumerable<object> SlowSecondShardMerge(IEnumerable<IAsyncEnumerable<object>> sources, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct, int slowDelayMs)
     {

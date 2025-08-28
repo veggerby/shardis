@@ -95,7 +95,7 @@ Update `README.md` / `docs/` when adding: new DI options, public abstractions, o
 
 ---
 ## 9. Migration & Future Work (Scaffolding)
-When extending migration (`IShardMigrator`):
+When extending migration (use `Shardis.Migration` extensions / `IShardMigrationPlanner` / `ShardMigrationExecutor`):
 - Keep planning vs execution distinct.
 - Ensure idempotency: re-running a plan should not duplicate work.
 - Document data integrity guarantees.
@@ -147,4 +147,135 @@ If information is missing:
 If an AI suggestion increases complexity without measurable benefit (performance, clarity, extensibility), **reject it**. Shardis prioritizes stable, predictable infrastructure primitives over novelty.
 
 ---
-End of guidelines.
+
+## Universal README structure (for all Shardis.\* packages)
+
+1. **Title + one-line value prop**
+   Short, specific, and outcome-oriented.
+
+2. **Badges (optional but nice)**
+   Build, NuGet version/downloads, license, docs link.
+
+3. **Install**
+   The exact `dotnet add package ...` inc. version wildcard policy.
+
+4. **When to use**
+   Bulleted, 2–5 bullets; user-facing criteria (not tech specs).
+
+5. **What’s included**
+   Concise bullets: main types, interfaces, extension methods, utilities.
+
+6. **Quick start**
+   10–20 lines of runnable code that demonstrates the *happy path*.
+
+7. **Configuration / Options**
+   How to tweak behavior (constructor args, options objects, DI, env vars).
+
+8. **Integration notes**
+   How this package fits with the rest of Shardis (related packages, required interfaces, typical wiring).
+
+9. **Capabilities & limits**
+   What it does well, known trade-offs, version compatibility, performance notes.
+
+10. **Samples & tests**
+    Point to sample projects and relevant test folders.
+
+11. **Versioning & compatibility**
+    Target frameworks, supported Shardis versions, breaking-change notes.
+
+12. **Contributing**
+    Link to CONTRIBUTING, coding style (SHIT-compliant), how to run tests.
+
+13. **License**
+    Short line + link.
+
+14. **Links**
+    Docs site, API reference, issue tracker, discussions.
+
+NB! Do **not** add repository relative links in the package README.md. They will break on Nuget.org. Ensure they are full links to <https://github.com/veggerby/shardis> GitHub repository.
+
+---
+
+### Reusable README template
+
+````markdown
+# <PackageName>
+
+<One-sentence value proposition: what problem it solves and for whom.>
+
+[![NuGet](https://img.shields.io/nuget/v/<PackageName>.svg)](https://www.nuget.org/packages/<PackageName>/)
+[![Downloads](https://img.shields.io/nuget/dt/<PackageName>.svg)](https://www.nuget.org/packages/<PackageName>/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+## Install
+
+```bash
+dotnet add package <PackageName> --version <x.y.*>
+````
+
+## When to use
+
+* \<bullet 1>
+* \<bullet 2>
+* \<bullet 3>
+
+## What’s included
+
+* `<TypeOrInterface>` — <short description>
+* `<HelperOrExtension>` — <short description>
+* …
+
+## Quick start
+
+```csharp
+// Minimal, runnable example showing the happy path.
+```
+
+## Configuration / Options
+
+* **OptionA**: what it does, default value
+* **OptionB**: how to set (DI / ctor / fluent), example:
+
+```csharp
+services.AddShardis(/* ... */)
+        .Add<ThisPackage>(o => { o.PageSize = 256; });
+```
+
+## Integration notes
+
+* Works with: \<related Shardis packages / storage engines / frameworks>
+* Requires: `<IWhatever>` implementation (provided by \<this/other> package)
+* Typical wiring: \<one sentence + link/code>
+
+## Capabilities & limits
+
+* ✅ <capability>
+* ⚠️ \<known limitation / trade-off>
+* 🧩 Compatibility: .NET <TFMs>, Shardis <version range>
+
+## Samples & tests
+
+* Samples: `path/to/samples`
+* Tests: `path/to/tests`
+
+## Versioning & compatibility
+
+* Target frameworks: `net8.0`, `net9.0`
+* Semantic versioning: **Minor** may add features; **Major** may break.
+* See CHANGELOG for details.
+
+## Contributing
+
+PRs welcome. Please read [CONTRIBUTING.md](../CONTRIBUTING.md) and follow SHIT-compliant style.
+
+## License
+
+MIT — see [LICENSE](../LICENSE).
+
+## Links
+
+* Docs: <link>
+* Issues: <link>
+* Discussions: <link>
+
+````

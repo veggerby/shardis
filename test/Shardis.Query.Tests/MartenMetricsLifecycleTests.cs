@@ -8,7 +8,7 @@ public sealed class MartenMetricsLifecycleTests
     public void MetricsObserver_Attachable()
     {
         // arrange
-        var observer = Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
+        var observer = Diagnostics.NoopQueryMetricsObserver.Instance;
 
         // act
         var exec = MartenQueryExecutor.Instance.WithMetrics(observer);
