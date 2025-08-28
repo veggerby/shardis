@@ -1,15 +1,23 @@
 # Shardis.Query
 
-Core querying primitives for Shardis (internal abstractions + helpers). Not intended for direct consumption; use provider packages:
+Query execution primitives and abstractions for Shardis: streaming enumerators, LINQ helpers, and executor interfaces.
 
-- `Shardis.Query.EFCore`
-- `Shardis.Query.Marten`
-- `Shardis.Query.InMemory`
+## When to use
 
-Provides:
+- Use this package when implementing or consuming cross-shard queries and streaming merge operators.
 
-- Merge enumerators (ordered streaming, eager ordered, unordered interleave)
-- LINQ MVP scaffolding (Where/Select only)
-- Adaptive paging observers (provider-integrated)
+## What the package provides
 
-Consumers should reference provider packages which depend on this internally.
+- `IQueryExecutor` and streaming enumerators.
+- LINQ adapter helpers and sample providers (in-memory, EFCore, Marten).
+
+## Quick usage example
+
+```csharp
+// resolve a shard query executor and run a query
+var exec = provider.GetRequiredService<IShardQueryExecutor<MySession>>();
+await foreach (var item in exec.QueryAsync(sessionFactory, myQuery, CancellationToken.None))
+{
+    // process streamed items
+}
+```

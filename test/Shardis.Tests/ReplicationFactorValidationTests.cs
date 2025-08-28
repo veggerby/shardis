@@ -32,7 +32,7 @@ public class ReplicationFactorValidationTests
         var shards = new List<IShard<string>> { new SimpleShard(new("s1"), "c1") };
 
         // act
-        Action act = () => _ = new ConsistentHashShardRouter<IShard<string>, string, string>(store, shards, Shardis.Hashing.StringShardKeyHasher.Instance, 10_001);
+        Action act = () => _ = new ConsistentHashShardRouter<IShard<string>, string, string>(store, shards, Hashing.StringShardKeyHasher.Instance, 10_001);
 
         // assert
         act.Should().Throw<ShardisException>();

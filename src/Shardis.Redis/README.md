@@ -1,34 +1,26 @@
 # Shardis.Redis
 
-Redis-backed shard map store for Shardis.
+Redis integrations for Shardis: helpers for mapping shards to Redis instances and a small `RedisShard` implementation sample.
 
-## Features
+## When to use
 
-- Redis key/value persistence for shard assignments
-- Atomic first-assignment (`SET NX`) semantics
-- `TryGetOrAdd` fast path
+- Use when you store shard-local data in Redis and need helpers to manage shard connections and topology mapping.
 
-## Installation
+## What the package provides
 
-```bash
-dotnet add package Shardis.Redis
-```
+- `RedisShard` sample implementation and connection helpers.
+- Integration points for checkpoint stores or distributed coordination backed by Redis (examples/reserved API surface).
 
-## Usage
+## Links
+
+- Samples: `samples/` and `Shardis.Redis` tests
+
+## Quick usage example
 
 ```csharp
-services.AddSingleton<IShardMapStore<string>>(_ => new RedisShardMapStore<string>("localhost:6379"));
-services.AddShardis<MyShard, string, Session>(o =>
-{
-    o.Shards.Add(new MyShard("shard-a"));
-    o.Shards.Add(new MyShard("shard-b"));
-});
+// register a Redis-backed shard map store
+services.AddSingleton<IShardMapStore<string>>(sp => new RedisShardMapStore<string>("localhost:6379"));
+
+// create a shard map store directly
+var store = new RedisShardMapStore<string>("localhost:6379");
 ```
-
-## Notes
-
-Keys are stored under `shardmap:<key>` with the shard id as value.
-
-## License
-
-MIT

@@ -1,24 +1,24 @@
 # Shardis.Marten
 
-Marten integration helpers for Shardis (query execution / shard session support).
+Marten (Postgres) integration for Shardis: query executor and helpers for using Marten as the shard-local persistence provider.
 
-## Installation
+## When to use
 
-```bash
-dotnet add package Shardis.Marten
-```
+- Use this package when your application persists domain objects in Marten/Postgres and you want a ready-made QueryExecutor that speaks Marten's APIs.
 
-## Usage
+## What the package provides
+
+- `MartenQueryExecutor` and `MartenShard` conveniences.
+- Examples showing how to wire Marten query execution into Shardis queries.
+
+## Links
+
+- Samples: `Shardis.Query.Samples.EFCore` and `SampleApp` for examples
+
+## Quick usage example
 
 ```csharp
-// Register shards that each encapsulate a Marten session or document store wrapper.
-services.AddShardis<MartenShard, Guid, IDocumentSession>(o =>
-{
-    o.Shards.Add(new MartenShard("shard-a", storeA));
-    o.Shards.Add(new MartenShard("shard-b", storeB));
-});
+// use the Marten query executor singleton
+var exec = MartenQueryExecutor.Instance.WithPageSize(256);
+var results = await exec.ExecuteAsync(session, query, CancellationToken.None);
 ```
-
-## License
-
-MIT

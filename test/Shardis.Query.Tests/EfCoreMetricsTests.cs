@@ -12,7 +12,7 @@ public sealed class EfCoreMetricsTests
     {
         // arrange
         var obs = new RecordingObserver();
-        var exec = new EfCoreShardQueryExecutor(2, shard => Create(shard), (streams, ct) => Shardis.Query.Internals.UnorderedMerge.Merge(streams, ct), obs);
+        var exec = new EfCoreShardQueryExecutor(2, shard => Create(shard), (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), obs);
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age > 20);
 
         // act

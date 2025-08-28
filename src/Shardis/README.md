@@ -1,45 +1,28 @@
-# Shardis Core
+# Shardis
 
-Core primitives for the Shardis sharding framework.
+Core sharding abstractions and utilities. This package contains the routing, hashing and core public types that other Shardis packages depend on.
 
-## Features
+## When to use
 
-- Consistent hashing & default modulo routing
-- Virtual node replication (configurable factor, max 10,000)
-- Pluggable key and ring hashers
-- Shard map stores (in-memory, external via extension packages)
-- Atomic compare-and-set assignment (`TryAssignShardToKey`, `TryGetOrAdd`)
-- Broadcasting & async merge/ordered enumerators
-- Metrics abstraction (single-miss invariant)
-- Migration scaffolding
+- Reference this package when you need deterministic routing, shard identifier types and DI extension points for pluggable hashing and routing strategies.
 
-## Installation
+## What the package provides
 
-```bash
-dotnet add package Shardis
-```
+- Core models: `Shard`, `ShardId`, `ShardKey`.
+- Router abstractions and default implementations: `IShardRouter`, `DefaultShardRouter`.
+- Hashing abstractions: `IShardKeyHasher<TKey>`, `IShardRingHasher`.
+- DI extension: `ServiceCollectionExtensions.AddShardis()` to wire defaults.
 
-## Quick Start
+## Quick usage example
 
 ```csharp
-services.AddShardis<MyShard, string, Session>(o =>
+// register core sharding primitives
+services.AddShardis<string>(opts =>
 {
-    o.Shards.Add(new MyShard("shard-a"));
-    o.Shards.Add(new MyShard("shard-b"));
+    opts.ReplicationFactor = 3;
 });
+
+// resolve router + map store
+var router = provider.GetRequiredService<IShardRouter<string>>();
+var mapStore = provider.GetRequiredService<IShardMapStore<string>>();
 ```
-
-Resolve a shard for a key:
-
-```csharp
-var router = provider.GetRequiredService<IShardRouter<string, Session>>();
-var shard = router.RouteToShard(new ShardKey<string>("user-123"));
-```
-
-## Documentation
-
-Full docs: [https://github.com/veggerby/shardis](https://github.com/veggerby/shardis)
-
-## License
-
-MIT

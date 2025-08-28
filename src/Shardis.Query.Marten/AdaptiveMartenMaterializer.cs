@@ -51,7 +51,7 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
         _targetBatchTime = TimeSpan.FromMilliseconds(targetBatchMilliseconds);
         _growFactor = growFactor;
         _shrinkFactor = shrinkFactor;
-        _observer = observer ?? Shardis.Query.Diagnostics.NoopAdaptivePagingObserver.Instance;
+        _observer = observer ?? Diagnostics.NoopAdaptivePagingObserver.Instance;
     }
 
     /// <inheritdoc />

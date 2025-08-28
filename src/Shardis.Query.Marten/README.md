@@ -1,12 +1,22 @@
 # Shardis.Query.Marten
 
-Marten query execution components for Shardis fluent query MVP.
+Marten (Postgres) query provider for Shardis. Provides a query executor and helpers tuned for Marten's APIs and document model patterns.
 
-## Features
+## When to use
 
-- Streams documents per shard using Marten sessions
-- Supports unordered and ordered streaming merge helpers
-- Integrates adaptive paging (Marten paging strategy)
-- Metrics via query observers
+- Use when your shard-local persistence uses Marten and you want a supported query executor.
 
-Use alongside `Shardis.Marten` for shard/session management.
+## What the package provides
+
+- `MartenQueryExecutor` and sample wiring to integrate Marten with the Shardis query API.
+
+## Quick usage example
+
+```csharp
+var exec = MartenQueryExecutor.Instance.WithPageSize(256);
+await foreach (var item in exec.QueryAsync(sessionFactory, myQuery, CancellationToken.None)) { }
+```
+
+## Links
+
+- Samples/tests: `test/Shardis.Query.Marten.Tests` (if present) and `Shardis.Query.Samples.EFCore` for cross-reference
