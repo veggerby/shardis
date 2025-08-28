@@ -1,87 +1,55 @@
 # Shardis.Migration
 
-Key migration execution primitives for Shardis. This package provides a production-ready executor and reference implementations that make it easy to run deterministic migrations in tests and prototypes.
+Key migration execution primitives for Shardis. This package contains the executor, planner abstractions, checkpoint store contracts, and reference in-memory implementations used for tests and prototypes.
+
+[![NuGet](https://img.shields.io/nuget/v/Shardis.Migration.svg)](https://www.nuget.org/packages/Shardis.Migration/)
+[![Downloads](https://img.shields.io/nuget/dt/Shardis.Migration.svg)](https://www.nuget.org/packages/Shardis.Migration/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/veggerby/shardis/blob/main/LICENSE)
+
+## Install
+
+```bash
+dotnet add package Shardis.Migration --version 0.1.*
+```
 
 ## When to use
 
-- Use this package to perform controlled key migrations between shard topologies. It is the canonical execution path for migrations; the main `Shardis` package intentionally keeps core routing separate from migration execution.
+- You need a deterministic, idempotent migration executor for moving keys between topologies.
+- You want reference `ICheckpointStore` implementations for tests and local runs.
 
-## What the package provides
+## What’s included
 
-- Planner models and helpers (for example `MigrationPlan<TKey>`, `SegmentMove<TKey>`).
-- `ShardMigrationExecutor<TKey>` — orchestrates copy → verify → swap phases, persists checkpoints, and emits metrics.
-- `ICheckpointStore` abstraction and an `InMemoryCheckpointStore` reference implementation for tests and local runs.
-- Helper models: `TopologySnapshot<TKey>`, `KeyMove<TKey>` and execution result types.
+- Planner models: `MigrationPlan<TKey>`, `SegmentMove<TKey>` and related helpers.
+- `ShardMigrationExecutor<TKey>` — orchestrates copy → verify → swap with checkpoints and metrics hooks.
+- `ICheckpointStore` and `InMemoryCheckpointStore` reference implementation.
 
-## High-level contract
-
-- Input: a `MigrationPlan<TKey>` produced by a planner; the plan describes keys or segments to move and the target topology.
-- Execution: the executor applies each step idempotently and persists per-step checkpoints.
-- Output: an execution summary containing per-step results and verification status.
-
-## Getting started (recommended)
-
-Install the package from NuGet (package id matches project name) and register the runtime services:
-
-```csharp
-// in Startup / Program
-services.AddShardisMigration<string>(); // registers planner, executor and the in-memory checkpoint store
-```
-
-Create a plan with the planner and execute it:
-
-```csharp
-var planner = services.GetRequiredService<IShardMigrationPlanner<string>>();
-var from = await planner.CreateTopologySnapshotAsync(..., CancellationToken.None);
-var to = await planner.CreateTopologySnapshotAsync(..., CancellationToken.None);
-var plan = await planner.CreatePlanAsync(from, to, CancellationToken.None);
-
-var executor = services.GetRequiredService<ShardMigrationExecutor<string>>();
-var result = await executor.ExecuteAsync(plan, progress: new ConsoleMigrationProgress(), CancellationToken.None);
-if (!result.IsSuccessful)
-{
-    // inspect result.FailedSegments; retry or escalate
-}
-```
-
-## Quick usage example
+## Quick start
 
 ```csharp
 // register migration runtime
 services.AddShardisMigration<string>();
 
-var planner = provider.GetRequiredService<IShardMigrationPlanner<string>>();
-var executor = provider.GetRequiredService<ShardMigrationExecutor<string>>();
+var planner = services.GetRequiredService<IShardMigrationPlanner<string>>();
+var executor = services.GetRequiredService<ShardMigrationExecutor<string>>();
 
 var plan = await planner.CreatePlanAsync(fromSnapshot, toSnapshot, CancellationToken.None);
 var result = await executor.ExecuteAsync(plan, progress: null, CancellationToken.None);
 ```
 
-## Examples & patterns
+## Integration notes
 
-- Long-running migrations: prefer segmented plans (see ADR-0004) and a durable `ICheckpointStore` implementation to bound memory and enable resume.
-- Testing: use `InMemoryCheckpointStore` and the reference planner to write deterministic tests. The package includes helpers to inject failures and assert correct resume behavior.
+- For long-running migrations prefer segmented plans and a durable `ICheckpointStore` (SQL/Cosmos/Redis) to bound memory and enable resume.
 
-## Public types (high level)
+## Samples & tests
 
-- `ShardMigrationExecutor<TKey>` — primary execution entrypoint.
-- `IShardMigrationPlanner<TKey>` — planner abstraction; planners may return `MigrationPlan<TKey>` or stream `SegmentMove<TKey>` for segmented planning.
-- `MigrationPlan<TKey>` — model describing the moves and metadata.
-- `ICheckpointStore` — persistence contract for durable checkpoints.
-
-## Troubleshooting
-
-- If the executor repeatedly retries the same segment, verify your `ICheckpointStore` semantics and planner idempotency.
-- For very large keyspaces, use segmented plans (ADR-0004) to reduce memory usage and permit mid-plan resume.
-
-## Links
-
-- Full migration workflow and invariants: `docs/migration-usage.md`
-- ADR: segmented planner & checkpoint ranges: `docs/adr/ADR-0004-segmented-planner.md`
-- Samples/tests: `test/Shardis.Migration.Tests`
+- Docs: <https://github.com/veggerby/shardis/blob/main/docs/migration-usage.md>
+- ADR: <https://github.com/veggerby/shardis/blob/main/docs/adr/0004-segmented-planner.md>
+- Tests: <https://github.com/veggerby/shardis/tree/main/test/Shardis.Migration.Tests>
 
 ## Contributing
 
-PRs that add stable, well-tested checkpoint store implementations (SQL, Cosmos DB, Redis, etc.) or that improve the executor's observability are welcome. Follow the project's testing and API documentation conventions.
+- PRs that add durable checkpoint store implementations or improve executor observability are welcome. See <https://github.com/veggerby/shardis/blob/main/CONTRIBUTING.md>
 
-// (no repo-relative links are present; package README uses API and ADR numbers only)
+## License
+
+- MIT — see <https://github.com/veggerby/shardis/blob/main/LICENSE>
