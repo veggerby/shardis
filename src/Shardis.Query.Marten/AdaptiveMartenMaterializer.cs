@@ -17,7 +17,7 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
     private readonly TimeSpan _targetBatchTime;
     private readonly double _growFactor;
     private readonly double _shrinkFactor;
-    private readonly Shardis.Query.Diagnostics.IAdaptivePagingObserver _observer;
+    private readonly Diagnostics.IAdaptivePagingObserver _observer;
     // Telemetry tracking: decision history (per shard) for oscillation detection & final stats
     private readonly Dictionary<int, Queue<(DateTime ts, int size)>> _history = new();
     private readonly TimeSpan _oscWindow = TimeSpan.FromSeconds(5);
@@ -39,7 +39,7 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
         double targetBatchMilliseconds = 75,
         double growFactor = 1.5,
         double shrinkFactor = 0.5,
-        Shardis.Query.Diagnostics.IAdaptivePagingObserver? observer = null)
+        Diagnostics.IAdaptivePagingObserver? observer = null)
     {
         if (minPageSize <= 0) throw new ArgumentOutOfRangeException(nameof(minPageSize));
         if (maxPageSize < minPageSize) throw new ArgumentOutOfRangeException(nameof(maxPageSize));

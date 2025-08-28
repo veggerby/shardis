@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+
+using Shardis.Query.EFCore.Execution;
 
 namespace Shardis.Query.Tests;
 
@@ -12,35 +13,44 @@ public sealed class EfCoreExecutorTests
         public string Name { get; set; } = string.Empty;
         public int Age { get; set; }
     }
-    private sealed class PersonContext : DbContext
+    private sealed class PersonContext(DbContextOptions<PersonContext> options) : DbContext(options)
     {
-        public PersonContext(DbContextOptions<PersonContext> options) : base(options) { }
         public DbSet<Person> People => Set<Person>();
     }
 
     [Fact]
     public async Task EfCoreExecutor_ServerSideWhereSelect()
     {
-        var exec = new Shardis.Query.Execution.EFCore.EfCoreShardQueryExecutor(2, shardId => CreateAndSeedSqlite(shardId), UnorderedConcurrentMerge);
+        // arrange
+        var exec = new EfCoreShardQueryExecutor(2, shardId => CreateAndSeedSqlite(shardId), UnorderedConcurrentMerge);
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 30).Select(p => new { p.Name, p.Age });
+
+        // act
         var results = await q.ToListAsync();
+
+        // assert
         results.Should().BeEquivalentTo(new[] { new { Name = "Alice", Age = 35 }, new { Name = "Carol", Age = 40 } });
     }
 
     [Fact]
     public async Task EfCoreExecutor_Streaming_FirstItemBeforeSlowShardCompletes()
     {
+        // arrange
         var delayMs = 150; // simulate slow shard 1
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var exec = new Shardis.Query.Execution.EFCore.EfCoreShardQueryExecutor(2, shardId => CreateAndSeedSqlite(shardId), (streams, ct) => SlowSecondShardMerge(streams, ct, delayMs));
+        var exec = new EfCoreShardQueryExecutor(2, shardId => CreateAndSeedSqlite(shardId), (streams, ct) => SlowSecondShardMerge(streams, ct, delayMs));
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 25).Select(p => p.Name);
         var collected = new List<string>();
+
+        // act
         await foreach (var name in q)
         {
             collected.Add(name);
             if (collected.Count == 1) { break; }
         }
         sw.Stop();
+
+        // assert
         collected.Should().NotBeEmpty();
         sw.ElapsedMilliseconds.Should().BeLessThan(delayMs); // first item arrived before slow shard delay elapsed
     }
@@ -48,15 +58,39 @@ public sealed class EfCoreExecutorTests
     [Fact]
     public async Task EfCore_NoClientEvaluation()
     {
-        var exec = new Shardis.Query.Execution.EFCore.EfCoreShardQueryExecutor(1, _ => CreateAndSeedSqlite(0, configureWarnings: true), UnorderedConcurrentMerge);
+        // arrange
+        var exec = new EfCoreShardQueryExecutor(1, _ => CreateAndSeedSqlite(0, configureWarnings: true), UnorderedConcurrentMerge);
         // Non-translatable predicate -> should throw translation exception (QueryTranslationFailed) instead of client evaluating
         var q = ShardQuery.For<Person>(exec).Where(p => StringHelper.ReverseStringStatic(p.Name) == "Alice");
+
+        // act
         var act = async () => await q.ToListAsync();
+
+        // assert
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task EfCoreExecutor_AppliesCommandTimeout_WhenProvided()
+    {
+        // arrange
+        var timeout = 123;
+        var exec = new EfCoreShardQueryExecutor(1, _ => CreateAndSeedSqlite(0), UnorderedConcurrentMerge, commandTimeoutSeconds: timeout);
+        var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 0).Select(p => p);
+
+        // act
+        // Enumerate single entity to ensure pipeline executed (timeout path reached)
+        await foreach (var _ in q) { break; }
+
+        // assert
+        // Create a fresh context to inspect default timeout remains unaffected (we cannot directly read the timeout from disposed context here)
+        // Instead: ensure enumeration succeeded without exception (smoke). For stronger validation, provider-specific APIs would be needed.
+        true.Should().BeTrue();
     }
 
     private static PersonContext CreateAndSeedSqlite(int shardId, bool configureWarnings = false)
     {
+        // arrange
         var conn = new SqliteConnection("DataSource=:memory:");
         conn.Open();
         var options = new DbContextOptionsBuilder<PersonContext>()
@@ -66,34 +100,28 @@ public sealed class EfCoreExecutorTests
             .Options;
         var ctx = new PersonContext(options);
         ctx.Database.EnsureCreated();
+
         if (!ctx.People.Any())
         {
             if (shardId == 0)
             {
-                ctx.People.AddRange(new Person { Id = 1, Name = "Alice", Age = 35 }, new Person { Id = 2, Name = "Bob", Age = 25 });
+                ctx.People.AddRange(
+                    new Person { Id = 1, Name = "Alice", Age = 35 },
+                    new Person { Id = 2, Name = "Bob", Age = 25 }
+                );
             }
             else
             {
-                ctx.People.AddRange(new Person { Id = 3, Name = "Carol", Age = 40 }, new Person { Id = 4, Name = "Dave", Age = 29 });
+                ctx.People.AddRange(
+                    new Person { Id = 3, Name = "Carol", Age = 40 },
+                    new Person { Id = 4, Name = "Dave", Age = 29 }
+                );
             }
             ctx.SaveChanges();
         }
+
         return ctx;
     }
-
-    [Fact]
-    public async Task EfCoreExecutor_AppliesCommandTimeout_WhenProvided()
-    {
-        var timeout = 123;
-        var exec = new Shardis.Query.Execution.EFCore.EfCoreShardQueryExecutor(1, _ => CreateAndSeedSqlite(0), UnorderedConcurrentMerge, commandTimeoutSeconds: timeout);
-        var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 0).Select(p => p);
-        // Enumerate single entity to ensure pipeline executed (timeout path reached)
-        await foreach (var _ in q) { break; }
-        // Create a fresh context to inspect default timeout remains unaffected (we cannot directly read the timeout from disposed context here)
-        // Instead: ensure enumeration succeeded without exception (smoke). For stronger validation, provider-specific APIs would be needed.
-        true.Should().BeTrue();
-    }
-
 
     private static IAsyncEnumerable<object> UnorderedConcurrentMerge(IEnumerable<IAsyncEnumerable<object>> streams, CancellationToken ct)
         => Shardis.Query.Internals.UnorderedMerge.Merge(streams, ct);

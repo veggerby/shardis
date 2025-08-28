@@ -11,14 +11,17 @@ public sealed class QueryModelBuilderTests
     [Fact]
     public void WhereSelect_ChainsCreateImmutableModel()
     {
+        // arrange
         var exec = Substitute.For<IShardQueryExecutor>();
         var root = ShardQuery.For<Person>(exec);
         Expression<Func<Person, bool>> w1 = p => p.Age > 10;
         Expression<Func<Person, bool>> w2 = p => p.Name.StartsWith("A");
         Expression<Func<Person, int>> sel = p => p.Age;
 
+        // act
         var q = root.Where(w1).Where(w2).Select(sel);
 
+        // assert
         root.Model.Where.Should().BeEmpty();
         q.Model.Where.Should().HaveCount(2);
         q.Model.Select.Should().Be(sel);

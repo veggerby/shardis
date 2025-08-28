@@ -30,12 +30,15 @@ public class BroadcasterExceptionTests
             throw new InvalidOperationException("bang");
         }
 
-        // act & assert
+        // act
         var iterate = async () =>
         {
             await foreach (var _ in broadcaster.QueryAllShardsAsync(query)) { }
         };
 
-        (await iterate.Should().ThrowAsync<AggregateException>()).WithInnerException<InvalidOperationException>().WithMessage("bang");
+        var assertion = await iterate.Should().ThrowAsync<AggregateException>();
+
+        // assert
+        assertion.WithInnerException<InvalidOperationException>().WithMessage("bang");
     }
 }

@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace Shardis.Query.Samples.EFCore;
 
 public static class Seed
