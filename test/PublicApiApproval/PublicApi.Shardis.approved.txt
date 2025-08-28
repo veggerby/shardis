@@ -47,32 +47,6 @@ namespace Shardis.Instrumentation
         public void RouteMiss(string router) { }
     }
 }
-namespace Shardis.Migration
-{
-    public class DefaultShardMigrator<TKey, TSession> : Shardis.Migration.IShardMigrator<TKey, TSession>
-        where TKey :  notnull, System.IEquatable<TKey>
-    {
-        public DefaultShardMigrator() { }
-        public System.Threading.Tasks.Task ExecutePlanAsync(Shardis.Migration.ShardMigrationPlan<TKey> plan, System.Func<Shardis.Model.ShardKey<TKey>, System.Threading.Tasks.Task>? perKeyCallback = null) { }
-        public System.Threading.Tasks.Task MigrateAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, Shardis.Model.ShardKey<TKey> shardKey) { }
-        public System.Threading.Tasks.Task<Shardis.Migration.ShardMigrationPlan<TKey>> PlanAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, System.Collections.Generic.IEnumerable<Shardis.Model.ShardKey<TKey>> keys) { }
-    }
-    public interface IShardMigrator<TKey, TSession>
-        where TKey :  notnull, System.IEquatable<TKey>
-    {
-        System.Threading.Tasks.Task ExecutePlanAsync(Shardis.Migration.ShardMigrationPlan<TKey> plan, System.Func<Shardis.Model.ShardKey<TKey>, System.Threading.Tasks.Task>? perKeyCallback = null);
-        System.Threading.Tasks.Task MigrateAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, Shardis.Model.ShardKey<TKey> shardKey);
-        System.Threading.Tasks.Task<Shardis.Migration.ShardMigrationPlan<TKey>> PlanAsync(Shardis.Model.IShard<TSession> sourceShard, Shardis.Model.IShard<TSession> targetShard, System.Collections.Generic.IEnumerable<Shardis.Model.ShardKey<TKey>> keys);
-    }
-    public sealed class ShardMigrationPlan<TKey>
-        where TKey :  notnull, System.IEquatable<TKey>
-    {
-        public ShardMigrationPlan(Shardis.Model.ShardId source, Shardis.Model.ShardId target, System.Collections.Generic.IEnumerable<Shardis.Model.ShardKey<TKey>> keys) { }
-        public System.Collections.Generic.IReadOnlyList<Shardis.Model.ShardKey<TKey>> Keys { get; }
-        public Shardis.Model.ShardId SourceShardId { get; }
-        public Shardis.Model.ShardId TargetShardId { get; }
-    }
-}
 namespace Shardis.Model
 {
     public interface IShardSessionProvider<TSession>
