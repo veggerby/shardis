@@ -59,9 +59,13 @@ public class ShardStreamBroadcasterTests
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenShardsIsNull()
     {
-        // arrange / act / assert
+        // arrange
+
+        // act
         Action construct = () => new ShardStreamBroadcaster<IShard<string>, string>(null!);
         var ex = construct.Should().Throw<ArgumentNullException>();
+
+        // assert
         ex.Which.ParamName.Should().Be("shards");
     }
 

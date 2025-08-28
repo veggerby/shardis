@@ -1,6 +1,3 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
-
 using Shardis.Model;
 using Shardis.Querying;
 using Shardis.Querying.Linq;
@@ -59,7 +56,7 @@ public class StreamingMergeTests
 
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var firstN = new List<int>();
-        await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync<int, int>(session => intShards[session].Stream(cts.Token), x => x, prefetchPerShard: 1, cts.Token))
+        await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(session => intShards[session].Stream(cts.Token), x => x, prefetchPerShard: 1, cts.Token))
         {
             if (probe.Us < 0) probe.Hit();
             firstN.Add(item.Item);
@@ -91,7 +88,7 @@ public class StreamingMergeTests
 
         var perShardCounts = new int[shards];
         int index = 0;
-        await foreach (var item in broadcaster.QueryAllShardsAsync<int>(session => intShards[session].Stream(cts.Token), cts.Token))
+        await foreach (var item in broadcaster.QueryAllShardsAsync(session => intShards[session].Stream(cts.Token), cts.Token))
         {
             var shardIdx = int.Parse(item.ShardId.Value.AsSpan("shard-".Length));
             perShardCounts[shardIdx]++;
@@ -127,7 +124,7 @@ public class StreamingMergeTests
         var probe = new FirstItemProbe(); probe.Start();
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
-        await foreach (var item in broadcaster.QueryAllShardsOrderedEagerAsync<int, int>(session => intShards[session].Stream(cts.Token), x => x, cts.Token))
+        await foreach (var item in broadcaster.QueryAllShardsOrderedEagerAsync(session => intShards[session].Stream(cts.Token), x => x, cts.Token))
         {
             probe.Hit();
             break; // only need first
@@ -144,6 +141,7 @@ public class StreamingMergeTests
     [InlineData(512)]
     public async Task UnorderedStreaming_CapacityDoesNotCauseStarvation(int capacity)
     {
+        // arrange
         var det = Determinism.Create(Seed);
         int shards = 4; int itemsPerShard = 400; // smaller to avoid long runtime under harsh skew
         var schedules = det.MakeDelays(shards, Skew.Harsh, TimeSpan.FromMilliseconds(1), steps: itemsPerShard);
@@ -153,15 +151,16 @@ public class StreamingMergeTests
         var broadcaster = new ShardStreamBroadcaster<IShard<int>, int>(shardObjs, channelCapacity: capacity, observer: yields);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
+        // act
         var perShardCounts = new int[shards];
-        await foreach (var item in broadcaster.QueryAllShardsAsync<int>(session => intShards[session].Stream(cts.Token), cts.Token))
+        await foreach (var item in broadcaster.QueryAllShardsAsync(session => intShards[session].Stream(cts.Token), cts.Token))
         {
             var shardIdx = int.Parse(item.ShardId.Value.AsSpan("shard-".Length));
             perShardCounts[shardIdx]++;
         }
-        foreach (var c in perShardCounts) c.Should().Be(itemsPerShard);
 
-        // starvation bound: fast shard 1 longest gap < 4 * capacity (heuristic)
+        // assert
+        foreach (var c in perShardCounts) c.Should().Be(itemsPerShard);
         var events = yields.Events.Where(e => e.shard.Value == "shard-1").OrderBy(e => e.seq).Select(e => e.seq).ToArray();
         long maxGap = 0;
         for (int i = 1; i < events.Length; i++)

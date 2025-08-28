@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+
   <PropertyGroup>
     <PackageId>Shardis.Query.EFCore</PackageId>
     <Version>0.1.0</Version>

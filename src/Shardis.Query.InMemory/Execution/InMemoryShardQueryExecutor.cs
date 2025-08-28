@@ -1,33 +1,26 @@
-using System.Collections;
 using System.Runtime.CompilerServices;
 
-using Shardis.Query.Internals;
+using Shardis.Query;
+using Shardis.Query.Execution;
 
-namespace Shardis.Query.Execution.InMemory;
+namespace Shardis.Query.InMemory.Execution;
 
 /// <summary>In-memory executor for development &amp; tests.</summary>
-public sealed class InMemoryShardQueryExecutor : IShardQueryExecutor
+/// <remarks>Create a new in-memory executor.</remarks>
+/// <param name="shards">Shard sequences.</param>
+/// <param name="merge">Unordered merge function.</param>
+/// <param name="metrics">Optional metrics observer.</param>
+public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>> shards, Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> merge, Diagnostics.IQueryMetricsObserver? metrics = null) : IShardQueryExecutor
 {
-    private readonly IReadOnlyList<IEnumerable<object>> _shards;
-    private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge;
-    private readonly Shardis.Query.Diagnostics.IQueryMetricsObserver _metrics;
+    private readonly IReadOnlyList<IEnumerable<object>> _shards = shards ?? throw new ArgumentNullException(nameof(shards));
+    private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge = merge ?? throw new ArgumentNullException(nameof(merge));
+    private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, CompiledPipeline> _pipelineCache = new();
 
     private sealed record CompiledPipeline(Func<object, bool>? Where, Func<object, object> Select);
     internal static int CompileCount;
     /// <summary>Total number of compiled pipelines across all executor instances (for benchmark diagnostics).</summary>
     public static int TotalCompiledPipelines => CompileCount;
-
-    /// <summary>Create a new in-memory executor.</summary>
-    /// <param name="shards">Shard sequences.</param>
-    /// <param name="merge">Unordered merge function.</param>
-    /// <param name="metrics">Optional metrics observer.</param>
-    public InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>> shards, Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> merge, Shardis.Query.Diagnostics.IQueryMetricsObserver? metrics = null)
-    {
-        _shards = shards ?? throw new ArgumentNullException(nameof(shards));
-        _merge = merge ?? throw new ArgumentNullException(nameof(merge));
-        _metrics = metrics ?? Shardis.Query.Diagnostics.NoopQueryMetricsObserver.Instance;
-    }
 
     /// <inheritdoc />
     public IShardQueryCapabilities Capabilities => BasicQueryCapabilities.None;

@@ -13,9 +13,14 @@ public class AddShardisMigrationRegistrationTests
     [Fact]
     public void Registers_Defaults_When_Not_Present()
     {
+        // arrange
         var services = new ServiceCollection();
+
+        // act
         services.AddShardisMigration<string>();
         var sp = services.BuildServiceProvider();
+
+        // assert
         sp.GetService<IShardMigrationPlanner<string>>().Should().BeOfType<InMemoryMigrationPlanner<string>>();
         sp.GetService<IShardDataMover<string>>().Should().BeOfType<InMemoryDataMover<string>>();
         sp.GetService<IVerificationStrategy<string>>().Should().BeOfType<FullEqualityVerificationStrategy<string>>();
@@ -35,11 +40,16 @@ public class AddShardisMigrationRegistrationTests
     [Fact]
     public void Honors_PreRegistered_Implementations()
     {
+        // arrange
         var services = new ServiceCollection();
         services.AddSingleton<IShardMigrationPlanner<string>, CustomPlanner>();
         services.AddSingleton<IShardMigrationMetrics, SimpleShardMigrationMetrics>();
+
+        // act
         services.AddShardisMigration<string>();
         var sp = services.BuildServiceProvider();
+
+        // assert
         sp.GetService<IShardMigrationPlanner<string>>().Should().BeOfType<CustomPlanner>();
         sp.GetService<IShardMigrationMetrics>().Should().BeOfType<SimpleShardMigrationMetrics>();
     }

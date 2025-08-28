@@ -30,7 +30,7 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
     /// <summary>Create a new executor instance with a custom materializer.</summary>
     public MartenQueryExecutor WithMaterializer(IQueryableShardMaterializer materializer) => new(_metrics, materializer);
     /// <summary>Create a new executor instance with a custom page size (used by default materializer paging).</summary>
-    public MartenQueryExecutor WithPageSize(int pageSize) => new(_metrics, new Shardis.Query.Marten.MartenMaterializer(pageSize));
+    public MartenQueryExecutor WithPageSize(int pageSize) => new(_metrics, new MartenMaterializer(pageSize));
     /// <summary>Create a new executor instance with adaptive paging materializer.</summary>
     public MartenQueryExecutor WithAdaptivePaging(
         int minPageSize = 64,
@@ -38,8 +38,8 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
         double targetBatchMilliseconds = 75,
         double growFactor = 1.5,
     double shrinkFactor = 0.5,
-    Shardis.Query.Diagnostics.IAdaptivePagingObserver? observer = null)
-    => new(_metrics, new Shardis.Query.Marten.AdaptiveMartenMaterializer(minPageSize, maxPageSize, targetBatchMilliseconds, growFactor, shrinkFactor, observer));
+    IAdaptivePagingObserver? observer = null)
+    => new(_metrics, new AdaptiveMartenMaterializer(minPageSize, maxPageSize, targetBatchMilliseconds, growFactor, shrinkFactor, observer));
 
     /// <summary>
     /// Executes an unordered Marten LINQ query.
@@ -49,7 +49,7 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
         _metrics.OnShardStart(0);
         var queryable = session.Query<T>();
         var transformed = expr.Compile().Invoke(queryable);
-        return Wrap(ct => _materializer.ToAsyncEnumerable<T>(transformed, ct));
+        return Wrap(ct => _materializer.ToAsyncEnumerable(transformed, ct));
     }
 
     /// <summary>
@@ -63,7 +63,7 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
         _metrics.OnShardStart(0);
         var queryable = session.Query<T>();
         var transformed = orderedExpr.Compile().Invoke(queryable);
-        return Wrap(ct => _materializer.ToAsyncEnumerable<T>(transformed, ct));
+        return Wrap(ct => _materializer.ToAsyncEnumerable(transformed, ct));
     }
 
     /// <summary>
