@@ -19,4 +19,10 @@ public interface IShardisMetrics
     /// </summary>
     /// <param name="router">Router type name.</param>
     void RouteMiss(string router);
+
+    /// <summary>
+    /// Records routing latency in milliseconds (histogram recommended).
+    /// </summary>
+    /// <param name="elapsedMs">Latency in milliseconds.</param>
+    void RecordRouteLatency(double elapsedMs);
 }

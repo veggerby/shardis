@@ -31,6 +31,11 @@ public class RouterMetricsTests
                 Misses++;
             }
         }
+
+        public void RecordRouteLatency(double elapsedMs)
+        {
+            // test sink: no-op
+        }
     }
 
     [Fact]

@@ -9,4 +9,5 @@ internal sealed class NoOpShardisMetrics : IShardisMetrics
     private NoOpShardisMetrics() { }
     public void RouteHit(string router, string shardId, bool existingAssignment) { }
     public void RouteMiss(string router) { }
+    public void RecordRouteLatency(double elapsedMs) { }
 }
