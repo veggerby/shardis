@@ -1,6 +1,15 @@
 [assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
 [assembly: System.Resources.NeutralResourcesLanguage("en")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Tests")]
+namespace Shardis.Diagnostics
+{
+    public static class ShardisDiagnostics
+    {
+        public const string ActivitySourceName = "Shardis";
+        public const string MeterName = "Shardis";
+        public static readonly System.Diagnostics.ActivitySource ActivitySource;
+    }
+}
 namespace Shardis.Hashing
 {
     public static class DefaultShardKeyHasher<TKey>
@@ -37,12 +46,14 @@ namespace Shardis.Instrumentation
 {
     public interface IShardisMetrics
     {
+        void RecordRouteLatency(double elapsedMs);
         void RouteHit(string router, string shardId, bool existingAssignment);
         void RouteMiss(string router);
     }
     public sealed class MetricShardisMetrics : Shardis.Instrumentation.IShardisMetrics
     {
         public MetricShardisMetrics() { }
+        public void RecordRouteLatency(double elapsedMs) { }
         public void RouteHit(string router, string shardId, bool existingAssignment) { }
         public void RouteMiss(string router) { }
     }
