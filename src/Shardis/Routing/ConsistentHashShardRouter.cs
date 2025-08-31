@@ -180,10 +180,23 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     private (IShard<TSession> shard, bool existing) Resolve(ShardKey<TKey> shardKey)
     {
         if (shardKey.Value == null) throw new ArgumentNullException(nameof(shardKey));
+        using var activity = Shardis.Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.route", System.Diagnostics.ActivityKind.Internal);
+        if (activity is not null)
+        {
+            activity.SetTag("shardis.router", RouterName);
+            activity.SetTag("shardis.key.hash", _shardKeyHasher.ComputeHash(shardKey).ToString("X8"));
+            activity.SetTag("shardis.shard.count", _shardById.Count);
+        }
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
 
         if (_shardMapStore.TryGetShardIdForKey(shardKey, out var assignedShardId) && _shardById.TryGetValue(assignedShardId, out var existingShard))
         {
             _metrics.RouteHit(RouterName, existingShard.ShardId.Value, true);
+            sw.Stop();
+            _metrics.RecordRouteLatency(sw.Elapsed.TotalMilliseconds);
+            activity?.SetTag("shardis.assignment.existing", true);
+            activity?.SetTag("shardis.route.latency.ms", sw.Elapsed.TotalMilliseconds);
             return (existingShard, true);
         }
 
@@ -230,6 +243,11 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
         }
 
         _metrics.RouteHit(RouterName, resolvedShard.ShardId.Value, !created);
+        sw.Stop();
+        _metrics.RecordRouteLatency(sw.Elapsed.TotalMilliseconds);
+        activity?.SetTag("shardis.assignment.existing", !created);
+        activity?.SetTag("shardis.shard.id", resolvedShard.ShardId.Value);
+        activity?.SetTag("shardis.route.latency.ms", sw.Elapsed.TotalMilliseconds);
 
         return (resolvedShard, !created);
     }

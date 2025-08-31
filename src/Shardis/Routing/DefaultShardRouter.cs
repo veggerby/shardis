@@ -53,7 +53,7 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
         _shardKeyHasher = shardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance;
         _availableShards = availableShards.ToList();
         // Validate uniqueness of shard IDs
-        _shardById = [];
+        _shardById = new Dictionary<ShardId, IShard<TSession>>();
         foreach (var shard in _availableShards)
         {
             if (_shardById.ContainsKey(shard.ShardId))
@@ -107,10 +107,25 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
         {
             throw new ArgumentNullException(nameof(shardKey));
         }
+        // start an activity for routing
+        using var activity = Shardis.Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.route", System.Diagnostics.ActivityKind.Internal);
+        if (activity is not null)
+        {
+            activity.SetTag("shardis.router", RouterName);
+            // safe short token for key (hex)
+            activity.SetTag("shardis.key.hash", _shardKeyHasher.ComputeHash(shardKey).ToString("X8"));
+            activity.SetTag("shardis.shard.count", _availableShards.Count);
+        }
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
 
         if (_shardMapStore.TryGetShardIdForKey(shardKey, out var assignedShardId) && _shardById.TryGetValue(assignedShardId, out var existingShard))
         {
             _metrics.RouteHit(RouterName, existingShard.ShardId.Value, true);
+            sw.Stop();
+            _metrics.RecordRouteLatency(sw.Elapsed.TotalMilliseconds);
+            activity?.SetTag("shardis.assignment.existing", true);
+            activity?.SetTag("shardis.route.latency.ms", sw.Elapsed.TotalMilliseconds);
             return (existingShard, true);
         }
 
@@ -140,6 +155,11 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
         }
 
         _metrics.RouteHit(RouterName, shard.ShardId.Value, existing);
+        sw.Stop();
+        _metrics.RecordRouteLatency(sw.Elapsed.TotalMilliseconds);
+        activity?.SetTag("shardis.assignment.existing", existing);
+        activity?.SetTag("shardis.shard.id", shard.ShardId.Value);
+        activity?.SetTag("shardis.route.latency.ms", sw.Elapsed.TotalMilliseconds);
         return (shard, existing);
     }
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 
+using Shardis.Diagnostics;
 namespace Shardis.Instrumentation;
 
 /// <summary>
@@ -8,11 +9,14 @@ namespace Shardis.Instrumentation;
 /// </summary>
 public sealed class MetricShardisMetrics : IShardisMetrics
 {
-    private static readonly Meter Meter = new("Shardis", "1.0.0");
+    private static readonly Meter Meter = new(ShardisDiagnostics.MeterName, "1.0.0");
     private static readonly Counter<long> RouteHits = Meter.CreateCounter<long>("shardis.route.hits");
     private static readonly Counter<long> RouteMisses = Meter.CreateCounter<long>("shardis.route.misses");
     private static readonly Counter<long> ExistingAssignments = Meter.CreateCounter<long>("shardis.route.assignments.existing");
     private static readonly Counter<long> NewAssignments = Meter.CreateCounter<long>("shardis.route.assignments.new");
+
+    // Histogram for routing latency in milliseconds
+    private static readonly Histogram<double> RouteLatency = Meter.CreateHistogram<double>("shardis.route.latency", unit: "ms");
 
     /// <summary>
     /// Records a successful routing decision to a shard.
@@ -41,5 +45,14 @@ public sealed class MetricShardisMetrics : IShardisMetrics
     public void RouteMiss(string router)
     {
         RouteMisses.Add(1, new KeyValuePair<string, object?>("router", router));
+    }
+
+    /// <summary>
+    /// Records routing latency in milliseconds.
+    /// </summary>
+    /// <param name="elapsedMs">Latency in milliseconds.</param>
+    public void RecordRouteLatency(double elapsedMs)
+    {
+        RouteLatency.Record(elapsedMs);
     }
 }

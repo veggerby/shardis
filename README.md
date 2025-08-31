@@ -37,6 +37,12 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Shard assignments are persistent, predictable, and optimized for horizontal scalability.
 - 📊 **Instrumentation Hooks**
   Plug in metrics (counters, tracing) by replacing the default no-op metrics service.
+  
+  Instrumentation quick reference
+  - ActivitySource: `Shardis` — add with `.AddSource("Shardis")` when configuring OpenTelemetry tracing.
+  - Meter: `Shardis` — add with `.AddMeter("Shardis")` to pick up built-in counters and histograms.
+  - Metric API: implement `IShardisMetrics` or use the provided `MetricShardisMetrics` (default is `NoOpShardisMetrics`).
+  - Important: `IShardisMetrics` now exposes `RecordRouteLatency(double)` (milliseconds) as a first-class method — implementers should record this on a histogram named `shardis.route.latency` (unit: ms).
   Ordered and unordered streaming paths are covered by metrics observer tests (item counts, heap samples, backpressure waits) ensuring instrumentation stability.
 - 🔄 **Consistent Hashing Option**
   Choose between simple sticky routing and a consistent hashing ring with configurable replication factor & pluggable ring hashers.
