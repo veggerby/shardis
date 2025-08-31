@@ -31,7 +31,7 @@
 		"ghcr.io/devcontainers/features/node:1": {
             "version": "lts"
         },
-        "ghcr.io/devcontainers-contrib/features/apt-get-packages:1": {
+        "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
             "packages": "bash-completion xdg-utils pass sshpass"
         },
         "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {
@@ -60,7 +60,8 @@
 				"redhat.vscode-yaml",
 				"github.vscode-github-actions",
 				"bierner.markdown-mermaid",
-				"humao.rest-client"
+				"humao.rest-client",
+				"GitHub.vscode-pull-request-github"
 			]
 		}
 	},

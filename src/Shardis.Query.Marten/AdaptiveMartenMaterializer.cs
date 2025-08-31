@@ -41,11 +41,31 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
         double shrinkFactor = 0.5,
         Diagnostics.IAdaptivePagingObserver? observer = null)
     {
-        if (minPageSize <= 0) throw new ArgumentOutOfRangeException(nameof(minPageSize));
-        if (maxPageSize < minPageSize) throw new ArgumentOutOfRangeException(nameof(maxPageSize));
-        if (targetBatchMilliseconds <= 0) throw new ArgumentOutOfRangeException(nameof(targetBatchMilliseconds));
-        if (growFactor <= 1.0) throw new ArgumentOutOfRangeException(nameof(growFactor));
-        if (shrinkFactor <= 0 || shrinkFactor >= 1.0) throw new ArgumentOutOfRangeException(nameof(shrinkFactor));
+        if (minPageSize <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minPageSize));
+        }
+
+        if (maxPageSize < minPageSize)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxPageSize));
+        }
+
+        if (targetBatchMilliseconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetBatchMilliseconds));
+        }
+
+        if (growFactor <= 1.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(growFactor));
+        }
+
+        if (shrinkFactor <= 0 || shrinkFactor >= 1.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(shrinkFactor));
+        }
+
         _minPageSize = minPageSize;
         _maxPageSize = maxPageSize;
         _targetBatchTime = TimeSpan.FromMilliseconds(targetBatchMilliseconds);
@@ -61,15 +81,18 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
         {
             // Fallback: simple static page strategy.
             var staticMaterializer = new MartenMaterializer(_minPageSize);
+
             await foreach (var item in staticMaterializer.ToAsyncEnumerable(query, ct).ConfigureAwait(false))
             {
                 yield return item;
             }
+
             yield break;
         }
 
         var pageSize = _minPageSize;
         var page = 0;
+
         try
         {
             while (true)
@@ -78,6 +101,7 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
                 var sw = Stopwatch.StartNew();
                 var batch = await marten.Skip(page * pageSize).Take(pageSize).ToListAsync(ct).ConfigureAwait(false);
                 sw.Stop();
+
                 if (batch.Count == 0)
                 {
                     yield break;
@@ -94,6 +118,7 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
                 var elapsed = sw.Elapsed;
                 int prev = pageSize;
                 int nextCandidate = pageSize;
+
                 if (elapsed < _targetBatchTime && pageSize < _maxPageSize)
                 {
                     nextCandidate = (int)Math.Min(_maxPageSize, Math.Round(pageSize * _growFactor));
@@ -102,12 +127,14 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
                 {
                     nextCandidate = (int)Math.Max(_minPageSize, Math.Round(pageSize * _shrinkFactor));
                 }
+
                 if (nextCandidate != pageSize)
                 {
                     _observer.OnPageDecision(0, prev, nextCandidate, elapsed);
                     RecordDecision(0, nextCandidate);
                     pageSize = nextCandidate;
                 }
+
                 page++;
             }
         }
@@ -124,20 +151,25 @@ public sealed class AdaptiveMartenMaterializer : IQueryableShardMaterializer
     private void RecordDecision(int shardId, int newSize)
     {
         var now = DateTime.UtcNow;
+
         if (!_history.TryGetValue(shardId, out var q))
         {
             q = new Queue<(DateTime ts, int size)>();
             _history[shardId] = q;
         }
+
         q.Enqueue((now, newSize));
+
         while (q.Count > 0 && now - q.Peek().ts > _oscWindow)
         {
             q.Dequeue();
         }
+
         if (q.Count >= _oscThreshold)
         {
             _observer.OnOscillationDetected(shardId, q.Count, _oscWindow);
         }
+
         if (_final.TryGetValue(shardId, out var tuple))
         {
             _final[shardId] = (newSize, tuple.decisions + 1);

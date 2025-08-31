@@ -13,10 +13,12 @@ public static class ShardQueryableConsumptionExtensions
     {
         ArgumentNullException.ThrowIfNull(source);
         var list = new List<T>();
+
         await foreach (var i in source.ToAsyncEnumerable(ct).WithCancellation(ct).ConfigureAwait(false))
         {
             list.Add(i);
         }
+
         return list;
     }
 }

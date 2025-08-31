@@ -13,6 +13,7 @@ public static class ShardQueryableSelectExtensions
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(selector);
         var model = source.Model.WithSelect(selector);
+
         return new ShardQueryable<TResult>(source.Executor, model);
     }
 }

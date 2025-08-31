@@ -42,28 +42,34 @@ public static class ServiceCollectionExtensions
         {
             services.AddSingleton<IShardMigrationPlanner<TKey>, InMemoryMigrationPlanner<TKey>>();
         }
+
         // Ensure a shard map store exists (normally provided by core AddShardis registration). For isolated migration usage
         // scenarios we fall back to an in-memory map store.
         if (!IsRegistered(services, typeof(IShardMapStore<TKey>)))
         {
             services.AddSingleton<IShardMapStore<TKey>, InMemoryShardMapStore<TKey>>();
         }
+
         if (!IsRegistered(services, typeof(IShardDataMover<TKey>)))
         {
             services.AddSingleton<IShardDataMover<TKey>, InMemoryDataMover<TKey>>();
         }
+
         if (!IsRegistered(services, typeof(IVerificationStrategy<TKey>)))
         {
             services.AddSingleton<IVerificationStrategy<TKey>, FullEqualityVerificationStrategy<TKey>>();
         }
+
         if (!IsRegistered(services, typeof(IShardMapSwapper<TKey>)))
         {
             services.AddSingleton<IShardMapSwapper<TKey>, InMemoryMapSwapper<TKey>>();
         }
+
         if (!IsRegistered(services, typeof(IShardMigrationCheckpointStore<TKey>)))
         {
             services.AddSingleton<IShardMigrationCheckpointStore<TKey>, InMemoryCheckpointStore<TKey>>();
         }
+
         if (!IsRegistered(services, typeof(IShardMigrationMetrics)))
         {
             services.AddSingleton<IShardMigrationMetrics, NoOpShardMigrationMetrics>();

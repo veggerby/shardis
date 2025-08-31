@@ -18,7 +18,6 @@ public sealed class SimpleShard : ISimpleShard
     /// Gets the connection string for the shard.
     /// </summary>
     public string ConnectionString { get; } = string.Empty;
-    private readonly IShardQueryExecutor<string> _queryExecutor;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SimpleShard"/> class.
@@ -32,7 +31,7 @@ public sealed class SimpleShard : ISimpleShard
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shardId.Value, nameof(shardId));
         ArgumentNullException.ThrowIfNull(connectionString, nameof(connectionString));
-        _queryExecutor = queryExecutor ?? NoOpQueryExecutor.Instance;
+        QueryExecutor = queryExecutor ?? NoOpQueryExecutor<string>.Instance;
         ShardId = shardId;
         ConnectionString = connectionString;
 
@@ -51,12 +50,5 @@ public sealed class SimpleShard : ISimpleShard
     public string CreateSession() => ConnectionString;
 
     /// <summary>Gets the configured query executor (or a no-op executor if none supplied).</summary>
-    public IShardQueryExecutor<string> QueryExecutor => _queryExecutor;
-
-    private sealed class NoOpQueryExecutor : IShardQueryExecutor<string>
-    {
-        public static readonly NoOpQueryExecutor Instance = new();
-        public IAsyncEnumerable<T> Execute<T>(string session, Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull => throw new NotSupportedException();
-        public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(string session, Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr, Func<T, TKey> keySelector) where T : notnull => throw new NotSupportedException();
-    }
+    public IShardQueryExecutor<string> QueryExecutor { get; }
 }

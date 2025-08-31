@@ -33,7 +33,9 @@ internal static class OrderedMerge
         {
             ct.ThrowIfCancellationRequested();
             var smallest = heap.Pop();
+
             yield return smallest.Current;
+
             if (await smallest.Enumerator.MoveNextAsync())
             {
                 smallest.Current = smallest.Enumerator.Current;
@@ -78,8 +80,9 @@ internal static class OrderedMerge
 
         public MinHeap(IEnumerable<T> init, IComparer<T> cmp)
         {
-            _data = new List<T>(init);
+            _data = [.. init];
             _cmp = cmp;
+
             for (int i = Parent(_data.Count - 1); i >= 0; i--)
             {
                 HeapifyDown(i);
@@ -97,11 +100,13 @@ internal static class OrderedMerge
             var root = _data[0];
             var last = _data[^1];
             _data.RemoveAt(_data.Count - 1);
+
             if (_data.Count > 0)
             {
                 _data[0] = last;
                 HeapifyDown(0);
             }
+
             return root;
         }
 
@@ -110,7 +115,12 @@ internal static class OrderedMerge
             while (i > 0)
             {
                 var p = Parent(i);
-                if (_cmp.Compare(_data[i], _data[p]) >= 0) break;
+
+                if (_cmp.Compare(_data[i], _data[p]) >= 0)
+                {
+                    break;
+                }
+
                 (_data[i], _data[p]) = (_data[p], _data[i]);
                 i = p;
             }
@@ -123,9 +133,22 @@ internal static class OrderedMerge
                 var l = Left(i);
                 var r = Right(i);
                 var smallest = i;
-                if (l < _data.Count && _cmp.Compare(_data[l], _data[smallest]) < 0) smallest = l;
-                if (r < _data.Count && _cmp.Compare(_data[r], _data[smallest]) < 0) smallest = r;
-                if (smallest == i) break;
+
+                if (l < _data.Count && _cmp.Compare(_data[l], _data[smallest]) < 0)
+                {
+                    smallest = l;
+                }
+
+                if (r < _data.Count && _cmp.Compare(_data[r], _data[smallest]) < 0)
+                {
+                    smallest = r;
+                }
+
+                if (smallest == i)
+                {
+                    break;
+                }
+
                 (_data[i], _data[smallest]) = (_data[smallest], _data[i]);
                 i = smallest;
             }

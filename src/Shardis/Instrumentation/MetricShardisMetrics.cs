@@ -23,6 +23,7 @@ public sealed class MetricShardisMetrics : IShardisMetrics
     public void RouteHit(string router, string shardId, bool existingAssignment)
     {
         RouteHits.Add(1, new KeyValuePair<string, object?>("router", router), new KeyValuePair<string, object?>("shard", shardId));
+
         if (existingAssignment)
         {
             ExistingAssignments.Add(1, new KeyValuePair<string, object?>("router", router));

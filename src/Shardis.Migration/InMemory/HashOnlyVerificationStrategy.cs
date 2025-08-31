@@ -17,6 +17,7 @@ internal sealed class HashOnlyVerificationStrategy<TKey> : IVerificationStrategy
     public Task<bool> VerifyAsync(KeyMove<TKey> move, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+
         if (MismatchInjector?.Invoke(move) == true)
         {
             return Task.FromResult(false);
