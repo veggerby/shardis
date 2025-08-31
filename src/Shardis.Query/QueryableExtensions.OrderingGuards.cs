@@ -12,10 +12,13 @@ public static class ShardQueryableOrderingGuards
 
     /// <summary>Ordering not supported; use ordered streaming broadcaster or apply after materialization.</summary>
     public static IShardQueryable<T> OrderBy<T, TKey>(this IShardQueryable<T> source, Expression<Func<T, TKey>> _) => throw OrderByNotSupported();
+
     /// <inheritdoc cref="OrderBy" />
     public static IShardQueryable<T> OrderByDescending<T, TKey>(this IShardQueryable<T> source, Expression<Func<T, TKey>> _) => throw OrderByNotSupported();
+
     /// <inheritdoc cref="OrderBy" />
     public static IShardQueryable<T> ThenBy<T, TKey>(this IShardQueryable<T> source, Expression<Func<T, TKey>> _) => throw OrderByNotSupported();
+
     /// <inheritdoc cref="OrderBy" />
     public static IShardQueryable<T> ThenByDescending<T, TKey>(this IShardQueryable<T> source, Expression<Func<T, TKey>> _) => throw OrderByNotSupported();
 }

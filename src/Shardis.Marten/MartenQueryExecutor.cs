@@ -25,21 +25,25 @@ public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
         _metrics = metrics ?? NoopQueryMetricsObserver.Instance;
         _materializer = materializer ?? new MartenMaterializer();
     }
+
     /// <summary>Create a new executor instance with a metrics observer.</summary>
     public MartenQueryExecutor WithMetrics(IQueryMetricsObserver metrics) => new(metrics, _materializer);
+
     /// <summary>Create a new executor instance with a custom materializer.</summary>
     public MartenQueryExecutor WithMaterializer(IQueryableShardMaterializer materializer) => new(_metrics, materializer);
+
     /// <summary>Create a new executor instance with a custom page size (used by default materializer paging).</summary>
     public MartenQueryExecutor WithPageSize(int pageSize) => new(_metrics, new MartenMaterializer(pageSize));
+
     /// <summary>Create a new executor instance with adaptive paging materializer.</summary>
     public MartenQueryExecutor WithAdaptivePaging(
         int minPageSize = 64,
         int maxPageSize = 8192,
         double targetBatchMilliseconds = 75,
         double growFactor = 1.5,
-    double shrinkFactor = 0.5,
-    IAdaptivePagingObserver? observer = null)
-    => new(_metrics, new AdaptiveMartenMaterializer(minPageSize, maxPageSize, targetBatchMilliseconds, growFactor, shrinkFactor, observer));
+        double shrinkFactor = 0.5,
+        IAdaptivePagingObserver? observer = null) =>
+        new(_metrics, new AdaptiveMartenMaterializer(minPageSize, maxPageSize, targetBatchMilliseconds, growFactor, shrinkFactor, observer));
 
     /// <summary>
     /// Executes an unordered Marten LINQ query.

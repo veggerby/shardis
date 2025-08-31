@@ -56,10 +56,12 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
 
         _shardMapStore = shardMapStore;
         _shardKeyHasher = shardKeyHasher;
+
         if (replicationFactor > 10_000)
         {
             throw new ShardisException("ReplicationFactor greater than 10,000 is not supported (pathological ring size).");
         }
+
         _replicationFactor = replicationFactor;
         _ringHasher = ringHasher ?? DefaultShardRingHasher.Instance;
         _metrics = metrics ?? NoOpShardisMetrics.Instance;
@@ -75,8 +77,10 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             {
                 throw new InvalidOperationException($"Duplicate shard ID detected: {shard.ShardId.Value}");
             }
+
             AddShardToRingInternal(shard);
         }
+
         RebuildKeySnapshot();
     }
 
@@ -92,6 +96,7 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             {
                 throw new InvalidOperationException($"Shard with id {shard.ShardId.Value} already exists.");
             }
+
             AddShardToRingInternal(shard);
             RebuildKeySnapshot();
         }
@@ -110,13 +115,17 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             {
                 return false;
             }
+
             // rebuild ring excluding removed shard
             _ring.Clear();
+
             foreach (var s in _shardById.Values)
             {
                 AddShardToRingInternal(s);
             }
+
             RebuildKeySnapshot();
+
             return true;
         }
     }
@@ -141,10 +150,12 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     {
         ArgumentNullException.ThrowIfNull(shard);
         _shardById[shard.ShardId] = shard;
+
         for (int i = 0; i < _replicationFactor; i++)
         {
             var virtualKey = $"{shard.ShardId}-replica-{i}";
             var hash = _ringHasher.Hash(virtualKey);
+
             if (!_ring.ContainsKey(hash))
             {
                 _ring[hash] = shard;
@@ -182,25 +193,33 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             lock (_lock)
             {
                 var keys = _ringKeys;
+
                 if (keys.Length == 0)
                 {
                     throw new InvalidOperationException("Consistent hash ring is empty.");
                 }
+
                 int idx = Array.BinarySearch(keys, keyHash);
+
                 if (idx < 0)
                 {
                     idx = ~idx;
                     if (idx == keys.Length) idx = 0;
                 }
+
                 var ringKey = keys[idx];
+
                 return _ring[ringKey];
             }
         }
+
         bool created = _shardMapStore.TryGetOrAdd(shardKey, () => PickShard().ShardId, out var map);
+
         if (created && _missRecorded.TryAdd(shardKey, 0))
         {
             _metrics.RouteMiss(RouterName);
         }
+
         if (!_shardById.TryGetValue(map.ShardId, out var resolvedShard))
         {
             // Mapping refers to removed shard; re-pick and force assign
@@ -209,7 +228,9 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             resolvedShard = replacement;
             created = true;
         }
+
         _metrics.RouteHit(RouterName, resolvedShard.ShardId.Value, !created);
+
         return (resolvedShard, !created);
     }
 }

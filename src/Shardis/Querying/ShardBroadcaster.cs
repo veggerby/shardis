@@ -47,6 +47,7 @@ public class ShardBroadcaster<TShard, TSession> : IShardBroadcaster<TSession> wh
         {
             var session = shard.CreateSession();
             var partialResults = await query(session).ConfigureAwait(false);
+
             foreach (var result in partialResults)
             {
                 ct.ThrowIfCancellationRequested();

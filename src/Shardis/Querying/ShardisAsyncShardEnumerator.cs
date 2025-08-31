@@ -5,7 +5,6 @@ namespace Shardis.Querying;
 
 internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerator<TItem>
 {
-    private readonly ShardId _shardId;
     private readonly IAsyncEnumerator<TItem> _enumerator;
     private readonly int _shardIndex;
     private long _sequence;
@@ -15,13 +14,13 @@ internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerat
     public bool IsComplete { get; private set; } = false;
     public bool IsPrimed { get; private set; } = false;
     public ShardItem<TItem> Current { get; private set; } = default!;
-    public ShardId ShardId => _shardId;
+    public ShardId ShardId { get; }
 
     public ShardisAsyncShardEnumerator(ShardId shardId, int shardIndex, IAsyncEnumerator<TItem> enumerator)
     {
         ArgumentNullException.ThrowIfNull(enumerator, nameof(enumerator));
 
-        _shardId = shardId;
+        ShardId = shardId;
         _enumerator = enumerator;
         _shardIndex = shardIndex;
     }
@@ -32,14 +31,16 @@ internal sealed class ShardisAsyncShardEnumerator<TItem> : IShardisAsyncEnumerat
 
         if (await _enumerator.MoveNextAsync().ConfigureAwait(false))
         {
-            Current = new(_shardId, _enumerator.Current);
+            Current = new(ShardId, _enumerator.Current);
             HasValue = true;
             _sequence++;
+
             return true;
         }
 
         HasValue = false;
         IsComplete = true;
+
         return false;
     }
 

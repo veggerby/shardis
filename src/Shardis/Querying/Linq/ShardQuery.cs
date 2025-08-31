@@ -60,19 +60,23 @@ internal sealed class ShardQuery<TSession, T>(IShardStreamBroadcaster<TSession> 
         Func<TSession, IAsyncEnumerable<T>> asyncQuery = session =>
         {
             var queryable = _query(session);
+
             if (_where != null)
             {
                 queryable = queryable.Where(_where);
             }
+
             // Ordering not currently applied without full provider infrastructure
             return Enumerate(queryable);
         };
 
         var results = new List<T>();
+
         await foreach (var shardItem in _broadcaster.QueryAllShardsAsync(asyncQuery, effectiveToken).ConfigureAwait(false))
         {
             results.Add(shardItem.Item);
         }
+
         // Global ordering skipped if _orderBy specified; future implementation can reintroduce
         return results;
     }
@@ -100,15 +104,18 @@ internal sealed class ShardQuery<TSession, T>(IShardStreamBroadcaster<TSession> 
         var linked = MergeToken(cancellationToken);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(linked);
         var query = _query;
+
         if (_where != null)
         {
             query = session => _query(session).Where(_where);
         }
+
         await foreach (var _ in _broadcaster.QueryAllShardsAsync(session => Enumerate(query(session)), cts.Token))
         {
             cts.Cancel();
             return true;
         }
+
         return false;
     }
 
@@ -117,15 +124,18 @@ internal sealed class ShardQuery<TSession, T>(IShardStreamBroadcaster<TSession> 
         var linked = MergeToken(cancellationToken);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(linked);
         var query = _query;
+
         if (_where != null)
         {
             query = session => _query(session).Where(_where);
         }
+
         await foreach (var item in _broadcaster.QueryAllShardsAsync(session => Enumerate(query(session)), cts.Token))
         {
             cts.Cancel();
             return item.Item;
         }
+
         throw new InvalidOperationException("Sequence contains no elements.");
     }
 

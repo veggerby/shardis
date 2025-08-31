@@ -42,6 +42,7 @@ internal sealed class InMemoryMigrationPlanner<TKey> : IShardMigrationPlanner<TK
         // Deterministic, non-cryptographic FNV-1a 64-bit for ordering (uniform enough, much cheaper than SHA256).
         var str = key.Value?.ToString() ?? string.Empty;
         ReadOnlySpan<char> chars = str.AsSpan();
+
         // Worst-case UTF8 expansion is 4 bytes per char; typical ASCII keys should be common.
         // Use stackalloc for small keys to avoid allocations.
         Span<byte> utf8 = chars.Length <= 128 ? stackalloc byte[chars.Length * 4] : new byte[System.Text.Encoding.UTF8.GetMaxByteCount(chars.Length)];
@@ -49,11 +50,13 @@ internal sealed class InMemoryMigrationPlanner<TKey> : IShardMigrationPlanner<TK
         const ulong offset = 14695981039346656037UL; // FNV offset basis
         const ulong prime = 1099511628211UL;          // FNV prime
         ulong hash = offset;
+
         for (int i = 0; i < count; i++)
         {
             hash ^= utf8[i];
             hash *= prime;
         }
+
         return hash;
     }
 }

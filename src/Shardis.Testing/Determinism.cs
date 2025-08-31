@@ -5,18 +5,16 @@ namespace Shardis.Testing;
 /// </summary>
 public sealed class Determinism
 {
-    private readonly Random _rng;
-
     private Determinism(int seed)
     {
-        _rng = new Random(seed);
+        Rng = new Random(seed);
     }
 
     /// <summary>Creates a new seeded determinism context.</summary>
     public static Determinism Create(int seed) => new(seed);
 
     /// <summary>The underlying seeded RNG (not thread-safe; guard externally if shared across threads).</summary>
-    public Random Rng => _rng;
+    public Random Rng { get; }
 
     /// <summary>
     /// Generates per-shard delay schedules according to skew profile.
@@ -28,9 +26,20 @@ public sealed class Determinism
     /// <param name="jitter">Optional +/- fractional jitter (0..1) applied deterministically.</param>
     public TimeSpan[][] MakeDelays(int shards, Skew skew, TimeSpan baseDelay, int steps = 256, double jitter = 0.0)
     {
-        if (shards <= 0) throw new ArgumentOutOfRangeException(nameof(shards));
-        if (steps <= 0) throw new ArgumentOutOfRangeException(nameof(steps));
-        if (jitter is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(jitter));
+        if (shards <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(shards));
+        }
+
+        if (steps <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(steps));
+        }
+
+        if (jitter is < 0 or > 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(jitter));
+        }
 
         var scales = skew switch
         {
@@ -44,12 +53,15 @@ public sealed class Determinism
         for (int s = 0; s < shards; s++)
         {
             var arr = new TimeSpan[steps];
+
             for (int i = 0; i < steps; i++)
             {
                 arr[i] = Jitter(baseDelay, scales[s], jitter);
             }
+
             schedules[s] = arr;
         }
+
         return schedules;
     }
 
@@ -66,16 +78,20 @@ public sealed class Determinism
     {
         for (int i = items.Length - 1; i > 0; i--)
         {
-            int j = _rng.Next(i + 1);
+            int j = Rng.Next(i + 1);
             (items[i], items[j]) = (items[j], items[i]);
         }
+
         return items;
     }
 
     /// <summary>Generates a deterministic sequence using the supplied factory.</summary>
     public IEnumerable<T> Generate<T>(Func<Random, T> factory, int count)
     {
-        for (int i = 0; i < count; i++) yield return factory(_rng);
+        for (int i = 0; i < count; i++)
+        {
+            yield return factory(Rng);
+        }
     }
 
     /// <summary>Creates a gate for explicit interleaving control.</summary>
@@ -87,16 +103,30 @@ public sealed class Determinism
 
     private static IEnumerable<double> SkewProfile(int shards, double min, double max)
     {
-        if (shards == 1) { yield return min; yield break; }
+        if (shards == 1)
+        {
+            yield return min;
+            yield break;
+        }
+
         var step = (max - min) / (shards - 1);
-        for (int i = 0; i < shards; i++) yield return min + i * step;
+
+        for (int i = 0; i < shards; i++)
+        {
+            yield return min + i * step;
+        }
     }
 
     private TimeSpan Jitter(TimeSpan baseDelay, double scale, double jitter)
     {
-        if (jitter <= 0) return TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * scale);
-        var delta = (_rng.NextDouble() * 2 - 1) * jitter; // [-jitter, +jitter]
+        if (jitter <= 0)
+        {
+            return TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * scale);
+        }
+
+        var delta = (Rng.NextDouble() * 2 - 1) * jitter; // [-jitter, +jitter]
         var ms = baseDelay.TotalMilliseconds * scale * (1.0 + delta);
+
         return TimeSpan.FromMilliseconds(ms);
     }
 }

@@ -13,6 +13,7 @@ public interface IShardisMetrics
     /// <param name="shardId">Target shard identifier.</param>
     /// <param name="existingAssignment">True if key already had an assignment; false if newly assigned.</param>
     void RouteHit(string router, string shardId, bool existingAssignment);
+
     /// <summary>
     /// Records a route miss (no prior assignment existed before hashing/selecting a shard).
     /// </summary>

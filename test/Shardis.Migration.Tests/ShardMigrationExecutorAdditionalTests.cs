@@ -68,17 +68,16 @@ public class ShardMigrationExecutorAdditionalTests
 
     private sealed class TransientSwapSwapper(int failures, InMemoryShardMapStore<string> store) : IShardMapSwapper<string>
     {
-        private int _attempts;
         private readonly int _failures = failures;
         private readonly HashSet<string> _applied = [];
         private readonly InMemoryShardMapStore<string> _store = store;
 
-        public int Attempts => _attempts;
+        public int Attempts { get; private set; }
         public IReadOnlyCollection<string> Applied => _applied;
         public Task SwapAsync(IReadOnlyList<KeyMove<string>> verifiedBatch, CancellationToken ct)
         {
-            _attempts++;
-            if (_attempts <= _failures)
+            Attempts++;
+            if (Attempts <= _failures)
             {
                 throw new InvalidOperationException("transient swap fail");
             }

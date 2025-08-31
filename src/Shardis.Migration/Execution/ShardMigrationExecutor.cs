@@ -93,11 +93,14 @@ public sealed class ShardMigrationExecutor<TKey>(
                     {
                         return;
                     }
+
                     var updated = Interlocked.CompareExchange(ref lastProcessedIndex, idx, snapshot);
+
                     if (updated == snapshot)
                     {
                         return;
                     }
+
                     if (++spins == maxSpins)
                     {
                         // Give up; next progress update attempt will retry implicitly for later keys.
@@ -126,6 +129,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     {
                         delay = TimeSpan.FromSeconds(10);
                     }
+
                     await Task.Delay(delay, ct).ConfigureAwait(false);
                 }
                 catch (Exception)
@@ -146,11 +150,14 @@ public sealed class ShardMigrationExecutor<TKey>(
             {
                 return;
             }
+
             var now = _now();
+
             if (now - lastProgressAt < TimeSpan.FromSeconds(1))
             {
                 return;
             }
+
             lastProgressAt = now;
             var copied = states.Values.Count(s => s is KeyMoveState.Copied or KeyMoveState.Verifying or KeyMoveState.Verified or KeyMoveState.Swapping or KeyMoveState.Done);
             var verified = states.Values.Count(s => s is KeyMoveState.Verified or KeyMoveState.Swapping or KeyMoveState.Done);
@@ -168,6 +175,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     return;
                 }
             }
+
             var cp = new MigrationCheckpoint<TKey>(plan.PlanId, CheckpointVersion, _now(), states, lastProcessedIndex);
             await _checkpointStore.PersistAsync(cp, token).ConfigureAwait(false);
             transitionSinceFlush = 0;
@@ -181,6 +189,7 @@ public sealed class ShardMigrationExecutor<TKey>(
             {
                 ct.ThrowIfCancellationRequested();
                 var move = plan.Moves[i];
+
                 if (states[move.Key] >= KeyMoveState.Copied)
                 {
                     if (states[move.Key] == KeyMoveState.Verified)
@@ -191,8 +200,10 @@ public sealed class ShardMigrationExecutor<TKey>(
                 }
 
                 await copySemaphore.WaitAsync(ct).ConfigureAwait(false);
+
                 Interlocked.Increment(ref activeCopy);
                 _metrics.SetActiveCopy(Volatile.Read(ref activeCopy));
+
                 var copyTask = Task.Run(async () =>
                 {
                     try
@@ -218,6 +229,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                         await StartVerifyAsync(move, ct).ConfigureAwait(false);
                     }
                 }, ct);
+
                 inFlightCopies.Add(copyTask);
 
                 if (inFlightCopies.Count >= _options.CopyConcurrency)
@@ -227,6 +239,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                 }
 
                 EmitProgressIfNeeded();
+
                 await PersistCheckpointIfNeeded(false, ct).ConfigureAwait(false);
             }
 
@@ -250,6 +263,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                 if (states[move.Key] == KeyMoveState.Verified)
                 {
                     pendingSwap.Add(move);
+
                     if (pendingSwap.Count >= _options.SwapBatchSize)
                     {
                         await SwapBatchAsync(pendingSwap, ct).ConfigureAwait(false);
@@ -257,6 +271,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     }
                 }
             }
+
             if (pendingSwap.Count > 0)
             {
                 await SwapBatchAsync(pendingSwap, ct).ConfigureAwait(false);
@@ -269,6 +284,7 @@ public sealed class ShardMigrationExecutor<TKey>(
             var done = states.Values.Count(s => s == KeyMoveState.Done);
             var failed = states.Values.Count(s => s == KeyMoveState.Failed);
             completed = true;
+
             return new MigrationSummary(plan.PlanId, total, done, failed, _now() - started);
         }
         finally
@@ -294,9 +310,11 @@ public sealed class ShardMigrationExecutor<TKey>(
             await verifySemaphore.WaitAsync(token).ConfigureAwait(false);
             Interlocked.Increment(ref activeVerify);
             _metrics.SetActiveVerify(Volatile.Read(ref activeVerify));
+
             try
             {
                 states[move.Key] = KeyMoveState.Verifying;
+
                 await ExecuteWithRetry(async () =>
                 {
                     var ok = await _verification.VerifyAsync(move, token).ConfigureAwait(false);
@@ -305,6 +323,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                         throw new InvalidOperationException("Verification failed");
                     }
                 }, "verify", move).ConfigureAwait(false);
+
                 if (states[move.Key] != KeyMoveState.Failed)
                 {
                     states[move.Key] = KeyMoveState.Verified;
@@ -327,6 +346,7 @@ public sealed class ShardMigrationExecutor<TKey>(
             {
                 return;
             }
+
             foreach (var m in batch)
             {
                 if (states[m.Key] == KeyMoveState.Verified)

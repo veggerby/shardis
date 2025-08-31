@@ -21,14 +21,17 @@ internal sealed class InMemoryDataMover<TKey> : IShardDataMover<TKey>
     {
         ct.ThrowIfCancellationRequested();
         var ex = CopyFailureInjector?.Invoke(move);
+
         if (ex != null)
         {
             throw ex;
         }
+
         lock (_lock)
         {
             _copied.Add(move);
         }
+
         return Task.CompletedTask;
     }
 
@@ -36,11 +39,14 @@ internal sealed class InMemoryDataMover<TKey> : IShardDataMover<TKey>
     {
         ct.ThrowIfCancellationRequested();
         var ex = VerifyFailureInjector?.Invoke(move);
+
         if (ex != null)
         {
             throw ex;
         }
+
         bool mismatch = VerificationMismatchInjector?.Invoke(move) == true;
+
         lock (_lock)
         {
             if (!mismatch && _copied.Contains(move))
@@ -49,6 +55,7 @@ internal sealed class InMemoryDataMover<TKey> : IShardDataMover<TKey>
                 return Task.FromResult(true);
             }
         }
+
         return Task.FromResult(false);
     }
 }
