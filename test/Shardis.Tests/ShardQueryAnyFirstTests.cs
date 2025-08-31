@@ -10,10 +10,9 @@ public class ShardQueryAnyFirstTests
     {
         public ShardId ShardId { get; } = new(id);
         private readonly IEnumerable<int> _data = data;
-        private readonly IShardQueryExecutor<string> _executor = Substitute.For<IShardQueryExecutor<string>>();
 
         public string CreateSession() => string.Empty;
-        public IShardQueryExecutor<string> QueryExecutor => _executor;
+        public IShardQueryExecutor<string> QueryExecutor { get; } = Substitute.For<IShardQueryExecutor<string>>();
     }
 
     private static IShardStreamBroadcaster<string> CreateBroadcaster(params (string id, IEnumerable<int> data)[] shards)

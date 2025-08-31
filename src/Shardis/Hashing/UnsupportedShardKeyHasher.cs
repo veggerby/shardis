@@ -9,8 +9,6 @@ internal sealed class UnsupportedShardKeyHasher<TKey> : IShardKeyHasher<TKey>
 
     public static readonly IShardKeyHasher<TKey> Instance = new UnsupportedShardKeyHasher<TKey>();
 
-    public uint ComputeHash(ShardKey<TKey> key)
-    {
+    public uint ComputeHash(ShardKey<TKey> key) =>
         throw new ShardisException($"No shard hasher is registered for type {typeof(TKey)}.");
-    }
 }

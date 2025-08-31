@@ -27,9 +27,17 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
         public int CompareTo(HeapItem other)
         {
             var c = Key.CompareTo(other.Key);
-            if (c != 0) return c;
+            if (c != 0)
+            {
+                return c;
+            }
+
             c = ShardIndex.CompareTo(other.ShardIndex);
-            if (c != 0) return c;
+            if (c != 0)
+            {
+                return c;
+            }
+
             return Sequence.CompareTo(other.Sequence);
         }
     }
@@ -38,7 +46,11 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
     {
         ArgumentNullException.ThrowIfNull(shardStreams);
         ArgumentNullException.ThrowIfNull(keySelector);
-        if (prefetchPerShard < 1) throw new ArgumentOutOfRangeException(nameof(prefetchPerShard));
+
+        if (prefetchPerShard < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(prefetchPerShard));
+        }
 
         _streams = shardStreams.ToList();
         _keySelector = keySelector;
@@ -46,10 +58,12 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
         _cancellationToken = cancellationToken;
         _probe = probe;
         _states = new List<StreamState>(_streams.Count);
+
         for (int i = 0; i < _streams.Count; i++)
         {
             _states.Add(new StreamState(i, _streams[i], 0, 0, false));
         }
+
         _heap = new PriorityQueue<HeapItem, HeapItem>();
     }
 
@@ -70,6 +84,7 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
             {
                 await TopUpAsync(i).ConfigureAwait(false);
             }
+
             IsPrimed = true;
         }
 
@@ -77,12 +92,14 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
         {
             _current = item.Item;
             var state = _states[item.ShardIndex];
+
             if (!state.Completed)
             {
                 // Decrement buffered; then attempt top-up for that shard
                 ReplaceState(item.ShardIndex, state with { Buffered = Math.Max(0, state.Buffered - 1) });
                 await TopUpAsync(item.ShardIndex).ConfigureAwait(false);
             }
+
             return true;
         }
 
@@ -91,17 +108,20 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
         {
             await TopUpAsync(s.ShardIndex).ConfigureAwait(false);
         }
+
         if (_heap.TryDequeue(out var lateItem, out _))
         {
             _current = lateItem.Item;
             var st = _states[lateItem.ShardIndex];
             ReplaceState(lateItem.ShardIndex, st with { Buffered = Math.Max(0, st.Buffered - 1) });
             await TopUpAsync(lateItem.ShardIndex).ConfigureAwait(false);
+
             return true;
         }
 
         IsComplete = _states.All(s => s.Completed);
         _current = null;
+
         return false;
     }
 
@@ -114,6 +134,7 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
         {
             _cancellationToken.ThrowIfCancellationRequested();
             bool advanced;
+
             try
             {
                 advanced = await state.Enumerator.MoveNextAsync().ConfigureAwait(false);
@@ -134,6 +155,7 @@ internal sealed class ShardisAsyncOrderedEnumerator<T, TKey> : IShardisAsyncOrde
             var key = _keySelector(shardItem.Item);
             var newSequence = state.Sequence + 1;
             var heapItem = new HeapItem(key, shardIndex, newSequence, shardItem);
+
             _heap.Enqueue(heapItem, heapItem);
             state = state with { Sequence = newSequence, Buffered = state.Buffered + 1 };
             ReplaceState(shardIndex, state);

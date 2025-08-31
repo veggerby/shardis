@@ -11,6 +11,9 @@ namespace Shardis.Hashing;
 /// </remarks>
 public sealed class Fnv1aShardRingHasher : IShardRingHasher
 {
+    private const uint OFFSET = 2_166_136_261;
+    private const uint PRIME = 16_777_619;
+
     /// <summary>Gets a singleton instance.</summary>
     public static readonly IShardRingHasher Instance = new Fnv1aShardRingHasher();
     private Fnv1aShardRingHasher() { }
@@ -18,15 +21,15 @@ public sealed class Fnv1aShardRingHasher : IShardRingHasher
     /// <inheritdoc />
     public uint Hash(string value)
     {
-        const uint offset = 2166136261;
-        const uint prime = 16777619;
-        uint hash = offset;
+        uint hash = OFFSET;
         var span = Encoding.UTF8.GetBytes(value);
+
         for (int i = 0; i < span.Length; i++)
         {
             hash ^= span[i];
-            hash *= prime;
+            hash *= PRIME;
         }
+
         return hash;
     }
 }

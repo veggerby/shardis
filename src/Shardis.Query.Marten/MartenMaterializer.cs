@@ -31,7 +31,12 @@ public sealed class MartenMaterializer : IQueryableShardMaterializer
             {
                 ct.ThrowIfCancellationRequested();
                 var batch = await mq.Skip(page * _pageSize).Take(_pageSize).ToListAsync(ct).ConfigureAwait(false);
-                if (batch.Count == 0) yield break;
+
+                if (batch.Count == 0)
+                {
+                    yield break;
+                }
+
                 foreach (var item in batch)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -39,6 +44,7 @@ public sealed class MartenMaterializer : IQueryableShardMaterializer
                     // Yield control to preserve responsiveness under mixed shard workloads.
                     await Task.Yield();
                 }
+
                 page++;
             }
         }
@@ -50,13 +56,19 @@ public sealed class MartenMaterializer : IQueryableShardMaterializer
             {
                 ct.ThrowIfCancellationRequested();
                 var batch = await query.Skip(page * _pageSize).Take(_pageSize).ToListAsync(ct).ConfigureAwait(false);
-                if (batch.Count == 0) yield break;
+
+                if (batch.Count == 0)
+                {
+                    yield break;
+                }
+
                 foreach (var item in batch)
                 {
                     ct.ThrowIfCancellationRequested();
                     yield return item;
                     await Task.Yield();
                 }
+
                 page++;
             }
         }

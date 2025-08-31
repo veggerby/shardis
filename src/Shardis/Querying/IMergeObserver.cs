@@ -1,7 +1,5 @@
 namespace Shardis.Querying;
 
-using System.Runtime.CompilerServices;
-
 using Shardis.Model;
 
 /// <summary>
@@ -30,33 +28,4 @@ public interface IMergeObserver
 
     /// <summary>Called when the ordered merge samples current heap size (ordered path). Sampling frequency is implementation defined.</summary>
     void OnHeapSizeSample(int size);
-}
-
-/// <summary>
-/// No-op merge observer (default) – all callbacks are empty.
-/// </summary>
-internal sealed class NoOpMergeObserver : IMergeObserver
-{
-    public static readonly IMergeObserver Instance = new NoOpMergeObserver();
-    private NoOpMergeObserver() { }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)] public void OnItemYielded(ShardId shardId) { }
-    [MethodImpl(MethodImplOptions.AggressiveInlining)] public void OnShardCompleted(ShardId shardId) { }
-    [MethodImpl(MethodImplOptions.AggressiveInlining)] public void OnShardStopped(ShardId shardId, ShardStopReason reason) { }
-    [MethodImpl(MethodImplOptions.AggressiveInlining)] public void OnBackpressureWaitStart() { }
-    [MethodImpl(MethodImplOptions.AggressiveInlining)] public void OnBackpressureWaitStop() { }
-    [MethodImpl(MethodImplOptions.AggressiveInlining)] public void OnHeapSizeSample(int size) { }
-}
-
-/// <summary>
-/// Reason a shard stream stopped.
-/// </summary>
-public enum ShardStopReason
-{
-    /// <summary>Shard enumerated all items successfully.</summary>
-    Completed = 0,
-    /// <summary>Enumeration canceled due to external cancellation token.</summary>
-    Canceled = 1,
-    /// <summary>Enumeration terminated because of an unhandled exception.</summary>
-    Faulted = 2
 }

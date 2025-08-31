@@ -14,6 +14,7 @@ internal static class PartialEvaluator
     private sealed class SubtreeEvaluator : ExpressionVisitor
     {
         protected override Expression VisitInvocation(InvocationExpression node) => base.VisitInvocation(node);
+
         protected override Expression VisitMember(MemberExpression node)
         {
             if (node.Expression is ConstantExpression c)
@@ -25,6 +26,7 @@ internal static class PartialEvaluator
                 }
                 catch { /* fallback */ }
             }
+
             return base.VisitMember(node);
         }
         protected override Expression VisitUnary(UnaryExpression node)
@@ -38,8 +40,10 @@ internal static class PartialEvaluator
                 }
                 catch { }
             }
+
             return base.VisitUnary(node);
         }
+
         protected override Expression VisitBinary(BinaryExpression node)
         {
             if (node.Left is ConstantExpression && node.Right is ConstantExpression)
@@ -51,8 +55,10 @@ internal static class PartialEvaluator
                 }
                 catch { }
             }
+
             return base.VisitBinary(node);
         }
+
         private static object? GetValue(MemberExpression me)
         {
             switch (me.Member)
@@ -64,6 +70,7 @@ internal static class PartialEvaluator
                     var t = (me.Expression as ConstantExpression)?.Value;
                     return pi.GetValue(t);
             }
+
             return null;
         }
     }

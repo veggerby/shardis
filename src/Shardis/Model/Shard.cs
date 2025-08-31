@@ -16,7 +16,6 @@ public class Shard<TSession> : IShard<TSession>
     public ShardId ShardId { get; }
 
     private readonly IShardSessionProvider<TSession> _sessionProvider;
-    private readonly IShardQueryExecutor<TSession> _queryExecutor;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Shard{TSession}"/> class.
@@ -30,7 +29,7 @@ public class Shard<TSession> : IShard<TSession>
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shardId.Value, nameof(shardId));
         ArgumentNullException.ThrowIfNull(sessionProvider, nameof(sessionProvider));
-        _queryExecutor = queryExecutor ?? NoOpQueryExecutor.Instance;
+        QueryExecutor = queryExecutor ?? NoOpQueryExecutor<TSession>.Instance;
         ShardId = shardId;
         _sessionProvider = sessionProvider;
 
@@ -46,18 +45,8 @@ public class Shard<TSession> : IShard<TSession>
     /// Creates a new session for the shard.
     /// </summary>
     /// <returns>A new session of type <typeparamref name="TSession"/>.</returns>
-    public TSession CreateSession()
-    {
-        return _sessionProvider.GetSession(ShardId);
-    }
+    public TSession CreateSession() => _sessionProvider.GetSession(ShardId);
 
     /// <summary>Gets the configured query executor (or a no-op executor if none supplied).</summary>
-    public IShardQueryExecutor<TSession> QueryExecutor => _queryExecutor;
-
-    private sealed class NoOpQueryExecutor : IShardQueryExecutor<TSession>
-    {
-        public static readonly NoOpQueryExecutor Instance = new();
-        public IAsyncEnumerable<T> Execute<T>(TSession session, Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull => throw new NotSupportedException("No query executor configured for this shard.");
-        public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(TSession session, Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr, Func<T, TKey> keySelector) where T : notnull => throw new NotSupportedException("No query executor configured for this shard.");
-    }
+    public IShardQueryExecutor<TSession> QueryExecutor { get; }
 }

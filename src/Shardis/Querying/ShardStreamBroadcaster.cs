@@ -30,10 +30,12 @@ public class ShardStreamBroadcaster<TShard, TSession> : IShardStreamBroadcaster<
         {
             throw new ArgumentException("Shard collection must not be empty", nameof(shards));
         }
+
         if (channelCapacity.HasValue && channelCapacity.Value < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(channelCapacity), "Channel capacity must be >= 1 if specified.");
         }
+
         if (heapSampleEvery < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(heapSampleEvery), "heapSampleEvery must be >= 1");

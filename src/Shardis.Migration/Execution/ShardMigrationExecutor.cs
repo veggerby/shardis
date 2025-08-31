@@ -23,6 +23,11 @@ public sealed class ShardMigrationExecutor<TKey>(
     Func<DateTimeOffset>? timeProvider = null)
     where TKey : notnull, IEquatable<TKey>
 {
+    // NOTE: This class is intentionally a lightweight record-like primary-constructor type
+    // with dependencies provided via the parameter list above. The implementation below
+    // orchestrates the three phases of a key migration: copy, optional verify and batched swap.
+    // It is designed to be deterministic, concurrency-safe, and checkpoint-friendly so that
+    // long-running migrations can be resumed after failures.
     private readonly IShardDataMover<TKey> _mover = mover;
     private readonly IVerificationStrategy<TKey> _verification = verification;
     private readonly IShardMapSwapper<TKey> _swapper = swapper;
@@ -47,38 +52,63 @@ public sealed class ShardMigrationExecutor<TKey>(
         IProgress<MigrationProgressEvent>? progress,
         CancellationToken ct)
     {
+        // Capture start time for duration metrics.
         var started = _now();
+
+        // Attempt to load an existing checkpoint for this plan. A checkpoint contains
+        // the last persisted move states and the last processed index so the executor
+        // can resume without re-copying or re-verifying completed work.
         var checkpoint = await _checkpointStore.LoadAsync(plan.PlanId, ct).ConfigureAwait(false);
 
+        // States map tracks the per-key state machine. If a checkpoint exists we resume
+        // from the persisted states, otherwise initialize all keys as Planned.
         var states = checkpoint?.States is { Count: > 0 }
             ? new Dictionary<ShardKey<TKey>, KeyMoveState>(checkpoint.States)
             : plan.Moves.ToDictionary(m => m.Key, _ => KeyMoveState.Planned);
 
+        // Only increment the planned counter when this is the first run (no checkpoint).
         if (checkpoint is null)
         {
             _metrics.IncPlanned(states.Count);
         }
 
+        // Tracks the highest index that progressed successfully. Used for idempotent
+        // checkpointing and progress reporting. -1 means nothing processed yet.
         var lastProcessedIndex = checkpoint?.LastProcessedIndex ?? -1;
         var total = plan.Moves.Count;
 
+        // Map each key to its index in the plan for quick lookups when updating the
+        // "lastProcessedIndex" using a bounded CAS loop.
         var indexByKey = new Dictionary<ShardKey<TKey>, int>(plan.Moves.Count);
         for (int ii = 0; ii < plan.Moves.Count; ii++)
         {
             indexByKey[plan.Moves[ii].Key] = ii;
         }
 
+        // Pending batch prepared for the swap phase. We accumulate verified keys here
+        // until we reach SwapBatchSize or the plan completes.
         var pendingSwap = new List<KeyMove<TKey>>();
+
+        // Counters used to decide when to persist checkpoints. We persist when
+        // transitionSinceFlush is large enough or when an interval elapses.
         var transitionSinceFlush = 0;
         var lastFlushAt = _now();
         var lastProgressAt = DateTimeOffset.MinValue;
 
+        // Concurrency accounting for metrics and semaphores that bound work.
         int activeCopy = 0, activeVerify = 0;
         var copySemaphore = new SemaphoreSlim(_options.CopyConcurrency);
         var verifySemaphore = new SemaphoreSlim(_options.VerifyConcurrency);
+
+        // Tracks copy tasks currently in-flight so we can throttle and await completion.
         var inFlightCopies = new List<Task>();
+
+        // Lightweight set of keys that failed permanently (used only for diagnostics here).
         var failedKeys = new ConcurrentDictionary<ShardKey<TKey>, byte>();
 
+        // Atomically advance the lastProcessedIndex for progress reporting and
+        // checkpointing. We only progress forward; a bounded CAS loop protects
+        // against races with multiple concurrent workers touching different keys.
         void UpdateLastProcessed(ShardKey<TKey> key)
         {
             if (indexByKey.TryGetValue(key, out var idx))
@@ -91,22 +121,30 @@ public sealed class ShardMigrationExecutor<TKey>(
                     var snapshot = lastProcessedIndex;
                     if (idx <= snapshot)
                     {
+                        // Another worker already advanced or we are not far enough to update.
                         return;
                     }
+
                     var updated = Interlocked.CompareExchange(ref lastProcessedIndex, idx, snapshot);
+
                     if (updated == snapshot)
                     {
+                        // Successfully advanced.
                         return;
                     }
+
                     if (++spins == maxSpins)
                     {
-                        // Give up; next progress update attempt will retry implicitly for later keys.
+                        // Give up after many spins; progress will be retried later.
                         return;
                     }
                 }
             }
         }
 
+        // Generic helper that executes an arbitrary async action with exponential
+        // backoff retries. On permanent failure (after retries exhausted) the key
+        // is marked as Failed and metrics/state are updated accordingly.
         async Task ExecuteWithRetry(Func<Task> action, string phase, KeyMove<TKey> move)
         {
             int attempt = 0;
@@ -119,6 +157,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                 }
                 catch (Exception) when (attempt < _options.MaxRetries && !ct.IsCancellationRequested)
                 {
+                    // Transient failure: increment retry metric and wait with capped exponential backoff.
                     attempt++;
                     _metrics.IncRetries();
                     var delay = TimeSpan.FromMilliseconds(_options.RetryBaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
@@ -126,10 +165,12 @@ public sealed class ShardMigrationExecutor<TKey>(
                     {
                         delay = TimeSpan.FromSeconds(10);
                     }
+
                     await Task.Delay(delay, ct).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
+                    // Permanent failure path: mark the move as failed and ensure progress & metrics.
                     failedKeys.TryAdd(move.Key, 0);
                     states[move.Key] = KeyMoveState.Failed;
                     _metrics.IncFailed();
@@ -140,17 +181,22 @@ public sealed class ShardMigrationExecutor<TKey>(
             }
         }
 
+        // Throttled progress emitter (at most once per second). Computes aggregated
+        // counts from the states map and reports them via the provided IProgress.
         void EmitProgressIfNeeded()
         {
             if (progress is null)
             {
                 return;
             }
+
             var now = _now();
+
             if (now - lastProgressAt < TimeSpan.FromSeconds(1))
             {
                 return;
             }
+
             lastProgressAt = now;
             var copied = states.Values.Count(s => s is KeyMoveState.Copied or KeyMoveState.Verifying or KeyMoveState.Verified or KeyMoveState.Swapping or KeyMoveState.Done);
             var verified = states.Values.Count(s => s is KeyMoveState.Verified or KeyMoveState.Swapping or KeyMoveState.Done);
@@ -159,6 +205,8 @@ public sealed class ShardMigrationExecutor<TKey>(
             progress.Report(new MigrationProgressEvent(plan.PlanId, total, copied, verified, swapped, failed, activeCopy, activeVerify, now));
         }
 
+        // Persist a checkpoint when thresholds are met or when forced. Checkpoints allow
+        // the executor to resume work without repeating completed phases.
         async Task PersistCheckpointIfNeeded(bool force, CancellationToken token)
         {
             if (!force)
@@ -168,6 +216,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     return;
                 }
             }
+
             var cp = new MigrationCheckpoint<TKey>(plan.PlanId, CheckpointVersion, _now(), states, lastProcessedIndex);
             await _checkpointStore.PersistAsync(cp, token).ConfigureAwait(false);
             transitionSinceFlush = 0;
@@ -177,22 +226,31 @@ public sealed class ShardMigrationExecutor<TKey>(
         bool completed = false;
         try
         {
+            // Phase 1: Copy. Iterate plan moves and start copy tasks up to copy concurrency.
             for (int i = 0; i < plan.Moves.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
                 var move = plan.Moves[i];
+
+                // Skip work already copy-or-beyond (resumed from checkpoint).
                 if (states[move.Key] >= KeyMoveState.Copied)
                 {
                     if (states[move.Key] == KeyMoveState.Verified)
                     {
+                        // Already verified => candidate for swap.
                         pendingSwap.Add(move);
                     }
                     continue;
                 }
 
+                // Throttle concurrency using semaphore.
                 await copySemaphore.WaitAsync(ct).ConfigureAwait(false);
+
                 Interlocked.Increment(ref activeCopy);
                 _metrics.SetActiveCopy(Volatile.Read(ref activeCopy));
+
+                // Start the actual copy work on the thread-pool so we can continue scheduling
+                // further copies without awaiting each immediately.
                 var copyTask = Task.Run(async () =>
                 {
                     try
@@ -201,6 +259,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                         await ExecuteWithRetry(() => _mover.CopyAsync(move, ct), "copy", move).ConfigureAwait(false);
                         if (states[move.Key] != KeyMoveState.Failed)
                         {
+                            // Copy succeeded; transition to Copied and update metrics.
                             states[move.Key] = KeyMoveState.Copied;
                             _metrics.IncCopied();
                             transitionSinceFlush++;
@@ -208,18 +267,22 @@ public sealed class ShardMigrationExecutor<TKey>(
                     }
                     finally
                     {
+                        // Release accounting and allow another copy to start.
                         Interlocked.Decrement(ref activeCopy);
                         _metrics.SetActiveCopy(Volatile.Read(ref activeCopy));
                         copySemaphore.Release();
                     }
 
+                    // If interleaving is enabled, start verification immediately for this key.
                     if (_options.InterleaveCopyAndVerify && states[move.Key] == KeyMoveState.Copied)
                     {
                         await StartVerifyAsync(move, ct).ConfigureAwait(false);
                     }
                 }, ct);
+
                 inFlightCopies.Add(copyTask);
 
+                // If we've started as many copies as allowed, await one to complete so we can schedule more.
                 if (inFlightCopies.Count >= _options.CopyConcurrency)
                 {
                     var finished = await Task.WhenAny(inFlightCopies).ConfigureAwait(false);
@@ -227,11 +290,15 @@ public sealed class ShardMigrationExecutor<TKey>(
                 }
 
                 EmitProgressIfNeeded();
+
+                // Periodically persist checkpoints so long-running operations can be resumed.
                 await PersistCheckpointIfNeeded(false, ct).ConfigureAwait(false);
             }
 
+            // Wait for outstanding copy operations to finish.
             await Task.WhenAll(inFlightCopies).ConfigureAwait(false);
 
+            // Phase 2: Verification for all copied keys (if not interleaved already).
             if (!_options.InterleaveCopyAndVerify)
             {
                 foreach (var move in plan.Moves)
@@ -245,11 +312,13 @@ public sealed class ShardMigrationExecutor<TKey>(
 
             EmitProgressIfNeeded();
 
+            // Prepare swap batches from verified keys and execute in batches.
             foreach (var move in plan.Moves)
             {
                 if (states[move.Key] == KeyMoveState.Verified)
                 {
                     pendingSwap.Add(move);
+
                     if (pendingSwap.Count >= _options.SwapBatchSize)
                     {
                         await SwapBatchAsync(pendingSwap, ct).ConfigureAwait(false);
@@ -257,18 +326,21 @@ public sealed class ShardMigrationExecutor<TKey>(
                     }
                 }
             }
+
             if (pendingSwap.Count > 0)
             {
                 await SwapBatchAsync(pendingSwap, ct).ConfigureAwait(false);
                 pendingSwap.Clear();
             }
 
+            // Force a final checkpoint to capture completion state.
             await PersistCheckpointIfNeeded(true, ct).ConfigureAwait(false);
             EmitProgressIfNeeded();
 
             var done = states.Values.Count(s => s == KeyMoveState.Done);
             var failed = states.Values.Count(s => s == KeyMoveState.Failed);
             completed = true;
+
             return new MigrationSummary(plan.PlanId, total, done, failed, _now() - started);
         }
         finally
@@ -294,9 +366,11 @@ public sealed class ShardMigrationExecutor<TKey>(
             await verifySemaphore.WaitAsync(token).ConfigureAwait(false);
             Interlocked.Increment(ref activeVerify);
             _metrics.SetActiveVerify(Volatile.Read(ref activeVerify));
+
             try
             {
                 states[move.Key] = KeyMoveState.Verifying;
+
                 await ExecuteWithRetry(async () =>
                 {
                     var ok = await _verification.VerifyAsync(move, token).ConfigureAwait(false);
@@ -305,6 +379,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                         throw new InvalidOperationException("Verification failed");
                     }
                 }, "verify", move).ConfigureAwait(false);
+
                 if (states[move.Key] != KeyMoveState.Failed)
                 {
                     states[move.Key] = KeyMoveState.Verified;
@@ -327,6 +402,7 @@ public sealed class ShardMigrationExecutor<TKey>(
             {
                 return;
             }
+
             foreach (var m in batch)
             {
                 if (states[m.Key] == KeyMoveState.Verified)

@@ -33,6 +33,7 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
         var compiled = _pipelineCache.GetOrAdd(key, _ => CompilePipeline(model));
         var per = _shards.Select((seq, shardId) => Project<TResult>(seq, tIn, model, compiled, shardId, ct)).Select(Box);
         var merged = Cast<TResult>(_merge(per, ct), ct);
+
         return WrapCompletion(merged, ct);
     }
 
@@ -40,12 +41,15 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
     {
         var sb = new System.Text.StringBuilder();
         sb.Append(model.SourceType.FullName).Append('|');
+
         foreach (var w in model.Where)
         {
             sb.Append(w.Body.ToString()).Append(';');
         }
+
         sb.Append("|SEL|");
         sb.Append(model.Select?.Body.ToString() ?? "ID");
+
         return sb.ToString();
     }
 
@@ -60,15 +64,18 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
         if (model.Where.Count > 0)
         {
             System.Linq.Expressions.Expression? body = null;
+
             foreach (var pred in model.Where)
             {
                 var replaced = new ParameterReplaceVisitor(pred.Parameters[0], castIn).Visit(pred.Body);
                 body = body == null ? replaced : System.Linq.Expressions.Expression.AndAlso(body, replaced!);
             }
+
             whereDel = System.Linq.Expressions.Expression.Lambda<Func<object, bool>>(body!, param).Compile();
         }
 
         Func<object, object> selectDel;
+
         if (model.Select != null)
         {
             var projBody = new ParameterReplaceVisitor(model.Select.Parameters[0], castIn).Visit(model.Select.Body)!;
@@ -78,6 +85,7 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
         {
             selectDel = o => o;
         }
+
         return new CompiledPipeline(whereDel, selectDel);
     }
 
@@ -97,18 +105,27 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
     private async IAsyncEnumerable<TResult> ExecPipeline<TResult>(IEnumerable<object> src, CompiledPipeline pipeline, int shardId, [EnumeratorCancellation] CancellationToken ct)
     {
         var produced = 0;
+
         foreach (var o in src)
         {
-            if (ct.IsCancellationRequested) { _metrics.OnCanceled(); yield break; }
+            if (ct.IsCancellationRequested)
+            {
+                _metrics.OnCanceled();
+                yield break;
+            }
+
             if (pipeline.Where == null || pipeline.Where(o))
             {
                 var projected = pipeline.Select(o);
                 produced++;
                 _metrics.OnItemsProduced(shardId, 1);
+
                 yield return (TResult)projected!;
+
                 await Task.Yield();
             }
         }
+
         _metrics.OnShardStop(shardId);
     }
 
@@ -120,21 +137,35 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
 
     private static async IAsyncEnumerable<T> Cast<T>(IAsyncEnumerable<object> src, [EnumeratorCancellation] CancellationToken ct)
     {
-        await foreach (var o in src.WithCancellation(ct)) { yield return (T)o!; }
+        await foreach (var o in src.WithCancellation(ct))
+        {
+            yield return (T)o!;
+        }
     }
 
     private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct)
     {
         var completed = false;
+
         try
         {
-            await foreach (var item in src.WithCancellation(ct)) { yield return item; }
+            await foreach (var item in src.WithCancellation(ct))
+            {
+                yield return item;
+            }
+
             completed = true;
         }
         finally
         {
-            if (ct.IsCancellationRequested && !completed) { _metrics.OnCanceled(); }
-            else { _metrics.OnCompleted(); }
+            if (ct.IsCancellationRequested && !completed)
+            {
+                _metrics.OnCanceled();
+            }
+            else
+            {
+                _metrics.OnCompleted();
+            }
         }
     }
 
@@ -145,8 +176,18 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
             yield return item!;
         }
     }
+
     private static async IAsyncEnumerable<T> ToAsync<T>(IEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct)
     {
-        foreach (var i in src) { if (ct.IsCancellationRequested) yield break; yield return i; await Task.Yield(); }
+        foreach (var i in src)
+        {
+            if (ct.IsCancellationRequested)
+            {
+                yield break;
+            }
+
+            yield return i;
+            await Task.Yield();
+        }
     }
 }

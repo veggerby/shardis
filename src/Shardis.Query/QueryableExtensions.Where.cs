@@ -13,6 +13,7 @@ public static class ShardQueryableExtensions
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(predicate);
         var model = source.Model.WithWhere(predicate);
+
         return new ShardQueryable<T>(source.Executor, model);
     }
 }

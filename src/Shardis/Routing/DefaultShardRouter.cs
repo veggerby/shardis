@@ -129,13 +129,16 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
                 var idx = CalculateShardIndex(shardKey, _availableShards.Count);
                 shard = _availableShards[(int)idx];
                 var created = _shardMapStore.TryAssignShardToKey(shardKey, shard.ShardId, out _);
+
                 if (created && _missRecorded.TryAdd(shardKey, 0))
                 {
                     _metrics.RouteMiss(RouterName);
                 }
+
                 existing = !created;
             }
         }
+
         _metrics.RouteHit(RouterName, shard.ShardId.Value, existing);
         return (shard, existing);
     }

@@ -5,6 +5,7 @@ public interface IShardQueryCapabilities
 {
     /// <summary>True if server-side ordering (OrderBy/ThenBy) is supported.</summary>
     bool SupportsOrdering { get; }
+
     /// <summary>True if pagination (Skip/Take) is supported.</summary>
     bool SupportsPagination { get; }
 }

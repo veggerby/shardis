@@ -20,12 +20,11 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
     private readonly int _shardCount = shardCount;
     private readonly Func<int, DbContext> _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
     private readonly Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> _merge = merge ?? throw new ArgumentNullException(nameof(merge));
-    private readonly IShardQueryCapabilities _caps = new BasicQueryCapabilities(ordering: false, pagination: false);
     private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Diagnostics.NoopQueryMetricsObserver.Instance;
     private readonly int? _commandTimeoutSeconds = commandTimeoutSeconds;
 
     /// <inheritdoc />
-    public IShardQueryCapabilities Capabilities => _caps;
+    public IShardQueryCapabilities Capabilities { get; } = new BasicQueryCapabilities(ordering: false, pagination: false);
 
     /// <inheritdoc />
     public IAsyncEnumerable<TResult> ExecuteAsync<TResult>(QueryModel model, CancellationToken ct = default)
@@ -33,6 +32,7 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
         var tIn = model.SourceType;
         var per = Enumerable.Range(0, _shardCount).Select(id => ExecShard<TResult>(id, tIn, model, ct)).Select(Box);
         var merged = Cast<TResult>(_merge(per, ct), ct);
+
         return WrapCompletion(merged, ct);
     }
 
@@ -40,6 +40,7 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
     {
         _metrics.OnShardStart(shardId);
         await using var ctx = _contextFactory(shardId);
+
         // Apply optional command timeout (per shard) if specified.
         if (_commandTimeoutSeconds is int secs && secs > 0)
         {
@@ -52,17 +53,21 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
                 // Defensive: if provider does not support setting timeout, continue without failing the whole query.
             }
         }
+
         var setGeneric = typeof(DbContext).GetMethods().First(m => m.Name == nameof(DbContext.Set) && m.IsGenericMethodDefinition && m.GetParameters().Length == 0).MakeGenericMethod(tIn);
         var raw = setGeneric.Invoke(ctx, null)!;
         var q = (IQueryable)raw;
         var apply = typeof(QueryComposer).GetMethod(nameof(QueryComposer.ApplyQueryable))!.MakeGenericMethod(tIn, typeof(TResult));
         var applied = (IQueryable<TResult>)apply.Invoke(null, new object[] { q, model })!;
+
         // Default to AsNoTracking for query performance / reduced change tracking overhead
         var asNoTracking = typeof(EntityFrameworkQueryableExtensions)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
             .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
             .MakeGenericMethod(typeof(TResult));
+
         applied = (IQueryable<TResult>)asNoTracking.Invoke(null, new object[] { applied })!;
+
         var produced = 0;
         try
         {
@@ -81,11 +86,19 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
     }
 
     private static async IAsyncEnumerable<T> Cast<T>(IAsyncEnumerable<object> src, [EnumeratorCancellation] CancellationToken ct)
-    { await foreach (var o in src.WithCancellation(ct)) { yield return (T)o!; } }
+    {
+        await foreach (var o in src.WithCancellation(ct))
+        {
+            yield return (T)o!;
+        }
+    }
 
     private static async IAsyncEnumerable<object> Box<T>(IAsyncEnumerable<T> src)
     {
-        await foreach (var item in src.ConfigureAwait(false)) { yield return item!; }
+        await foreach (var item in src.ConfigureAwait(false))
+        {
+            yield return item!;
+        }
     }
 
     private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct)
@@ -97,6 +110,7 @@ public sealed class EfCoreShardQueryExecutor(int shardCount, Func<int, DbContext
             {
                 yield return item;
             }
+
             completed = true;
         }
         finally
