@@ -1,10 +1,10 @@
-namespace Shardis.Migration.InMemory;
 
 using System.Collections.Concurrent;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.InMemory;
 /// <summary>
 /// Thread-safe in-memory checkpoint store. Suitable for tests only.
 /// </summary>

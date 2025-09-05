@@ -1,11 +1,11 @@
-namespace Shardis.Querying;
 
 using System.Runtime.CompilerServices;
 
 using Shardis.Model;
 
+namespace Shardis.Querying;
 /// <summary>
-/// No-op merge observer (default) – all callbacks are empty.
+/// No-op merge observer (default) - all callbacks are empty.
 /// </summary>
 internal sealed class NoOpMergeObserver : IMergeObserver
 {

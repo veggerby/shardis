@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Abstractions;
 
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.Abstractions;
 /// <summary>
 /// Strategy for verifying copied key data.
 /// </summary>

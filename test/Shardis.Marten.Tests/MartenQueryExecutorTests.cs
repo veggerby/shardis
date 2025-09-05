@@ -1,15 +1,18 @@
+using AwesomeAssertions;
+
 using Marten;
+
 using Shardis.Marten;
 using Shardis.Model;
 using Shardis.Querying.Linq;
+
 using Xunit;
-using AwesomeAssertions;
 
 namespace Shardis.Marten.Tests;
 
 public sealed class MartenQueryExecutorTests
 {
-    [Fact]
+    [PostgresFact]
     public async Task Marten_WhereSelect_Stream()
     {
         // arrange
@@ -40,5 +43,5 @@ public sealed class MartenQueryExecutorTests
         list[0].Name.Should().Be("Alice");
     }
 
-    private sealed class Person { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public int Age { get; set; } }
+    public sealed class Person { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public int Age { get; set; } }
 }
