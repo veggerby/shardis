@@ -42,6 +42,4 @@ public sealed class MartenQueryExecutorTests
         list.Should().HaveCount(1);
         list[0].Name.Should().Be("Alice");
     }
-
-    public sealed class Person { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public int Age { get; set; } }
 }

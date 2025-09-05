@@ -53,6 +53,4 @@ public sealed class AdaptivePagingTelemetryTests : IClassFixture<PostgresContain
         }
         await session.SaveChangesAsync();
     }
-
-    private sealed class Person { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public int Age { get; set; } }
 }
