@@ -16,9 +16,14 @@ public sealed class MartenQueryExecutorTests
     public async Task Marten_WhereSelect_Stream()
     {
         // arrange
+        var conn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
+        if (string.IsNullOrWhiteSpace(conn))
+        {
+            return; // skipped via PostgresFact (ensures env var) but guard defensively
+        }
         using var store = DocumentStore.For(opts =>
         {
-            opts.Connection("host=localhost;database=shardis_test;password=pass;username=postgres");
+            opts.Connection(conn);
         });
         var shard = new MartenShard(new ShardId("0"), store);
         using (var session = shard.CreateSession())
