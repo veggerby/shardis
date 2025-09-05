@@ -1,21 +1,29 @@
+using AwesomeAssertions;
+
 using Marten;
+
 using Shardis.Marten;
 using Shardis.Model;
 using Shardis.Querying.Linq;
+
 using Xunit;
-using AwesomeAssertions;
 
 namespace Shardis.Marten.Tests;
 
 public sealed class MartenQueryExecutorTests
 {
-    [Fact]
+    [PostgresFact]
     public async Task Marten_WhereSelect_Stream()
     {
         // arrange
+        var conn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
+        if (string.IsNullOrWhiteSpace(conn))
+        {
+            return; // skipped via PostgresFact (ensures env var) but guard defensively
+        }
         using var store = DocumentStore.For(opts =>
         {
-            opts.Connection("host=localhost;database=shardis_test;password=pass;username=postgres");
+            opts.Connection(conn);
         });
         var shard = new MartenShard(new ShardId("0"), store);
         using (var session = shard.CreateSession())
@@ -39,6 +47,4 @@ public sealed class MartenQueryExecutorTests
         list.Should().HaveCount(1);
         list[0].Name.Should().Be("Alice");
     }
-
-    private sealed class Person { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public int Age { get; set; } }
 }

@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Model;
 
 using Shardis.Model;
 
+namespace Shardis.Migration.Model;
 /// <summary>
 /// Represents a snapshot of shard ownership for a set of keys at a point in time.
 /// This is a minimal placeholder; a richer topology model can replace it later.

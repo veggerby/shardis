@@ -1,8 +1,8 @@
-namespace Shardis.Migration.InMemory;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.InMemory;
 /// <summary>
 /// Verification strategy that simply delegates to the underlying data mover's verification.
 /// </summary>

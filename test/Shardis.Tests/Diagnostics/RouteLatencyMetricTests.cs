@@ -2,7 +2,6 @@ using System.Diagnostics.Metrics;
 
 using Shardis.Instrumentation;
 // using Shardis.Metrics; // removed: latency method is now on IShardisMetrics
-using Xunit;
 
 namespace Shardis.Tests;
 
@@ -18,7 +17,7 @@ public class RouteLatencyMetricTests
 
         listener.InstrumentPublished = (inst, l) =>
         {
-            if (inst.Meter.Name == Shardis.Diagnostics.ShardisDiagnostics.MeterName
+            if (inst.Meter.Name == Shardis.DependencyInjectionagnostics.ShardisDiagnostics.MeterName
                 && inst.Name == "shardis.route.latency")
             {
                 l.EnableMeasurementEvents(inst);

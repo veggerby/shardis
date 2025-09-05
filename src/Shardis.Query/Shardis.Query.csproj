@@ -22,7 +22,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Shardis.Query.Tests" />
-    <InternalsVisibleTo Include="Shardis.Query.EFCore" />
+    <InternalsVisibleTo Include="Shardis.Query.EntityFrameworkCore" />
     <InternalsVisibleTo Include="Shardis.Query.InMemory" />
   </ItemGroup>
 

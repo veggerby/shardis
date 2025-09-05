@@ -25,7 +25,7 @@ public sealed class InMemoryExecutorTests
         var list = await q.ToListAsync();
 
         // assert
-        list.Should().BeEquivalentTo(new[] { "Alice", "Carol", "Dave" });
+        list.Should().BeEquivalentTo(["Alice", "Carol", "Dave"]);
     }
 
     private static IAsyncEnumerable<object> Merge(IEnumerable<IAsyncEnumerable<object>> streams, CancellationToken ct)

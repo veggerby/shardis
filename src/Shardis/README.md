@@ -22,6 +22,8 @@ dotnet add package Shardis --version 0.1.*
 
 - `Shard`, `ShardId`, `ShardKey` — core value types.
 - `IShardRouter<T>` and `DefaultShardRouter` — routing abstractions and a default implementation.
+- `IShardFactory<T>` — provider-agnostic factory for shard-scoped resources (DbContext, Marten sessions, Redis databases, etc.).
+- `IShardMap` & `InMemoryShardMap` — declarative shard configuration / connection source.
 - Hashing abstractions: `IShardKeyHasher<TKey>`, `IShardRingHasher`.
 - `ServiceCollectionExtensions.AddShardis()` — DI wiring helpers.
 

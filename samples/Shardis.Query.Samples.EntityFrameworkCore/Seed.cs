@@ -1,4 +1,4 @@
-namespace Shardis.Query.Samples.EFCore;
+namespace Shardis.Query.Samples.EntityFrameworkCore;
 
 public static class Seed
 {

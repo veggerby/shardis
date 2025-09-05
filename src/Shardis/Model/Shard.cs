@@ -1,5 +1,4 @@
-using System.Linq.Expressions;
-
+using Shardis.Factories;
 using Shardis.Querying.Linq;
 
 namespace Shardis.Model;
@@ -15,23 +14,23 @@ public class Shard<TSession> : IShard<TSession>
     /// </summary>
     public ShardId ShardId { get; }
 
-    private readonly IShardSessionProvider<TSession> _sessionProvider;
+    private readonly IShardFactory<TSession> _factory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Shard{TSession}"/> class.
     /// </summary>
     /// <param name="shardId">The unique identifier of the shard.</param>
-    /// <param name="sessionProvider">The session provider for managing shard sessions.</param>
+    /// <param name="factory">Shard factory for creating sessions.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="shardId"/> is null or whitespace.</exception>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="sessionProvider"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="factory"/> is null.</exception>
     /// <param name="queryExecutor">Optional query executor enabling LINQ broadcast operations.</param>
-    public Shard(ShardId shardId, IShardSessionProvider<TSession> sessionProvider, IShardQueryExecutor<TSession>? queryExecutor = null)
+    public Shard(ShardId shardId, IShardFactory<TSession> factory, IShardQueryExecutor<TSession>? queryExecutor = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shardId.Value, nameof(shardId));
-        ArgumentNullException.ThrowIfNull(sessionProvider, nameof(sessionProvider));
+        ArgumentNullException.ThrowIfNull(factory, nameof(factory));
         QueryExecutor = queryExecutor ?? NoOpQueryExecutor<TSession>.Instance;
         ShardId = shardId;
-        _sessionProvider = sessionProvider;
+        _factory = factory;
 
     }
 
@@ -45,7 +44,13 @@ public class Shard<TSession> : IShard<TSession>
     /// Creates a new session for the shard.
     /// </summary>
     /// <returns>A new session of type <typeparamref name="TSession"/>.</returns>
-    public TSession CreateSession() => _sessionProvider.GetSession(ShardId);
+    public TSession CreateSession() => _factory.Create(ShardId);
+
+    /// <summary>
+    /// Asynchronously creates a new session for the shard.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    public ValueTask<TSession> CreateSessionAsync(CancellationToken ct = default) => _factory.CreateAsync(ShardId, ct);
 
     /// <summary>Gets the configured query executor (or a no-op executor if none supplied).</summary>
     public IShardQueryExecutor<TSession> QueryExecutor { get; }

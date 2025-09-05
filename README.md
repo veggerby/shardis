@@ -37,7 +37,7 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Shard assignments are persistent, predictable, and optimized for horizontal scalability.
 - 📊 **Instrumentation Hooks**
   Plug in metrics (counters, tracing) by replacing the default no-op metrics service.
-  
+
   Instrumentation quick reference
   - ActivitySource: `Shardis` — add with `.AddSource("Shardis")` when configuring OpenTelemetry tracing.
   - Meter: `Shardis` — add with `.AddMeter("Shardis")` to pick up built-in counters and histograms.
@@ -52,6 +52,37 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Deterministic latency-targeted page size adjustments with oscillation & final-size telemetry.
 - 🧪 **Central Public API Snapshots**
   Consolidated multi-assembly approval tests ensure stable public surface; drift produces clear `.received` diffs.
+
+---
+
+## 📦 Packages
+
+| Package | Purpose |
+|---------|---------|
+| `Shardis` | Core routing, hashing, shard map, metrics abstractions. |
+| `Shardis.Migration` | Key migration planning & execution pipeline. |
+| `Shardis.Query` | Query abstraction layer (shard-aware LINQ, executors). |
+| `Shardis.Query.EntityFrameworkCore` | EF Core query executor + shard factory adapters. |
+| `Shardis.Query.Marten` | Marten query executor with adaptive paging. |
+| `Shardis.Query.InMemory` | In-memory query executor (tests / samples). |
+| `Shardis.Redis` | Redis-backed shard map store implementation. |
+| `Shardis.DependencyInjection` | Per-shard resource registration (`AddShard*`) + `IShardFactory<T>` DI resolution. |
+
+### `Shardis.DependencyInjection` quick sample
+
+```csharp
+var services = new ServiceCollection()
+  .AddShards<MyDbContext>(2, shard => new MyDbContext(BuildOptionsFor(shard))); // registers factory-backed contexts per shard
+
+await using var provider = services.BuildServiceProvider();
+
+var factory = provider.GetRequiredService<IShardFactory<MyDbContext>>();
+await using var ctx = await factory.CreateAsync(new ShardId("0"));
+
+// use ctx...
+```
+
+The DI package centralizes per-shard provisioning logic and feeds query executors (e.g. `EntityFrameworkCoreShardQueryExecutor`) via the generic `IShardFactory<T>` abstraction.
 
 ---
 
@@ -431,7 +462,7 @@ Higher-level fluent query API (LINQ-like) is under active design (see `docs/api.
 Experimental minimal provider (see ADR 0003 cross-link) allows composing simple per-shard filters and a single projection and executing unordered:
 
 ```csharp
-var exec = /* IShardQueryExecutor implementation (e.g. InMemory / EFCore) */;
+var exec = /* IShardQueryExecutor implementation (e.g. InMemory / EntityFrameworkCore) */;
 var q = Shardis.Query.ShardQuery.For<Person>(exec)
                                .Where(p => p.Age >= 30)
                                .Select(p => new { p.Name, p.Age });
@@ -452,7 +483,7 @@ Future work (tracked): join support, ordering pushdown, aggregation.
 | Provider | Package | Where | Select | Ordering | Cancellation | Metrics Hooks |
 |----------|---------|-------|--------|----------|--------------|---------------|
 | InMemory | `Shardis.Query.InMemory` | ✅ | ✅ | ❌ (post-filter only) | Cooperative (no throw) | ✅ (OnShardStart/Stop/Items/Completed/Canceled) |
-| EF Core  | `Shardis.Query.EFCore`   | ✅ server-side | ✅ server-side | ❌ (use ordered streaming merge for global order) | Cooperative | ✅ |
+| EF Core  | `Shardis.Query.EntityFrameworkCore`   | ✅ server-side | ✅ server-side | ❌ (use ordered streaming merge for global order) | Cooperative | ✅ |
 | Marten (adapter)* | `Shardis.Marten` | ✅ | ✅ | Backend native only (no global merge) | Cooperative | (planned) |
 
 Ordering: for global ordering across shards use `QueryAllShardsOrderedStreamingAsync(keySelector)` (streaming k-way merge) or materialize then order.
@@ -510,7 +541,12 @@ var inMemQuery = ShardQuery.For<Person>(inMemExec).Where(p => p.Age >= 30).Selec
 var names1 = await inMemQuery.ToListAsync();
 
 // EF Core (Sqlite)
-var efExec = new EfCoreShardQueryExecutor(2, shardId => CreateSqliteContext(shardId), UnorderedMerge.Merge);
+// EF Core (Sqlite) via shard factory
+var EntityFrameworkCoreFactory = new EntityFrameworkCoreShardFactory<MyDbContext>(sid => new DbContextOptionsBuilder<MyDbContext>()
+  .UseSqlite($"Data Source=shard-{sid.Value}.db")
+  .Options);
+IShardFactory<DbContext> efAdapter = new DelegatingShardFactory<DbContext>((sid, ct) => new ValueTask<DbContext>(EntityFrameworkCoreFactory.Create(sid)));
+var efExec = new EntityFrameworkCoreShardQueryExecutor(2, efAdapter, UnorderedMerge.Merge);
 var efQuery = ShardQuery.For<Person>(efExec).Where(p => p.Age >= 30).Select(p => p.Name);
 var names2 = await efQuery.ToListAsync();
 
@@ -540,7 +576,7 @@ For deterministic cross-shard ordering use `OrderedMergeHelper.Merge` supplying 
 |---------|------------|-------------|-----------|----------|-------|
 | Shardis.Query | none | ✔️ | n/a | n/a | Core query model & merge helpers |
 | Shardis.Query.InMemory | none | ✔️ | ✔️ | ❌ | Dev/test executor |
-| Shardis.Query.EFCore | EF Core | ✔️ | ✔️ | ❌ | Server-side translation (Sqlite tests) |
+| Shardis.Query.EntityFrameworkCore | EF Core | ✔️ | ✔️ | ❌ | Server-side translation (Sqlite tests) |
 | Shardis.Query.Marten | Marten | ✔️ | ✔️ (paged/native) | ❌ | Async/paged materializer |
 
 ### Backpressure

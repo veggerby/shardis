@@ -1,8 +1,8 @@
-namespace Shardis.Migration.InMemory;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.InMemory;
 /// <summary>
 /// Simulated data mover storing copied key markers in-memory. Supports transient and permanent failure injection.
 /// </summary>

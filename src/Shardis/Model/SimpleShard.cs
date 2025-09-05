@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-
 using Shardis.Querying.Linq;
 
 namespace Shardis.Model;

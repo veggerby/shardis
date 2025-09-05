@@ -1,9 +1,9 @@
-namespace Shardis.Migration.Instrumentation;
 
 using System.Threading;
 
 using Shardis.Migration.Abstractions;
 
+namespace Shardis.Migration.Instrumentation;
 /// <summary>
 /// Lightweight in-process metrics collector using atomic counters. Intended for tests / samples.
 /// </summary>

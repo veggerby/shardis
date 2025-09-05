@@ -1,6 +1,6 @@
 [assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
 [assembly: System.Resources.NeutralResourcesLanguage("en")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Query.EFCore")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Query.EntityFrameworkCore")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Query.InMemory")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Query.Tests")]
 namespace Shardis.Query.Diagnostics

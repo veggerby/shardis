@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Shardis.Diagnostics;
+namespace Shardis.DependencyInjectionagnostics;
 
 /// <summary>
 /// Centralized diagnostics constants and ActivitySource for Shardis.

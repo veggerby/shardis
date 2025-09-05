@@ -23,7 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Shardis.Query/Shardis.Query.csproj" />
     <ProjectReference Include="../../src/Shardis.Query.InMemory/Shardis.Query.InMemory.csproj" />
-    <ProjectReference Include="../../src/Shardis.Query.EFCore/Shardis.Query.EFCore.csproj" />
+    <ProjectReference Include="../../src/Shardis.Query.EntityFrameworkCore/Shardis.Query.EntityFrameworkCore.csproj" />
   <ProjectReference Include="../../src/Shardis.Marten/Shardis.Marten.csproj" />
   </ItemGroup>
 </Project>

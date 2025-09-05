@@ -2,12 +2,13 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using Shardis.Query.EFCore.Execution;
+using Shardis.Factories;
+using Shardis.Query.EntityFrameworkCore.Execution;
 using Shardis.Query.Internals;
 
 namespace Shardis.Query.Tests;
 
-public sealed class EfCoreDiagnosticsTests
+public sealed class EntityFrameworkCoreDiagnosticsTests
 {
     private sealed class Person { public int Id { get; set; } public int Age { get; set; } }
     private sealed class Ctx(DbContextOptions<Ctx> o) : DbContext(o) { public DbSet<Person> People => Set<Person>(); }
@@ -37,7 +38,8 @@ public sealed class EfCoreDiagnosticsTests
         ctx.Database.EnsureCreated();
         ctx.People.AddRange(new Person { Id = 1, Age = 30 });
         ctx.SaveChanges();
-        var exec = new EfCoreShardQueryExecutor(1, _ => ctx, (s, ct) => UnorderedMerge.Merge(s, ct));
+        IShardFactory<DbContext> factory = new DelegatingShardFactory<DbContext>((sid, ct) => new ValueTask<DbContext>(ctx));
+        var exec = new EntityFrameworkCoreShardQueryExecutor(1, factory, (s, ct) => UnorderedMerge.Merge(s, ct));
         var q = ShardQuery.For<Person>(exec).Where(p => Helper(p));
 
         // act
