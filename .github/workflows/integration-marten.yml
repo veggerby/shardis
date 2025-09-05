@@ -43,7 +43,7 @@ jobs:
         run: dotnet build Shardis.sln --configuration Release --no-restore
       - name: Test Marten integration
         env:
-          POSTGRES_CONNECTION: Host=localhost;Port=5432;Username=postgres;PasDatabase=shardis
+          POSTGRES_CONNECTION: Host=localhost;Port=5432;Username=postgres;Database=shardis
         run: dotnet test test/Shardis.Marten.Tests/Shardis.Marten.Tests.csproj -c Release --no-build --logger "trx;LogFileName=marten.trx"
       - name: Upload test results
         if: always()
