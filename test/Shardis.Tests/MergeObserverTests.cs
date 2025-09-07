@@ -66,20 +66,20 @@ public class MergeObserverTests
         }
 
         // assert
-        Assert.Equal(10, results.Count);
-        Assert.Equal(10, observer.ItemShards.Count);
-        Assert.Equal(2, observer.Completed.Distinct().Count());
-        Assert.True(observer.HeapSizes.Count > 0);
-        Assert.All(observer.HeapSizes, s => Assert.InRange(s, 0, 2));
-        Assert.Equal(2, observer.Stopped.Count);
-        Assert.All(observer.Stopped, s => Assert.Equal(ShardStopReason.Completed, s.Item2));
+        results.Count.Should().Be(10);
+        observer.ItemShards.Count.Should().Be(10);
+        observer.Completed.Distinct().Count().Should().Be(2);
+        observer.HeapSizes.Count.Should().BeGreaterThan(0);
+        observer.HeapSizes.Should().OnlyContain(s => s >= 0 && s <= 2);
+        observer.Stopped.Count.Should().Be(2);
+        observer.Stopped.Should().OnlyContain(s => s.Item2 == ShardStopReason.Completed);
         // ordering: Completed must precede Stopped for each shard
         foreach (var shardId in observer.Completed)
         {
             var seqEvents = observer.Sequence.Where(e => e.Id.Equals(shardId)).ToList();
-            Assert.Equal("Completed", seqEvents[0].Event);
-            Assert.Equal("Stopped", seqEvents[1].Event);
-            Assert.Equal(ShardStopReason.Completed, seqEvents[1].Reason);
+            seqEvents[0].Event.Should().Be("Completed");
+            seqEvents[1].Event.Should().Be("Stopped");
+            seqEvents[1].Reason.Should().Be(ShardStopReason.Completed);
         }
     }
 
@@ -91,13 +91,13 @@ public class MergeObserverTests
         var broadcaster = new ShardStreamBroadcaster<IShard<string>, string>(shards, observer: observer);
         IAsyncEnumerable<int> Query(string session) => ((TestShard)shards.First()).Stream();
         await foreach (var _ in broadcaster.QueryAllShardsOrderedStreamingAsync(Query, x => x)) { }
-        Assert.Single(observer.Completed);
-        Assert.Single(observer.Stopped);
+        observer.Completed.Should().HaveCount(1);
+        observer.Stopped.Should().HaveCount(1);
         var seq = observer.Sequence.Where(e => e.Id.Equals(observer.Completed.First())).ToList();
-        Assert.Equal(2, seq.Count);
-        Assert.Equal("Completed", seq[0].Event);
-        Assert.Equal("Stopped", seq[1].Event);
-        Assert.Equal(ShardStopReason.Completed, seq[1].Reason);
+        seq.Count.Should().Be(2);
+        seq[0].Event.Should().Be("Completed");
+        seq[1].Event.Should().Be("Stopped");
+        seq[1].Reason.Should().Be(ShardStopReason.Completed);
     }
 
     [Fact]
@@ -113,12 +113,12 @@ public class MergeObserverTests
             await foreach (var _ in broadcaster.QueryAllShardsAsync(Faulting)) { }
         }
         catch (Exception e) { ex = e; }
-        Assert.NotNull(ex);
+        ex.Should().NotBeNull();
         // wait briefly for finalizer
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (observer.Stopped.Count == 0 && sw.ElapsedMilliseconds < 500) { await Task.Delay(10); }
-        Assert.Single(observer.Stopped);
-        Assert.Equal(ShardStopReason.Faulted, observer.Stopped.First().Item2);
+        observer.Stopped.Should().HaveCount(1);
+        observer.Stopped.First().Item2.Should().Be(ShardStopReason.Faulted);
     }
 
     [Fact]
@@ -130,10 +130,10 @@ public class MergeObserverTests
         IAsyncEnumerable<int> Query(string session) => ((TestShard)shards.First(s => s.CreateSession() == session)).Stream();
         int count = 0;
         await foreach (var _ in broadcaster.QueryAllShardsOrderedStreamingAsync(Query, x => x)) { count++; }
-        Assert.Equal(100, count);
+        count.Should().Be(100);
         // With heapSampleEvery=10 and 2 shards prefetch=1, sample count should be <= ~count/5 (loose upper bound)
-        Assert.True(observer.HeapSizes.Count > 0);
-        Assert.True(observer.HeapSizes.Count <= 30, $"Heap sample count too high: {observer.HeapSizes.Count}");
+        observer.HeapSizes.Count.Should().BeGreaterThan(0);
+        observer.HeapSizes.Count.Should().BeLessThanOrEqualTo(30, $"Heap sample count too high: {observer.HeapSizes.Count}");
     }
 
     [Fact]
@@ -154,9 +154,9 @@ public class MergeObserverTests
         await foreach (var _ in broadcaster.QueryAllShardsAsync(Query)) { count++; }
 
         // assert
-        Assert.Equal(100, count);
-        Assert.True(observer.BackpressureStarts > 0);
-        Assert.Equal(observer.BackpressureStarts, observer.BackpressureStops);
+        count.Should().Be(100);
+        observer.BackpressureStarts.Should().BeGreaterThan(0);
+        observer.BackpressureStops.Should().Be(observer.BackpressureStarts);
     }
 
     private sealed class ThrowingObserver : IMergeObserver
@@ -179,8 +179,8 @@ public class MergeObserverTests
         IAsyncEnumerable<int> Query(string session) => ((TestShard)shards.First()).Stream();
         var list = new List<int>();
         await foreach (var item in broadcaster.QueryAllShardsOrderedStreamingAsync(Query, x => x)) { list.Add(item.Item); }
-        Assert.Equal(5, list.Count);
-        Assert.True(throwing.Throws >= 5); // item yielded exceptions were triggered
+        list.Count.Should().Be(5);
+        throwing.Throws.Should().BeGreaterThanOrEqualTo(5); // item yielded exceptions were triggered
     }
 
     [Fact]
@@ -207,9 +207,9 @@ public class MergeObserverTests
         {
             await Task.Delay(20);
         }
-        Assert.Single(observer.Stopped); // ensure exactly one stop recorded
+        observer.Stopped.Should().HaveCount(1); // ensure exactly one stop recorded
         var stop = observer.Stopped.First();
-        Assert.True(stop.Item2 is ShardStopReason.Canceled or ShardStopReason.Completed, $"Unexpected stop reason {stop.Item2}");
+        (stop.Item2 is ShardStopReason.Canceled or ShardStopReason.Completed).Should().BeTrue($"Unexpected stop reason {stop.Item2}");
     }
 
     private sealed class InfiniteShard(string id) : IShard<string>
@@ -247,11 +247,11 @@ public class MergeObserverTests
         }
         catch (Exception e) { ex = e; }
         // Expect cancellation propagated
-        Assert.NotNull(ex);
+        ex.Should().NotBeNull();
         var sw2 = System.Diagnostics.Stopwatch.StartNew();
         while (observer.Stopped.Count == 0 && sw2.ElapsedMilliseconds < 1000) { await Task.Delay(10); }
-        Assert.Single(observer.Stopped);
-        Assert.Equal(ShardStopReason.Canceled, observer.Stopped.First().Item2);
+        observer.Stopped.Should().HaveCount(1);
+        observer.Stopped.First().Item2.Should().Be(ShardStopReason.Canceled);
     }
 
     private sealed class FaultingShard(string id) : IShard<string>
@@ -285,10 +285,10 @@ public class MergeObserverTests
             await foreach (var _ in broadcaster.QueryAllShardsAsync(Query)) { }
         }
         catch (Exception ex) { captured = ex; }
-        Assert.NotNull(captured);
+        captured.Should().NotBeNull();
         var flat = captured is AggregateException agg ? agg.Flatten().InnerExceptions.First() : captured;
-        Assert.Equal("boom", flat!.Message);
-        Assert.Single(observer.Stopped);
-        Assert.Equal(ShardStopReason.Faulted, observer.Stopped.First().Item2);
+        flat!.Message.Should().Be("boom");
+        observer.Stopped.Should().HaveCount(1);
+        observer.Stopped.First().Item2.Should().Be(ShardStopReason.Faulted);
     }
 }

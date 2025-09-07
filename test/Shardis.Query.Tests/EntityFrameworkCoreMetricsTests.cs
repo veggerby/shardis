@@ -1,18 +1,20 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
-using Shardis.Query.EFCore.Execution;
+using Shardis.Factories;
+using Shardis.Query.EntityFrameworkCore.Execution;
 
 namespace Shardis.Query.Tests;
 
-public sealed class EfCoreMetricsTests
+public sealed class EntityFrameworkCoreMetricsTests
 {
     [Fact]
-    public async Task Metrics_Observer_ReceivesLifecycle_EfCore()
+    public async Task Metrics_Observer_ReceivesLifecycle_EntityFrameworkCore()
     {
         // arrange
         var obs = new RecordingObserver();
-        var exec = new EfCoreShardQueryExecutor(2, shard => Create(shard), (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), obs);
+        IShardFactory<DbContext> factory = new DelegatingShardFactory<DbContext>((sid, ct) => new ValueTask<DbContext>(Create(int.Parse(sid.Value))));
+        var exec = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), obs);
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age > 20);
 
         // act

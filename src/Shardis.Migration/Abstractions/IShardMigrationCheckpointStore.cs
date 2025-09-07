@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Abstractions;
 
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.Abstractions;
 /// <summary>
 /// Persists and retrieves migration checkpoints for recovery and resumption.
 /// </summary>

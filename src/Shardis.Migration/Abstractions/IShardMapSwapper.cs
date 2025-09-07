@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Abstractions;
 
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.Abstractions;
 /// <summary>
 /// Applies a batch of verified key moves atomically (all-or-nothing logical effect).
 /// </summary>

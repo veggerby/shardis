@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Model;
 
 using Shardis.Model;
 
+namespace Shardis.Migration.Model;
 /// <summary>
 /// Represents a persisted snapshot of migration progress used for resuming after interruption.
 /// </summary>

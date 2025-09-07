@@ -1,13 +1,41 @@
 [assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
 [assembly: System.Resources.NeutralResourcesLanguage("en")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Tests")]
-namespace Shardis.Diagnostics
+namespace Shardis.DependencyInjectionagnostics
 {
     public static class ShardisDiagnostics
     {
         public const string ActivitySourceName = "Shardis";
         public const string MeterName = "Shardis";
         public static readonly System.Diagnostics.ActivitySource ActivitySource;
+    }
+}
+namespace Shardis.Factories
+{
+    public sealed class DelegatingShardFactory<T> : Shardis.Factories.IShardFactory<T>
+    {
+        public DelegatingShardFactory(System.Func<Shardis.Model.ShardId, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>> asyncFactory) { }
+        public System.Threading.Tasks.ValueTask<T> CreateAsync(Shardis.Model.ShardId shard, System.Threading.CancellationToken ct = default) { }
+    }
+    public interface IShardFactory<T>
+    {
+        T Create(Shardis.Model.ShardId shard);
+        System.Threading.Tasks.ValueTask<T> CreateAsync(Shardis.Model.ShardId shard, System.Threading.CancellationToken ct = default);
+    }
+    public interface IShardMap
+    {
+        System.Collections.Generic.IEnumerable<Shardis.Model.ShardId> Shards { get; }
+        string GetConnectionString(Shardis.Model.ShardId shard);
+    }
+    public sealed class InMemoryShardMap : Shardis.Factories.IShardMap
+    {
+        public InMemoryShardMap(System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardId, string> map) { }
+        public System.Collections.Generic.IEnumerable<Shardis.Model.ShardId> Shards { get; }
+        public string GetConnectionString(Shardis.Model.ShardId shard) { }
+    }
+    public static class ShardFactoryExtensions
+    {
+        public static System.Threading.Tasks.ValueTask UseAsync<T>(this Shardis.Factories.IShardFactory<T> factory, Shardis.Model.ShardId shard, System.Func<T, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask> action, System.Threading.CancellationToken ct = default) { }
     }
 }
 namespace Shardis.Hashing
@@ -60,10 +88,6 @@ namespace Shardis.Instrumentation
 }
 namespace Shardis.Model
 {
-    public interface IShardSessionProvider<TSession>
-    {
-        TSession GetSession(Shardis.Model.ShardId shardId);
-    }
     public interface IShard<TSession>
     {
         Shardis.Querying.Linq.IShardQueryExecutor<TSession> QueryExecutor { get; }
@@ -97,10 +121,11 @@ namespace Shardis.Model
     }
     public class Shard<TSession> : Shardis.Model.IShard<TSession>
     {
-        public Shard(Shardis.Model.ShardId shardId, Shardis.Model.IShardSessionProvider<TSession> sessionProvider, Shardis.Querying.Linq.IShardQueryExecutor<TSession>? queryExecutor = null) { }
+        public Shard(Shardis.Model.ShardId shardId, Shardis.Factories.IShardFactory<TSession> factory, Shardis.Querying.Linq.IShardQueryExecutor<TSession>? queryExecutor = null) { }
         public Shardis.Querying.Linq.IShardQueryExecutor<TSession> QueryExecutor { get; }
         public Shardis.Model.ShardId ShardId { get; }
         public TSession CreateSession() { }
+        public System.Threading.Tasks.ValueTask<TSession> CreateSessionAsync(System.Threading.CancellationToken ct = default) { }
         public override string ToString() { }
     }
     public sealed class SimpleShard : Shardis.Model.IShard<string>, Shardis.Model.ISimpleShard

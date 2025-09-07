@@ -16,4 +16,9 @@
     <ProjectReference Include="../../src/Shardis.Marten/Shardis.Marten.csproj" />
     <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
   </ItemGroup>
+  <ItemGroup>
+  <None Update="xunit.runner.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
 </Project>

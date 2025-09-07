@@ -29,6 +29,6 @@ public class Executor_SmokeTests
 
         // act / assert: should not throw
         var summary = await exec.ExecuteAsync(plan, progress: null, CancellationToken.None);
-        Assert.NotNull(summary);
+        summary.Should().NotBeNull();
     }
 }

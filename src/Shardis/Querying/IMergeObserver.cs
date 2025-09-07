@@ -1,7 +1,7 @@
-namespace Shardis.Querying;
 
 using Shardis.Model;
 
+namespace Shardis.Querying;
 /// <summary>
 /// Observer hook for merge / broadcast operations providing low-overhead instrumentation callbacks.
 /// Implementations must be thread-safe and return quickly; callbacks MAY be invoked concurrently from multiple shard worker threads.

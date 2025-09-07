@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Model;
 
 using System.Linq;
 
+namespace Shardis.Migration.Model;
 /// <summary>
 /// Represents an immutable plan for migrating a set of shard keys.
 /// </summary>

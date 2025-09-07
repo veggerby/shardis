@@ -18,7 +18,7 @@ This document outlines the key steps and modules required to make the Fluent Dev
 
 - Parse/compile `Expression<Func<T, bool>>`, `Expression<Func<T, TKey>>`, etc.
 - Translate to LINQ or delegate suitable for execution inside:
-  - EFCore queries
+  - EntityFrameworkCore queries
   - Marten/Linq queries
   - Dapper or raw async delegates
 
@@ -83,7 +83,7 @@ Enable per-query options:
 
 Each backing store (EF Core, Marten, Dapper, etc.) needs:
 
-- A `IShardSessionProvider<TSession>`
+- An `IShardFactory<TSession>` implementation (unified resource creation)
 - A way to bind the LINQ/Expression query to the storage engine
 - Optional support for ordering inside query delegate
 

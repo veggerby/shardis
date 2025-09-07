@@ -14,7 +14,8 @@ public sealed class OrderingGuardsTests
         var q = ShardQuery.For<Person>(exec);
 
         // act
-        var ex = Assert.Throws<NotSupportedException>(() => q.OrderBy(p => p.Id));
+        var ex = Record.Exception(() => q.OrderBy(p => p.Id));
+        ex.Should().BeOfType<NotSupportedException>();
 
         // assert
         ex.Message.Should().Contain("QueryAllShardsOrderedStreamingAsync");

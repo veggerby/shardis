@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Instrumentation;
 
 using Shardis.Migration.Abstractions;
 
+namespace Shardis.Migration.Instrumentation;
 /// <summary>
 /// No-op implementation of <see cref="IShardMigrationMetrics"/> used when metrics collection is disabled.
 /// </summary>

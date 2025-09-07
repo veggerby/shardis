@@ -45,7 +45,7 @@ public class MigrationPlannerTests
         // assert
         var seq1 = plan1.Moves.Select(m => m.ToString()).ToArray();
         var seq2 = plan2.Moves.Select(m => m.ToString()).ToArray();
-        Assert.True(seq1.SequenceEqual(seq2));
+        seq1.SequenceEqual(seq2).Should().BeTrue();
     }
 
     [Fact]
@@ -93,6 +93,6 @@ public class MigrationPlannerTests
         // assert
         // Reconstruct expected ordering using same FNV-1a 64-bit hash logic as planner
         // Functional assertion: all four keys require movement
-        Assert.Equal(4, plan.Moves.Count);
+        plan.Moves.Count.Should().Be(4);
     }
 }

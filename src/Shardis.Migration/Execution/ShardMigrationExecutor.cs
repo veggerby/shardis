@@ -1,4 +1,3 @@
-namespace Shardis.Migration.Execution;
 
 using System.Collections.Concurrent;
 
@@ -6,6 +5,7 @@ using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 using Shardis.Model;
 
+namespace Shardis.Migration.Execution;
 /// <summary>
 /// Orchestrates execution of a migration plan: copy, optional interleaved verify, and batched swap with retry and checkpointing.
 /// Public for benchmarking and advanced scenarios; general consumption may wrap this in higher-level services later.
