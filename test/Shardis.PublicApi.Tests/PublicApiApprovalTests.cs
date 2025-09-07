@@ -73,7 +73,7 @@ public sealed class PublicApiApprovalTests
         // assert
         if (failures.Count > 0)
         {
-            Assert.Fail(string.Join("\n\n", failures) + "\nReview drift and if intentional, replace approved with received content.");
+            throw new Xunit.Sdk.XunitException(string.Join("\n\n", failures) + "\nReview drift and if intentional, replace approved with received content.");
         }
     }
 

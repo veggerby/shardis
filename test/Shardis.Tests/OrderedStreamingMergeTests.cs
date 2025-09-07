@@ -170,10 +170,11 @@ public class OrderedStreamingMergeTests
         await using var ordered = new ShardisAsyncOrderedEnumerator<int, int>([good, bad], x => x, prefetchPerShard: 1, CancellationToken.None);
 
         // act/assert: enumerating to exhaustion should surface injected failure
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        var ex = await Record.ExceptionAsync(async () =>
         {
             while (await ordered.MoveNextAsync()) { }
         });
+        ex.Should().BeOfType<InvalidOperationException>();
     }
 
     [Fact]

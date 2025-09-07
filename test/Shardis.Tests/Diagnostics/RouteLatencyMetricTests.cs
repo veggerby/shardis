@@ -38,6 +38,6 @@ public class RouteLatencyMetricTests
         Thread.Sleep(10);
 
         listener.Dispose();
-        Assert.Equal(1, observed);
+        observed.Should().Be(1);
     }
 }

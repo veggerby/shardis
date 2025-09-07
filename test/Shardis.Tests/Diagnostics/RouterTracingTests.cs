@@ -32,6 +32,6 @@ public class RouterTracingTests
         var router = new DefaultShardRouter<string, string>(store, shards, StringShardKeyHasher.Instance);
         var _ = router.RouteToShard(new ShardKey<string>("k1"));
 
-        Assert.True(started >= 1, $"Expected at least one 'shardis.route' activity start, saw {started}");
+        started.Should().BeGreaterThanOrEqualTo(1, $"Expected at least one 'shardis.route' activity start, saw {started}");
     }
 }

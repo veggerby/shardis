@@ -43,7 +43,9 @@ public sealed class EntityFrameworkCoreDiagnosticsTests
         var q = ShardQuery.For<Person>(exec).Where(p => Helper(p));
 
         // act
-        var agg = await Assert.ThrowsAsync<AggregateException>(async () => await q.ToListAsync());
+        var ex = await Record.ExceptionAsync(async () => await q.ToListAsync());
+        ex.Should().BeOfType<AggregateException>();
+        var agg = (AggregateException)ex!;
         var inner = agg.InnerExceptions.OfType<InvalidOperationException>().FirstOrDefault();
 
         // assert

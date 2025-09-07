@@ -36,7 +36,8 @@ public class InMemoryMapSwapperTests
         var batch = new[] { M("k1", "s1", "s2"), M("k2", "s1", "s3"), M("k3", "s1", "s4") };
 
         // act
-        await Assert.ThrowsAsync<InvalidOperationException>(() => swapper.SwapAsync(batch, CancellationToken.None));
+        var ex = await Record.ExceptionAsync(() => swapper.SwapAsync(batch, CancellationToken.None));
+        ex.Should().BeOfType<InvalidOperationException>();
 
         // assert
         // At least first half applied (floor(count/2))

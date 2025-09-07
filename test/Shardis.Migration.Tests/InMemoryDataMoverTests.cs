@@ -30,7 +30,8 @@ public class InMemoryDataMoverTests
         var mover = new InMemoryDataMover<string> { CopyFailureInjector = _ => new InvalidOperationException("x") };
 
         // act & assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => mover.CopyAsync(Move(), CancellationToken.None));
+        var ex = await Record.ExceptionAsync(() => mover.CopyAsync(Move(), CancellationToken.None));
+        ex.Should().BeOfType<InvalidOperationException>();
     }
 
     [Fact]

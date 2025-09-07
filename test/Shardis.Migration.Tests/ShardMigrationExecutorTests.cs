@@ -203,7 +203,8 @@ public class ShardMigrationExecutorTests
         });
 
         // act
-        await Assert.ThrowsAsync<OperationCanceledException>(() => executor.ExecuteAsync(plan, progress, cts.Token));
+        var thrown = await Record.ExceptionAsync(() => executor.ExecuteAsync(plan, progress, cts.Token));
+        thrown.Should().BeOfType<OperationCanceledException>();
         var cp = await checkpointStore.LoadAsync(planId, CancellationToken.None);
 
         // assert
