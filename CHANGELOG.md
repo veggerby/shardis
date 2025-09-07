@@ -35,6 +35,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Allocation benchmark guard (adaptive vs fixed Marten paging) with JSON export + delta report (`ADAPTIVE_ALLOC_MAX_PCT`, `ADAPTIVE_ALLOC_MIN_BYTES`).
 - EF Core provider README & documented command timeout usage in samples.
 - README updates (adaptive paging guidance, telemetry expansion, allocation guard docs, ordered vs unordered merge guidance).
+- General shard-scoped creation abstraction `IShardFactory<T>` with helpers (`DelegatingShardFactory<T>`, `ShardFactoryExtensions.UseAsync`).
+- Provider-neutral shard configuration abstraction `IShardMap` + `InMemoryShardMap` implementation.
+- EF Core / Marten / Redis shard factory adapters (`EntityFrameworkCoreShardFactory<TContext>`, `PooledEntityFrameworkCoreShardFactory<TContext>`, `MartenShardFactory`, `RedisShardFactory`).
+- New `Shardis.DependencyInjection` package providing per-shard resource registration (`AddShard`, `AddShards`, `AddShardInstance`) and DI-based `IShardFactory<T>` resolution + safe `UseAsync` helpers.
+- Documentation updates: packages table, DI quick start sample, corrected executor naming in `Shardis.Query.EntityFrameworkCore` README.
+- Namespace & package rename consolidation: legacy short `EFCore` references fully expanded to `EntityFrameworkCore` across code, docs, and public API baselines.
 
 ### Changed (Unreleased)
 
@@ -44,6 +50,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - `IMergeObserver` extended with `OnShardStopped`; `OnShardCompleted` now only signals successful completion.
 - Public API approval moved from custom reflection snapshot in query tests to standardized PublicApiGenerator-based consolidated project (stable ordering & clearer diffs).
 - Adaptive paging materializer now records decision history to detect oscillation, emits final page size summary.
+- `EntityFrameworkCoreShardQueryExecutor` now depends on `IShardFactory<DbContext>` instead of `Func<int,DbContext>`; adapt by wrapping existing delegates with `DelegatingShardFactory<DbContext>` or using `EntityFrameworkCoreShardFactory<TContext>`.
+- Removed `IShardSessionProvider<TSession>` in favor of unified `IShardFactory<T>`; `Shard<TSession>` now exposes both `CreateSession()` and `CreateSessionAsync()` delegating to the factory.
 
 ### Fixed (Unreleased)
 

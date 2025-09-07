@@ -1,5 +1,13 @@
 [assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
 [assembly: System.Resources.NeutralResourcesLanguage("en")]
+namespace Shardis.Marten.Factories
+{
+    public sealed class MartenShardFactory : Shardis.Factories.IShardFactory<Marten.IDocumentSession>
+    {
+        public MartenShardFactory(System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardId, Marten.IDocumentStore> stores) { }
+        public System.Threading.Tasks.ValueTask<Marten.IDocumentSession> CreateAsync(Shardis.Model.ShardId shard, System.Threading.CancellationToken ct = default) { }
+    }
+}
 namespace Shardis.Marten
 {
     public sealed class MartenQueryExecutor : Shardis.Querying.Linq.IShardQueryExecutor<Marten.IDocumentSession>

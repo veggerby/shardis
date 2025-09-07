@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Model;
 
 using Shardis.Model;
 
+namespace Shardis.Migration.Model;
 /// <summary>
 /// Represents the planned movement of a single shard key from a source shard to a target shard.
 /// </summary>

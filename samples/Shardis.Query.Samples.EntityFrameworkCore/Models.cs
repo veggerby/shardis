@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Shardis.Query.Samples.EFCore;
+namespace Shardis.Query.Samples.EntityFrameworkCore;
 
 public sealed class Person
 {

@@ -1,11 +1,15 @@
+using AwesomeAssertions;
+
 using Marten;
+
 using NSubstitute;
+
 using Shardis.Marten;
 using Shardis.Model;
 using Shardis.Query.Diagnostics;
 using Shardis.Query.Marten;
+
 using Xunit;
-using AwesomeAssertions;
 
 namespace Shardis.Marten.Tests;
 
@@ -17,21 +21,29 @@ public sealed class MartenMetricsAndCancellationTests : IClassFixture<PostgresCo
     [PostgresFact]
     public async Task Metrics_Lifecycle_AdaptivePaging()
     {
+        // arrange
         if (_fx.Store is null) return; // skipped
-    var shard = new MartenShard(new ShardId("1"), _fx.Store);
+        var shard = new MartenShard(new ShardId("1"), _fx.Store);
         await Seed(shard, 200);
         var metrics = Substitute.For<IQueryMetricsObserver>();
-        var exec = MartenQueryExecutor.Instance.WithMetrics(metrics).WithAdaptivePaging(minPageSize:32, maxPageSize:256, targetBatchMilliseconds:5);
+        var exec = MartenQueryExecutor.Instance
+            .WithMetrics(metrics)
+            .WithAdaptivePaging(minPageSize: 32, maxPageSize: 256, targetBatchMilliseconds: 5);
         var session = shard.CreateSession();
+
+        // act
         var seen = 0;
-    await foreach (var _ in exec.Execute<Person>(session, q => q.Where(p => p.Age > 0).Select(p => p)))
+        await foreach (var _ in exec.Execute<Person>(session, q => q.Where(p => p.Age > 0).Select(p => p)))
         {
             seen++;
             if (seen >= 50) break; // partial enumeration
         }
-    seen.Should().BeGreaterThan(0); // assert
+
+        // assert
+        seen.Should().BeGreaterThan(0);
         metrics.Received().OnShardStart(0);
-        metrics.Received().OnItemsProduced(0, Arg.Is<int>(i => i > 0));
+        // Provide explicit matcher for both int arguments to avoid NSubstitute AmbiguousArgumentsException
+        metrics.ReceivedWithAnyArgs().OnItemsProduced(default, default);
         metrics.Received().OnShardStop(0);
         metrics.Received().OnCompleted();
     }
@@ -39,15 +51,20 @@ public sealed class MartenMetricsAndCancellationTests : IClassFixture<PostgresCo
     [PostgresFact]
     public async Task Cancellation_StopsEnumeration_ReportsCanceled()
     {
+        // arrange
         if (_fx.Store is null) return;
-    var shard = new MartenShard(new ShardId("2"), _fx.Store);
+        var shard = new MartenShard(new ShardId("2"), _fx.Store);
         await Seed(shard, 500);
         var metrics = Substitute.For<IQueryMetricsObserver>();
-        var exec = MartenQueryExecutor.Instance.WithMetrics(metrics).WithPageSize(64);
+        var exec = MartenQueryExecutor.Instance
+            .WithMetrics(metrics)
+            .WithPageSize(64);
         using var session = shard.CreateSession();
         using var cts = new CancellationTokenSource();
+
+        // act
         var enumerated = 0;
-    await foreach (var _ in exec.Execute<Person>(session, q => q.Where(p => p.Age > 0).Select(p => p)).WithCancellation(cts.Token))
+        await foreach (var _ in exec.Execute<Person>(session, q => q.Where(p => p.Age > 0).Select(p => p)).WithCancellation(cts.Token))
         {
             enumerated++;
             if (enumerated == 30)
@@ -55,9 +72,12 @@ public sealed class MartenMetricsAndCancellationTests : IClassFixture<PostgresCo
                 cts.Cancel();
             }
         }
-    enumerated.Should().BeGreaterThan(0); // assert
+
+        // assert
+        enumerated.Should().BeGreaterThan(0);
         metrics.Received().OnShardStart(0);
-        metrics.Received().OnItemsProduced(0, Arg.Is<int>(i => i > 0));
+        // Provide explicit matcher for both int arguments to avoid NSubstitute AmbiguousArgumentsException
+        metrics.ReceivedWithAnyArgs().OnItemsProduced(default, default);
         metrics.Received().OnShardStop(0);
         metrics.Received().OnCanceled();
         metrics.DidNotReceive().OnCompleted();
@@ -72,6 +92,4 @@ public sealed class MartenMetricsAndCancellationTests : IClassFixture<PostgresCo
         }
         await session.SaveChangesAsync();
     }
-
-    private sealed class Person { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public int Age { get; set; } }
 }

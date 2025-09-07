@@ -2,14 +2,25 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/dotnet
 {
 	"name": "Shardis",
-    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-    "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	// Use docker-compose for Postgres plus a dev container service
+	"dockerComposeFile": [ "docker-compose.yml" ],
+	"service": "app",
+	"runServices": [ "db", "app" ],
 
-	"forwardPorts": [
-    ],
+	"forwardPorts": [ 5432, 15432 ],
 
 	"portsAttributes": {
-    },
+		"5432": {
+            "label": "postgres",
+            "requireLocalPort": true
+        },
+        "15432": {
+            "label": "pgAdmin",
+            "protocol": "http",
+            "requireLocalPort": true
+        }
+	},
 
 	"features": {
 		"ghcr.io/devcontainers/features/common-utils:2": {
@@ -70,10 +81,10 @@
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached,readOnly=true"
     ],
 
-    "remoteEnv": {
-        "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
-        "PATH": "${containerEnv:PATH}:/home/vscode/.dotnet/tools/:/usr/local/py-utils/bin/"
-    },
+	"remoteEnv": {
+		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
+		"PATH": "${containerEnv:PATH}:/home/vscode/.dotnet/tools/:/usr/local/py-utils/bin/",
+	},
 
 	"postCreateCommand": ".devcontainer/scripts/post_create"
 }

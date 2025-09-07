@@ -15,17 +15,18 @@ namespace Shardis.PublicApi.Tests;
 public sealed class PublicApiApprovalTests
 {
     private static readonly (Assembly Assembly, string Name)[] Targets =
-    {
+    [
         (typeof(ShardAssignmentResult<>).Assembly, "Shardis"),
         (typeof(Marten.MartenShard).Assembly, "Shardis.Marten"),
         (typeof(Migration.ServiceCollectionExtensions).Assembly, "Shardis.Migration"),
         (typeof(Query.Execution.IShardQueryExecutor).Assembly, "Shardis.Query"),
-        (typeof(Query.EFCore.Execution.EfCoreShardQueryExecutor).Assembly, "Shardis.Query.EFCore"),
+        (typeof(Query.EntityFrameworkCore.Execution.EntityFrameworkCoreShardQueryExecutor).Assembly, "Shardis.Query.EntityFrameworkCore"),
         (typeof(InMemoryShardQueryExecutor).Assembly, "Shardis.Query.InMemory"),
         (typeof(Query.Marten.AdaptiveMartenMaterializer).Assembly, "Shardis.Query.Marten"),
         (typeof(Redis.RedisShardMapStore<>).Assembly, "Shardis.Redis"),
-        (typeof(Testing.Determinism).Assembly, "Shardis.Testing")
-    };
+        (typeof(Testing.Determinism).Assembly, "Shardis.Testing"),
+        (typeof(DependencyInjection.ShardFactoryUseExtensions).Assembly, "Shardis.DependencyInjection")
+    ];
 
     private static string ApprovedDir => Path.Combine(FindRepoRoot(), "test", "PublicApiApproval");
 
@@ -41,10 +42,10 @@ public sealed class PublicApiApprovalTests
         {
             var options = new ApiGeneratorOptions
             {
-                ExcludeAttributes = new[]
-                {
+                ExcludeAttributes =
+                [
                     "System.Runtime.Versioning.TargetFrameworkAttribute"
-                }
+                ]
             };
 
             var current = Normalize(assembly.GeneratePublicApi(options));
@@ -72,7 +73,7 @@ public sealed class PublicApiApprovalTests
         // assert
         if (failures.Count > 0)
         {
-            Assert.Fail(string.Join("\n\n", failures) + "\nReview drift and if intentional, replace approved with received content.");
+            throw new Xunit.Sdk.XunitException(string.Join("\n\n", failures) + "\nReview drift and if intentional, replace approved with received content.");
         }
     }
 

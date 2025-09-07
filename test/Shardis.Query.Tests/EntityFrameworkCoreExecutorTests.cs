@@ -1,11 +1,12 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
-using Shardis.Query.EFCore.Execution;
+using Shardis.Factories;
+using Shardis.Query.EntityFrameworkCore.Execution;
 
 namespace Shardis.Query.Tests;
 
-public sealed class EfCoreExecutorTests
+public sealed class EntityFrameworkCoreExecutorTests
 {
     private sealed class Person
     {
@@ -19,10 +20,11 @@ public sealed class EfCoreExecutorTests
     }
 
     [Fact]
-    public async Task EfCoreExecutor_ServerSideWhereSelect()
+    public async Task EntityFrameworkCoreExecutor_ServerSideWhereSelect()
     {
         // arrange
-        var exec = new EfCoreShardQueryExecutor(2, shardId => CreateAndSeedSqlite(shardId), UnorderedConcurrentMerge);
+        IShardFactory<DbContext> factory1 = new DelegatingShardFactory<DbContext>((sid, ct) => new ValueTask<DbContext>(CreateAndSeedSqlite(int.Parse(sid.Value))));
+        var exec = new EntityFrameworkCoreShardQueryExecutor(2, factory1, UnorderedConcurrentMerge);
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 30).Select(p => new { p.Name, p.Age });
 
         // act
@@ -33,12 +35,13 @@ public sealed class EfCoreExecutorTests
     }
 
     [Fact]
-    public async Task EfCoreExecutor_Streaming_FirstItemBeforeSlowShardCompletes()
+    public async Task EntityFrameworkCoreExecutor_Streaming_FirstItemBeforeSlowShardCompletes()
     {
         // arrange
         var delayMs = 150; // simulate slow shard 1
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var exec = new EfCoreShardQueryExecutor(2, shardId => CreateAndSeedSqlite(shardId), (streams, ct) => SlowSecondShardMerge(streams, ct, delayMs));
+        IShardFactory<DbContext> factory2 = new DelegatingShardFactory<DbContext>((sid, ct) => new ValueTask<DbContext>(CreateAndSeedSqlite(int.Parse(sid.Value))));
+        var exec = new EntityFrameworkCoreShardQueryExecutor(2, factory2, (streams, ct) => SlowSecondShardMerge(streams, ct, delayMs));
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 25).Select(p => p.Name);
         var collected = new List<string>();
 
@@ -56,10 +59,11 @@ public sealed class EfCoreExecutorTests
     }
 
     [Fact]
-    public async Task EfCore_NoClientEvaluation()
+    public async Task EntityFrameworkCore_NoClientEvaluation()
     {
         // arrange
-        var exec = new EfCoreShardQueryExecutor(1, _ => CreateAndSeedSqlite(0, configureWarnings: true), UnorderedConcurrentMerge);
+        IShardFactory<DbContext> factory3 = new DelegatingShardFactory<DbContext>((sid, ct) => new ValueTask<DbContext>(CreateAndSeedSqlite(0, configureWarnings: true)));
+        var exec = new EntityFrameworkCoreShardQueryExecutor(1, factory3, UnorderedConcurrentMerge);
         // Non-translatable predicate -> should throw translation exception (QueryTranslationFailed) instead of client evaluating
         var q = ShardQuery.For<Person>(exec).Where(p => StringHelper.ReverseStringStatic(p.Name) == "Alice");
 
@@ -71,11 +75,12 @@ public sealed class EfCoreExecutorTests
     }
 
     [Fact]
-    public async Task EfCoreExecutor_AppliesCommandTimeout_WhenProvided()
+    public async Task EntityFrameworkCoreExecutor_AppliesCommandTimeout_WhenProvided()
     {
         // arrange
         var timeout = 123;
-        var exec = new EfCoreShardQueryExecutor(1, _ => CreateAndSeedSqlite(0), UnorderedConcurrentMerge, commandTimeoutSeconds: timeout);
+        IShardFactory<DbContext> factory4 = new DelegatingShardFactory<DbContext>((sid, ct) => new ValueTask<DbContext>(CreateAndSeedSqlite(0)));
+        var exec = new EntityFrameworkCoreShardQueryExecutor(1, factory4, UnorderedConcurrentMerge, commandTimeoutSeconds: timeout);
         var q = ShardQuery.For<Person>(exec).Where(p => p.Age >= 0).Select(p => p);
 
         // act

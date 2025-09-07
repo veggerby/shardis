@@ -1,9 +1,9 @@
-namespace Shardis.Migration.InMemory;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 using Shardis.Persistence;
 
+namespace Shardis.Migration.InMemory;
 /// <summary>
 /// In-memory implementation that applies shard ownership swaps via the underlying map store.
 /// Simulates partial failure when <see cref="SimulatePartialFailure"/> is true by failing after half the batch.

@@ -1,7 +1,7 @@
-namespace Shardis.Migration.Abstractions;
 
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.Abstractions;
 /// <summary>
 /// Produces a deterministic migration plan from a source topology to a target topology.
 /// </summary>

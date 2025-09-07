@@ -1,10 +1,10 @@
-namespace Shardis.Migration.InMemory;
 
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 using Shardis.Model;
 
+namespace Shardis.Migration.InMemory;
 /// <summary>
 /// In-memory planner computing key moves by diffing two topology snapshots.
 /// Ordering: Source, Target, KeyHash (stable hash of key string representation via FNV-1a 64-bit).

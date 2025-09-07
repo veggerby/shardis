@@ -1,10 +1,10 @@
-namespace Shardis.Migration.InMemory;
 
 using System.Security.Cryptography;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 
+namespace Shardis.Migration.InMemory;
 /// <summary>
 /// Placeholder hash-only verification strategy: computes a deterministic hash of key + target shard.
 /// Always returns true unless a mismatch injector signals false for a given move.
