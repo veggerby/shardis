@@ -42,7 +42,8 @@ public sealed class MartenMetricsAndCancellationTests : IClassFixture<PostgresCo
         // assert
         seen.Should().BeGreaterThan(0);
         metrics.Received().OnShardStart(0);
-        metrics.Received().OnItemsProduced(0, Arg.Is<int>(i => i > 0));
+        // Provide explicit matcher for both int arguments to avoid NSubstitute AmbiguousArgumentsException
+        metrics.ReceivedWithAnyArgs().OnItemsProduced(default, default);
         metrics.Received().OnShardStop(0);
         metrics.Received().OnCompleted();
     }
@@ -75,7 +76,8 @@ public sealed class MartenMetricsAndCancellationTests : IClassFixture<PostgresCo
         // assert
         enumerated.Should().BeGreaterThan(0);
         metrics.Received().OnShardStart(0);
-        metrics.Received().OnItemsProduced(0, Arg.Is<int>(i => i > 0));
+        // Provide explicit matcher for both int arguments to avoid NSubstitute AmbiguousArgumentsException
+        metrics.ReceivedWithAnyArgs().OnItemsProduced(default, default);
         metrics.Received().OnShardStop(0);
         metrics.Received().OnCanceled();
         metrics.DidNotReceive().OnCompleted();

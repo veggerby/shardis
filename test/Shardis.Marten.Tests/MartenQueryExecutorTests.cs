@@ -26,17 +26,19 @@ public sealed class MartenQueryExecutorTests
             opts.Connection(conn);
         });
         var shard = new MartenShard(new ShardId("0"), store);
+        var uniquePrefix = $"T_{Guid.NewGuid():N}";
         using (var session = shard.CreateSession())
         {
-            session.Store(new Person { Id = Guid.NewGuid(), Name = "Alice", Age = 34 });
-            session.Store(new Person { Id = Guid.NewGuid(), Name = "Bob", Age = 25 });
+            session.Store(new Person { Id = Guid.NewGuid(), Name = uniquePrefix + "_Alice", Age = 34 });
+            session.Store(new Person { Id = Guid.NewGuid(), Name = uniquePrefix + "_Bob", Age = 25 });
             await session.SaveChangesAsync();
         }
         using var readSession = shard.CreateSession();
         var exec = shard.QueryExecutor;
 
         // act
-        var query = exec.Execute<Person>(readSession, q => q.Where(p => p.Age > 30).Select(p => p));
+        // Narrow query to the uniquely inserted person to avoid interference from pre-existing seeded data
+        var query = exec.Execute<Person>(readSession, q => q.Where(p => p.Name.StartsWith(uniquePrefix)).Select(p => p));
         var list = new List<Person>();
         await foreach (var p in query)
         {
@@ -44,7 +46,8 @@ public sealed class MartenQueryExecutorTests
         }
 
         // assert
-        list.Should().HaveCount(1);
-        list[0].Name.Should().Be("Alice");
+        list.Should().HaveCount(2);
+        list.Should().Contain(p => p.Name.EndsWith("_Alice") && p.Age == 34);
+        list.Should().Contain(p => p.Name.EndsWith("_Bob") && p.Age == 25);
     }
 }
