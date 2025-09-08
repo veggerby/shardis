@@ -9,6 +9,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Shardis.Migration/Shardis.Migration.csproj" />
   </ItemGroup>
 </Project>

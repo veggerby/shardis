@@ -9,17 +9,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ### Added (Unreleased)
 
 - Marten migration provider (`Shardis.Migration.Marten`): copy-only `MartenDataMover<TKey>`, canonical checksum verification strategy (`DocumentChecksumVerificationStrategy<TKey>`), DI extension `AddMartenMigrationSupport<TKey>()`.
+- Entity Framework Core migration provider (`Shardis.Migration.EntityFrameworkCore`): data mover (`EntityFrameworkCoreDataMover`), rowversion verification (`RowVersionVerificationStrategy`), checksum verification (`ChecksumVerificationStrategy`), DI extension `AddEntityFrameworkCoreMigrationSupport<TKey,TContext,TEntity>()` + checksum registration helper.
 - Marten executor integration tests: happy path, resume from copied checkpoint, swap retry (optimistic conflict), mismatch then re-copy.
 - Canonicalization deep-dive documentation (`docs/canonicalization.md`) with guidance on invariants, extensibility, and future enhancements; linked from index and migration tiers.
+- Migration consistency contract documentation (detailing phases, write/read handling, atomicity, failure & resume guarantees).
 - Updated migration package READMEs (core, EF Core, Marten) to reflect 0.2.x features (checksum strategies, canonicalization doc links, expanded abstractions list, roadmap alignment).
 - Added experimental `Shardis.Migration.Sql` project providing durable SQL-backed checkpoint and shard map stores (preview, APIs subject to change).
 - Migration metrics: extended `IShardMigrationMetrics` with duration observation methods (`ObserveCopyDuration`, `ObserveVerifyDuration`, `ObserveSwapBatchDuration`, `ObserveTotalElapsed`) and instrumented `ShardMigrationExecutor` to record per-key / batch timings.
 - SQL shard map store (`SqlShardMapStore`) now emits `AssignmentChanged` event after successful optimistic insert (invalidation hook for future cache layers).
+- New migration extension points: `IEntityProjectionStrategy` (projection), `IStableCanonicalizer` (`JsonStableCanonicalizer` default), `IStableHasher` (`Fnv1a64Hasher` default) enabling deterministic checksum strategies.
+- Adaptive migration throttling primitives: `IBudgetGovernor` + `SimpleBudgetGovernor` (preview) with global/per-shard concurrency budgeting hints.
+- Expanded migration options: dual read/write toggles, budget hints (`MaxConcurrentMoves`, `MaxMovesPerShard`), health/staleness settings (`HealthWindow`, `MaxReadStaleness`).
+- OpenTelemetry-style tracing spans (`shardis.migration.execute`, `copy`, `verify`, `swap_batch`) added via `ActivitySource` integration.
+- Samples: `Shardis.Migration.Sample` (end-to-end scenarios), `Shardis.Query.Samples.Marten`, enhanced EF sample (Postgres env-driven setup).
+- Public API baselines extended for new assemblies (Migration.Marten, Migration.Sql, Migration.EntityFrameworkCore) & new abstractions.
 
 ### Changed (Unreleased)
 
 - Refactored `MartenDataMover<TKey>` to delegate verification to `IVerificationStrategy<TKey>` (copy-only responsibility) for parity with EF provider separation and reduced duplication.
 - Core migration docs updated: metrics section now documents duration histograms (copy / verify / swap batch / total elapsed) and execution status moved from scaffold to implemented baseline.
+- `ShardMigrationOptions` expanded with dual-read/write, staleness, health window, and budgeting properties (non-breaking additive changes).
+- Executor now emits tracing activities and duration metrics without altering execution semantics.
 
 ### Fixed (Unreleased)
 
@@ -32,6 +42,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ### Internal / Quality (Unreleased)
 
 - Expanded Marten provider README (install, canonicalization contract, strategy matrix, projection guidance, telemetry tags, test setup).
+- Added EF Core provider README (rowversion vs checksum guidance) & core migration README updates for new abstractions.
+- New test suites: EF Core migration (rowversion, checksum, retry, idempotency), Marten migration (resume, conflict, mismatch), extension points (hashing, canonicalization, projection, budget governor), SQL-lite test utilities.
+- Added `SqliteShardDbContextFactory<TContext>` test utility for per-shard in-memory persistence.
 
 ## [0.2.0] - 2025-09-08
 
