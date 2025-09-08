@@ -4,9 +4,9 @@ All notable changes to the `Shardis.*` packages will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2025-09-08
 
-### Added (Unreleased)
+### Added (0.2.0)
 
 - Streaming globally ordered query API: `QueryAllShardsOrderedStreamingAsync<TResult,TKey>` with bounded per-shard prefetch (`prefetchPerShard`).
 - Proactive k-way merge enumerator (`ShardisAsyncOrderedEnumerator`) supporting deterministic tie-break `(key, shardIndex, sequence)` and bounded memory.
@@ -42,7 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Documentation updates: packages table, DI quick start sample, corrected executor naming in `Shardis.Query.EntityFrameworkCore` README.
 - Namespace & package rename consolidation: legacy short `EFCore` references fully expanded to `EntityFrameworkCore` across code, docs, and public API baselines.
 
-### Changed (Unreleased)
+### Changed (0.2.0)
 
 - Ordered querying no longer relies on eager materialization by default; explicit streaming vs eager APIs clarify memory / latency trade-offs.
 - Eager ordered path now uses parallel per-shard buffering then reuses ordered merge enumerator for consistency.
@@ -53,7 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - `EntityFrameworkCoreShardQueryExecutor` now depends on `IShardFactory<DbContext>` instead of `Func<int,DbContext>`; adapt by wrapping existing delegates with `DelegatingShardFactory<DbContext>` or using `EntityFrameworkCoreShardFactory<TContext>`.
 - Removed `IShardSessionProvider<TSession>` in favor of unified `IShardFactory<T>`; `Shard<TSession>` now exposes both `CreateSession()` and `CreateSessionAsync()` delegating to the factory.
 
-### Fixed (Unreleased)
+### Fixed (0.2.0)
 
 - Potential under-prefetch (single-item buffering) replaced by proactive top-up loop ensuring shards are kept at `≤ prefetchPerShard` buffered items.
 - Ensured exceptions from any shard during ordered streaming propagate immediately and dispose all enumerators.
@@ -61,15 +61,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Guarded observer callbacks against downstream exceptions (no pipeline impact).
 - Eliminated flaky public API approval failures caused by ordering drift (stable generator & normalization).
 
-### Deprecated (Unreleased)
+### Deprecated (0.2.0)
 
 - Legacy `QueryAllShardsOrderedAsync` marked obsolete in favor of `QueryAllShardsOrderedStreamingAsync` and `QueryAllShardsOrderedEagerAsync`.
 
-### Internal / Quality (Unreleased)
-
-### Removed (Unreleased)
-
-- `DefaultShardMigrator<TKey,TSession>` removed from the core `Shardis` project: this type has been intentionally deleted to avoid duplicate migration pathways and to make `Shardis.Migration` the single, canonical migration executor. This is a breaking change for any consumer who depended on the core stub; the recommended replacement is the `Shardis.Migration` package and its `ShardMigrationExecutor<T>` execution pipeline (register via `AddShardisMigration<T>()`). The removal was considered low-risk since the core stub was a lightweight, non-production scaffold.
+### Internal / Quality (0.2.0)
 
 - Added deterministic sequence number in heap ordering to guarantee stable ordering across runs with duplicate keys.
 - Added cancellation tests validating prompt disposal.
@@ -81,6 +77,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Added `.gitignore` rule for `*.received.txt` (keeps transient diff artifacts out of commits).
 - Added PublicApiGenerator (v11.x) test dependency; baseline writer establishes approvals automatically on first run.
 - Allocation guard minimum-byte threshold reduces noise for trivial deltas.
+- Stabilized adaptive paging telemetry test (CI flakiness) by relaxing timing‑sensitive observer assertions (no functional change to adaptive paging feature).
+
+### Removed (0.2.0)
+
+- `DefaultShardMigrator<TKey,TSession>` removed from the core `Shardis` project: this type has been intentionally deleted to avoid duplicate migration pathways and to make `Shardis.Migration` the single, canonical migration executor. This is a breaking change for any consumer who depended on the core stub; the recommended replacement is the `Shardis.Migration` package and its `ShardMigrationExecutor<T>` execution pipeline (register via `AddShardisMigration<T>()`). The removal was considered low-risk since the core stub was a lightweight, non-production scaffold.
 
 ## [0.1.1] - 2025-08-26
 
