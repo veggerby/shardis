@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" PrivateAssets="All" />
+    <PackageReference Include="coverlet.collector" PrivateAssets="All">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="All" />
+    <PackageReference Include="NSubstitute" PrivateAssets="All" />
+    <PackageReference Include="xunit" PrivateAssets="All" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="AwesomeAssertions" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
+    <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
+    <ProjectReference Include="../../src/Shardis.Migration.EntityFrameworkCore/Shardis.Migration.EntityFrameworkCore.csproj" />
+  </ItemGroup>
+</Project>

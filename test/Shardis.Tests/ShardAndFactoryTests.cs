@@ -1,15 +1,10 @@
-using AwesomeAssertions;
-
 using Microsoft.Extensions.DependencyInjection;
 
 using Shardis.Factories;
 using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;
-using Shardis.Querying.Linq;
 using Shardis.Routing;
-
-using Xunit;
 
 namespace Shardis.Tests;
 

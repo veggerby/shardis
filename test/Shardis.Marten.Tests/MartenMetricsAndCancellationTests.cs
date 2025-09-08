@@ -1,13 +1,9 @@
 using AwesomeAssertions;
 
-using Marten;
-
 using NSubstitute;
 
-using Shardis.Marten;
 using Shardis.Model;
 using Shardis.Query.Diagnostics;
-using Shardis.Query.Marten;
 
 using Xunit;
 
