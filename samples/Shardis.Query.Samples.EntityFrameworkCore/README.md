@@ -35,8 +35,8 @@ To see bounded concurrent merge (channel backpressure) the sample also runs a me
 
 ## Notes
 
-* For sample brevity raw SQL creates the table; in production use migrations.
+* Each run recreates shard databases to ensure schema consistency; prefer migrations in real systems.
 * Unordered merge uses `UnorderedMergeHelper` which interleaves shard results as they arrive.
-* Global ordering requires materializing results (trade-off: memory vs. deterministic sort).
-* Manual paging shows how per-shard paging can be layered; a real adaptive approach would tune page size dynamically.
-* Bounded merge limits in-flight buffered items to control memory during large fan-out queries.
+* Global ordering requires materializing results (memory vs determinism trade-off).
+* Manual paging illustrates per-shard paging mechanics; adaptive strategies could adjust page size at runtime.
+* Bounded merge limits in-flight buffered items to control memory/backpressure during large fan-out queries.
