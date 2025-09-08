@@ -562,6 +562,30 @@ var martenNames = await MartenQueryExecutor.Instance
 
 **Important:** Unordered execution is intentionally non-deterministic. For deterministic ordering across shards use an ordered merge (`QueryAllShardsOrderedStreamingAsync`) or materialize then order.
 
+### Marten Sample (Concise)
+
+Runnable sample: `samples/Shardis.Query.Samples.Marten` (creates `shardis_marten_sample` DB, seeds a few `Person` docs).
+
+```csharp
+var store = DocumentStore.For(o => o.Connection(connString));
+await using var session = store.LightweightSession();
+
+var exec = MartenQueryExecutor.Instance.WithPageSize(128);
+await foreach (var p in exec.Execute<Person>(session, q => q.Where(x => x.Age >= 30)))
+{
+  Console.WriteLine($"{p.Name} ({p.Age})");
+}
+
+// Ordered
+await foreach (var p in exec.ExecuteOrdered<Person,int>(session, q => q.OrderBy(x => x.Age), x => x.Age)) { }
+
+// Adaptive paging
+var adaptive = MartenQueryExecutor.Instance.WithAdaptivePaging();
+await foreach (var p in adaptive.Execute<Person>(session, q => q.Where(x => x.Age >= 30))) { }
+```
+
+See sample for seeding + database bootstrap utilities.
+
 ### Exception Semantics
 
 Shardis executors use a cooperative cancellation model: when cancellation is requested the async iterator stops yielding without throwing unless the underlying provider surfaces an `OperationCanceledException`. Translation/database/provider exceptions are propagated unchanged. Consumers requiring explicit cancellation signaling should inspect the token externally.
