@@ -55,6 +55,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Migration.EntityFra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Migration.EntityFrameworkCore.Tests", "test\Shardis.Migration.EntityFrameworkCore.Tests\Shardis.Migration.EntityFrameworkCore.Tests.csproj", "{43F6D6B0-AFAE-4F34-B5AC-2A6B3209C33F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestUtilities", "test\TestUtilities\TestUtilities.csproj", "{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -341,6 +343,18 @@ Global
 		{43F6D6B0-AFAE-4F34-B5AC-2A6B3209C33F}.Release|x64.Build.0 = Release|Any CPU
 		{43F6D6B0-AFAE-4F34-B5AC-2A6B3209C33F}.Release|x86.ActiveCfg = Release|Any CPU
 		{43F6D6B0-AFAE-4F34-B5AC-2A6B3209C33F}.Release|x86.Build.0 = Release|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Debug|x64.Build.0 = Debug|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Debug|x86.Build.0 = Debug|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Release|x64.ActiveCfg = Release|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Release|x64.Build.0 = Release|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Release|x86.ActiveCfg = Release|Any CPU
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -369,5 +383,6 @@ Global
 		{6B390F0B-A36C-4FAC-8EE3-AF9CAB4ECDFF} = {87D4F378-43DD-4DCB-8109-8D91BF61043E}
 		{A2565C9D-FC73-4A6C-B0F5-21FB7ADA96D8} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 		{43F6D6B0-AFAE-4F34-B5AC-2A6B3209C33F} = {3EF50925-C550-461B-9B75-6C4B80627735}
+		{E3DD65D9-9BC4-4CB2-B2FF-89F9C3029DFF} = {3EF50925-C550-461B-9B75-6C4B80627735}
 	EndGlobalSection
 EndGlobal

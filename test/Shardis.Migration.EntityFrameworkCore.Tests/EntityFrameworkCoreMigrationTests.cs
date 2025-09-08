@@ -9,6 +9,7 @@ using Shardis.Migration.EntityFrameworkCore.Verification;
 using Shardis.Migration.Execution;
 using Shardis.Migration.Model;
 using Shardis.Model;
+using Shardis.TestUtilities;
 
 namespace Shardis.Migration.EntityFrameworkCore.Tests;
 
@@ -34,33 +35,6 @@ public class EntityFrameworkCoreMigrationTests
         }
     }
 
-    private sealed class SqliteShardDbContextFactory : IShardDbContextFactory<ItemContext>
-    {
-        private readonly ConcurrentDictionary<string, SqliteConnection> _connections = new();
-        private readonly Func<ShardId, string> _nameSelector;
-        private readonly string _instanceId = Guid.NewGuid().ToString("N");
-
-        public SqliteShardDbContextFactory(Func<ShardId, SqliteConnection> connectionFactory)
-        {
-            // Preserve original delegate for backward compatibility (not used now directly); derive name from ShardId.
-            _nameSelector = sid => sid.Value;
-        }
-
-        public Task<ItemContext> CreateAsync(ShardId shardId, CancellationToken cancellationToken = default)
-        {
-            var name = _instanceId + "_" + _nameSelector(shardId); // isolate per test factory instance
-            var conn = _connections.GetOrAdd(name, static n =>
-            {
-                var c = new SqliteConnection($"DataSource=file:{n}?mode=memory&cache=shared");
-                c.Open();
-                return c;
-            });
-            var options = new DbContextOptionsBuilder<ItemContext>().UseSqlite(conn).EnableSensitiveDataLogging().Options;
-            var ctx = new ItemContext(options);
-            ctx.Database.EnsureCreated();
-            return Task.FromResult(ctx);
-        }
-    }
 
     private sealed class InMemoryMetrics : IShardMigrationMetrics
     {
@@ -103,8 +77,6 @@ public class EntityFrameworkCoreMigrationTests
             return Task.CompletedTask;
         }
     }
-
-    private static SqliteConnection CreateConnection(int shard) { var c = new SqliteConnection($"DataSource=file:shard_{shard}?mode=memory&cache=shared"); c.Open(); return c; }
 
     private static byte[] NextVersion(int v) => BitConverter.GetBytes(v);
 
@@ -149,7 +121,7 @@ public class EntityFrameworkCoreMigrationTests
         // arrange
         var shardMap = new Dictionary<ShardKey<int>, ShardId>();
         var source = new ShardId("s1"); var target = new ShardId("s2");
-        var factory = new SqliteShardDbContextFactory(sid => sid == source ? CreateConnection(1) : CreateConnection(2));
+        var factory = new SqliteShardDbContextFactory<ItemContext>(opts => new ItemContext(opts));
         // seed
         using (var sctx = await factory.CreateAsync(source)) { SeedShard(sctx, new Item { Id = 1, Name = "Alpha" }); }
         using (var tctx = await factory.CreateAsync(target)) { SeedShard(tctx); }
@@ -157,7 +129,6 @@ public class EntityFrameworkCoreMigrationTests
         var swapper = new RecordingMapSwapper<int>(shardMap);
         var executor = CreateExecutor(factory, verification, swapper, opts: new ShardMigrationOptions { CopyConcurrency = 4, VerifyConcurrency = 4, InterleaveCopyAndVerify = false, SwapBatchSize = 8, MaxRetries = 3, RetryBaseDelay = TimeSpan.FromMilliseconds(10), ForceSwapOnVerificationFailure = false });
         var plan = new MigrationPlan<int>(Guid.NewGuid(), DateTimeOffset.UtcNow, new[] { new KeyMove<int>(new ShardKey<int>(1), source, target) });
-
         // act
         var summary = await executor.ExecuteAsync(plan, null, CancellationToken.None);
 
@@ -173,13 +144,12 @@ public class EntityFrameworkCoreMigrationTests
         // arrange
         var shardMap = new Dictionary<ShardKey<int>, ShardId>();
         var source = new ShardId("s1"); var target = new ShardId("s2");
-        var factory = new SqliteShardDbContextFactory(sid => sid == source ? CreateConnection(3) : CreateConnection(4));
+        var factory = new SqliteShardDbContextFactory<ItemContext>(opts => new ItemContext(opts));
         using (var tctx = await factory.CreateAsync(target)) { SeedShard(tctx); }
         var verification = new RowVersionVerificationStrategy<int, ItemContext, Item>(factory);
         var swapper = new RecordingMapSwapper<int>(shardMap);
         var executor = CreateExecutor(factory, verification, swapper, opts: new ShardMigrationOptions { CopyConcurrency = 4, VerifyConcurrency = 4, InterleaveCopyAndVerify = false, SwapBatchSize = 8, MaxRetries = 3, RetryBaseDelay = TimeSpan.FromMilliseconds(10), ForceSwapOnVerificationFailure = false });
         var plan = new MigrationPlan<int>(Guid.NewGuid(), DateTimeOffset.UtcNow, new[] { new KeyMove<int>(new ShardKey<int>(42), source, target) });
-
         // act
         var summary = await executor.ExecuteAsync(plan, null, CancellationToken.None);
 
@@ -195,7 +165,7 @@ public class EntityFrameworkCoreMigrationTests
         // arrange
         var shardMap = new Dictionary<ShardKey<int>, ShardId>();
         var source = new ShardId("s1"); var target = new ShardId("s2");
-        var factory = new SqliteShardDbContextFactory(sid => sid == source ? CreateConnection(5) : CreateConnection(6));
+        var factory = new SqliteShardDbContextFactory<ItemContext>(opts => new ItemContext(opts));
         using (var sctx = await factory.CreateAsync(source)) { SeedShard(sctx, new Item { Id = 7, Name = "Seven" }); }
         using (var tctx = await factory.CreateAsync(target)) { SeedShard(tctx); }
         var verification = new RowVersionVerificationStrategy<int, ItemContext, Item>(factory);
@@ -218,7 +188,7 @@ public class EntityFrameworkCoreMigrationTests
         // arrange
         var shardMap = new Dictionary<ShardKey<int>, ShardId>();
         var source = new ShardId("s1"); var target = new ShardId("s2");
-        var factory = new SqliteShardDbContextFactory(sid => sid == source ? CreateConnection(7) : CreateConnection(8));
+        var factory = new SqliteShardDbContextFactory<ItemContext>(opts => new ItemContext(opts));
         using (var sctx = await factory.CreateAsync(source)) { SeedShard(sctx, new Item { Id = 9, Name = "Nine" }); }
         using (var tctx = await factory.CreateAsync(target)) { SeedShard(tctx); }
         var verification = new RowVersionVerificationStrategy<int, ItemContext, Item>(factory);
@@ -240,7 +210,7 @@ public class EntityFrameworkCoreMigrationTests
         // arrange
         var shardMap = new Dictionary<ShardKey<int>, ShardId>();
         var source = new ShardId("s1"); var target = new ShardId("s2");
-        var factory = new SqliteShardDbContextFactory(sid => sid == source ? CreateConnection(9) : CreateConnection(10));
+        var factory = new SqliteShardDbContextFactory<ItemContext>(opts => new ItemContext(opts));
         using (var sctx = await factory.CreateAsync(source)) { SeedShard(sctx, new Item { Id = 11, Name = "Orig" }); }
         using (var tctx = await factory.CreateAsync(target)) { SeedShard(tctx, new Item { Id = 11, Name = "Different" }); }
         var canonicalizer = new JsonStableCanonicalizer();
