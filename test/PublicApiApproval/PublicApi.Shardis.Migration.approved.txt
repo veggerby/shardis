@@ -40,6 +40,10 @@ namespace Shardis.Migration.Abstractions
         void IncRetries(long delta = 1);
         void IncSwapped(long delta = 1);
         void IncVerified(long delta = 1);
+        void ObserveCopyDuration(double ms);
+        void ObserveSwapBatchDuration(double ms);
+        void ObserveTotalElapsed(double ms);
+        void ObserveVerifyDuration(double ms);
         void SetActiveCopy(int value);
         void SetActiveVerify(int value);
     }

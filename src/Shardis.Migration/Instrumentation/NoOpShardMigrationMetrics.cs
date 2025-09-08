@@ -15,4 +15,8 @@ internal sealed class NoOpShardMigrationMetrics : IShardMigrationMetrics
     public void IncRetries(long delta = 1) { }
     public void SetActiveCopy(int value) { }
     public void SetActiveVerify(int value) { }
+    public void ObserveCopyDuration(double ms) { }
+    public void ObserveVerifyDuration(double ms) { }
+    public void ObserveSwapBatchDuration(double ms) { }
+    public void ObserveTotalElapsed(double ms) { }
 }

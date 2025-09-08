@@ -89,6 +89,10 @@ Planned extension points:
 | shardis.migration.key.committed | Counter | Mapping swap done. |
 | shardis.migration.key.failed | Counter | Key failed permanently. |
 | shardis.migration.duration | Histogram | End-to-end key migration latency. |
+| shardis.migration.copy.ms | Histogram | Copy phase per key latency (ms). |
+| shardis.migration.verify.ms | Histogram | Verify phase per key latency (ms). |
+| shardis.migration.swap.batch.ms | Histogram | Swap batch latency (ms). |
+| shardis.migration.plan.total.ms | Histogram | Total plan execution elapsed (ms). |
 
 Metrics emitted outside critical locks.
 

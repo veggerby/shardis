@@ -11,7 +11,6 @@ Entity Framework Core migration provider for Shardis. Supplies data mover and ve
 
 ## Quick start
 
-
 ```csharp
 services.AddShardisMigration<Guid>()
         .AddEntityFrameworkCoreMigrationSupport<Guid, MyShardDbContext, MyEntity>();
@@ -22,4 +21,3 @@ Swap to checksum:
 ```csharp
 services.AddEntityFrameworkCoreChecksumVerification<Guid, MyShardDbContext, MyEntity>();
 ```
-

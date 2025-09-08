@@ -53,7 +53,7 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
 - 🧪 **Central Public API Snapshots**
   Consolidated multi-assembly approval tests ensure stable public surface; drift produces clear `.received` diffs.
 - 🔁 **Pluggable Migration Executors & Providers**
-  Core migration package plus EF Core (rowversion / checksum) and Marten (checksum) providers with per-key copy → verify → swap pipeline, checkpointing, and deterministic retries.
+  Core migration package plus EF Core (rowversion / checksum) and Marten (checksum) providers with per-key copy → verify → swap pipeline, checkpointing, deterministic retries, and duration instrumentation (copy / verify / swap batch / total elapsed).
 - 🔒 **Deterministic Canonicalization & Checksums**
   Stable JSON canonicalization + pluggable hashing (`Fnv1a64Hasher` by default) powering verification strategies (see `docs/canonicalization.md`).
 
@@ -67,6 +67,7 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
 | `Shardis.Migration` | Key migration planning & execution pipeline (planner, executor, checkpoints, verification abstractions). |
 | `Shardis.Migration.EntityFrameworkCore` | EF Core migration provider (rowversion + checksum verification strategies). |
 | `Shardis.Migration.Marten` | Marten migration provider (checksum verification). |
+| `Shardis.Migration.Sql` | (Experimental) SQL durability components: checkpoint store + shard map/history + assignment changed event hook. |
 | `Shardis.Query` | Query abstraction layer (shard-aware LINQ, executors). |
 | `Shardis.Query.EntityFrameworkCore` | EF Core query executor + shard factory adapters. |
 | `Shardis.Query.Marten` | Marten query executor with adaptive paging. |
@@ -352,15 +353,15 @@ Shardis is built around three core principles:
 
 ## 🚧 Roadmap (Post 0.2.x)
 
-- [ ] Durable checkpoint store implementations (SQL, Redis)
+- [ ] Durable checkpoint store implementations (Redis) (SQL experimental implementation available)
 - [ ] Segmented migration planner (large plan pagination) – ADR 0004 follow-up
 - [ ] Dual-read / dual-write transition window (grace phase) for Tier 3 integrity
 - [ ] Alphabetical canonicalization option (stable across type refactors)
 - [ ] Server-side checksum integration (backend-provided hash short‑circuit)
-- [ ] Additional map stores (SQL provider)
+- [ ] Additional map stores (harden SQL provider + add Redis durability enhancements)
 - [ ] Read/Write split router support
 - [ ] Multi-region / geo-sharding affinity routing
-- [ ] Telemetry package with OpenTelemetry exporters (metrics + traces pre-wired)
+- [ ] Telemetry package with OpenTelemetry exporters (metrics + traces pre-wired, migration duration histograms)
 - [ ] Checksum & canonicalization benchmarks (`ChecksumBenchmarks`)
 - [ ] Performance regression guard rails (allocation + latency budgets)
 

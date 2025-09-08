@@ -6,11 +6,14 @@ using Shardis.Migration.Model;
 namespace Shardis.Migration.EntityFrameworkCore.Verification;
 
 /// <summary>
-/// Compares rowversion / timestamp binary values between source and target shards.
+/// Verification strategy that performs a strict binary comparison of RowVersion (timestamp) properties between
+/// source and target entities. Requires both entities to exist and expose non-null RowVersion values. Provides a
+/// fast check suitable for optimistic concurrency enabled schemas.
 /// </summary>
 /// <typeparam name="TKey">Underlying key type.</typeparam>
 /// <typeparam name="TContext">DbContext type.</typeparam>
 /// <typeparam name="TEntity">Entity type implementing <see cref="EntityFrameworkCore.IShardEntity{TKey}"/>.</typeparam>
+/// <remarks>Thread safety: stateless aside from the injected factory; safe for concurrent use.</remarks>
 public sealed class RowVersionVerificationStrategy<TKey, TContext, TEntity> : IVerificationStrategy<TKey>
     where TKey : notnull, IEquatable<TKey>
     where TContext : DbContext

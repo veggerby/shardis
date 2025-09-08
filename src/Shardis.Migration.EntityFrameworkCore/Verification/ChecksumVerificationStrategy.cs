@@ -6,11 +6,16 @@ using Shardis.Migration.Model;
 namespace Shardis.Migration.EntityFrameworkCore.Verification;
 
 /// <summary>
-/// Verification strategy computing canonical JSON + stable hash for minimal deterministic projection.
+/// Verification strategy that loads source and target entities and compares a stable hash of their canonical JSON
+/// representation. Provides stronger guarantees than simple rowversion equality when entities lack a concurrency
+/// token or when projections are applied. Intended for use in lower throughput correctness-focused migrations.
 /// </summary>
 /// <typeparam name="TKey">Underlying key type.</typeparam>
 /// <typeparam name="TContext">DbContext type.</typeparam>
 /// <typeparam name="TEntity">Entity type implementing <see cref="EntityFrameworkCore.IShardEntity{TKey}"/>.</typeparam>
+/// <remarks>
+/// Thread safety: stateless aside from injected services; safe for concurrent use across migration workers.
+/// </remarks>
 public sealed class ChecksumVerificationStrategy<TKey, TContext, TEntity> : IVerificationStrategy<TKey>
     where TKey : notnull, IEquatable<TKey>
     where TContext : DbContext

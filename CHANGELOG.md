@@ -12,10 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Marten executor integration tests: happy path, resume from copied checkpoint, swap retry (optimistic conflict), mismatch then re-copy.
 - Canonicalization deep-dive documentation (`docs/canonicalization.md`) with guidance on invariants, extensibility, and future enhancements; linked from index and migration tiers.
 - Updated migration package READMEs (core, EF Core, Marten) to reflect 0.2.x features (checksum strategies, canonicalization doc links, expanded abstractions list, roadmap alignment).
+- Added experimental `Shardis.Migration.Sql` project providing durable SQL-backed checkpoint and shard map stores (preview, APIs subject to change).
+- Migration metrics: extended `IShardMigrationMetrics` with duration observation methods (`ObserveCopyDuration`, `ObserveVerifyDuration`, `ObserveSwapBatchDuration`, `ObserveTotalElapsed`) and instrumented `ShardMigrationExecutor` to record per-key / batch timings.
+- SQL shard map store (`SqlShardMapStore`) now emits `AssignmentChanged` event after successful optimistic insert (invalidation hook for future cache layers).
 
 ### Changed (Unreleased)
 
 - Refactored `MartenDataMover<TKey>` to delegate verification to `IVerificationStrategy<TKey>` (copy-only responsibility) for parity with EF provider separation and reduced duplication.
+- Core migration docs updated: metrics section now documents duration histograms (copy / verify / swap batch / total elapsed) and execution status moved from scaffold to implemented baseline.
 
 ### Fixed (Unreleased)
 

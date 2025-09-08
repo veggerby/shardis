@@ -23,6 +23,7 @@ dotnet add package Shardis.Migration --version 0.2.*
 - Planner models: `MigrationPlan<TKey>`, `KeyMove<TKey>`, `MigrationCheckpoint<TKey>`.
 - `ShardMigrationExecutor<TKey>` — orchestrates copy → verify → swap with checkpoint persistence & metrics hooks.
 - Abstractions: `IShardDataMover<TKey>`, `IVerificationStrategy<TKey>`, `IShardMigrationCheckpointStore<TKey>`, `IShardMapSwapper<TKey>`, `IShardMigrationMetrics`.
+- Duration instrumentation: executor records per-key copy / verify latency, per-swap-batch latency, and total elapsed (extend `IShardMigrationMetrics` for export).
 - Reference in-memory checkpoint store & test doubles (see tests) for prototyping.
 - Default stable canonicalization + hashing abstractions (`IStableCanonicalizer`, `IStableHasher`) consumed by checksum strategies. See `docs/canonicalization.md`.
 
@@ -41,7 +42,7 @@ var result = await executor.ExecuteAsync(plan, progress: null, CancellationToken
 
 ## Integration notes
 
-- For long migrations use durable checkpoint store implementation (custom) rather than in-memory.
+- For long migrations use a durable checkpoint store implementation (custom). An experimental SQL-backed implementation lives in `Shardis.Migration.Sql` (preview; API stability not yet guaranteed).
 - Verification strategy can be swapped (rowversion, checksum) by provider DI extensions before execution.
 - Projection strategy (`IEntityProjectionStrategy`) allows shape normalization (exclude volatile fields) — ensure determinism.
 
@@ -49,6 +50,7 @@ var result = await executor.ExecuteAsync(plan, progress: null, CancellationToken
 
 - Docs: <https://github.com/veggerby/shardis/blob/main/docs/migration-usage.md>
 - Canonicalization: <https://github.com/veggerby/shardis/blob/main/docs/canonicalization.md>
+- Sample end-to-end scenarios (retry, cancellation, resume, large plan): `samples/Shardis.Migration.Sample`.
 - ADR: <https://github.com/veggerby/shardis/blob/main/docs/adr/0004-segmented-planner.md>
 - Tests: <https://github.com/veggerby/shardis/tree/main/test/Shardis.Migration.Tests>
 

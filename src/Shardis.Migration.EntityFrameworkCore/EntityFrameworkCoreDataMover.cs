@@ -7,12 +7,18 @@ using Shardis.Model;
 namespace Shardis.Migration.EntityFrameworkCore;
 
 /// <summary>
-/// EF Core based data mover performing per-key copy and basic verification.
-/// Uses set-based upsert on target where possible (Relational provider) otherwise falls back to tracked add/update.
+/// Default EF Core implementation of <see cref="IShardDataMover{TKey}"/> that performs per-key copy (and optional
+/// lightweight verification) between source and target shards using an injected <see cref="IShardDbContextFactory{TContext}"/>.
+/// The mover intentionally avoids provider-specific bulk merge SQL to remain deterministic and portable; advanced
+/// scenarios can register a custom mover with optimized set-based operations.
 /// </summary>
-/// <typeparam name="TKey">Underlying key type.</typeparam>
-/// <typeparam name="TContext">DbContext type.</typeparam>
+/// <typeparam name="TKey">Underlying shard key type.</typeparam>
+/// <typeparam name="TContext">Concrete DbContext type.</typeparam>
 /// <typeparam name="TEntity">Entity type implementing <see cref="IShardEntity{TKey}"/>.</typeparam>
+/// <remarks>
+/// Thread safety: a single instance is safe for concurrent use because per-operation state is confined to short-lived
+/// DbContext instances created via the injected factory.
+/// </remarks>
 public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity> : IShardDataMover<TKey>
     where TKey : notnull, IEquatable<TKey>
     where TContext : DbContext

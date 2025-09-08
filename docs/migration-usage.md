@@ -92,9 +92,16 @@ Gauges:
 
 Ensure metric increments occur once per key (the executor enforces this before calling the metrics API).
 
+Durations (milliseconds) you can export by extending `IShardMigrationMetrics`:
+
+- Copy duration per key (`ObserveCopyDuration`)
+- Verify duration per key (`ObserveVerifyDuration`)
+- Swap batch duration (`ObserveSwapBatchDuration`)
+- Total elapsed per plan (`ObserveTotalElapsed`)
+
 ## 5. Replacing In-Memory Components
 
-For production you should override the default registrations before calling `AddShardisMigration` or by registering your implementations first:
+For production you should override the default registrations before calling `AddShardisMigration` or by registering your implementations first. An experimental SQL implementation (`Shardis.Migration.Sql`) provides a starting point for durable checkpoint + shard map storage (preview – review source before adopting):
 
 ```csharp
 services.AddSingleton<IShardDataMover<string>, MyDurableDataMover>();

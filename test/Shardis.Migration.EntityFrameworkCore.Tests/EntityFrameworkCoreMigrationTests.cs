@@ -39,6 +39,7 @@ public class EntityFrameworkCoreMigrationTests
     private sealed class InMemoryMetrics : IShardMigrationMetrics
     {
         public long Planned; public long Copied; public long Verified; public long Swapped; public long Failed; public long Retries; public int ActiveCopy; public int ActiveVerify;
+        public double CopyMs; public double VerifyMs; public double SwapBatchMs; public double TotalMs;
         public void IncPlanned(long delta = 1) { Planned += delta; }
         public void IncCopied(long delta = 1) { Copied += delta; }
         public void IncVerified(long delta = 1) { Verified += delta; }
@@ -47,6 +48,10 @@ public class EntityFrameworkCoreMigrationTests
         public void IncRetries(long delta = 1) { Retries += delta; }
         public void SetActiveCopy(int value) { ActiveCopy = value; }
         public void SetActiveVerify(int value) { ActiveVerify = value; }
+        public void ObserveCopyDuration(double ms) { CopyMs += ms; }
+        public void ObserveVerifyDuration(double ms) { VerifyMs += ms; }
+        public void ObserveSwapBatchDuration(double ms) { SwapBatchMs += ms; }
+        public void ObserveTotalElapsed(double ms) { TotalMs += ms; }
     }
 
     private sealed class InMemoryCheckpointStore<TKey> : IShardMigrationCheckpointStore<TKey> where TKey : notnull, IEquatable<TKey>
