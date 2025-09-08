@@ -9,6 +9,7 @@
     <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
     <ProjectReference Include="../../src/Shardis.Marten/Shardis.Marten.csproj" />
     <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
+  <ProjectReference Include="../../src/Shardis.Migration.Marten/Shardis.Migration.Marten.csproj" />
     <ProjectReference Include="../../src/Shardis.Query/Shardis.Query.csproj" />
     <ProjectReference Include="../../src/Shardis.Query.EntityFrameworkCore/Shardis.Query.EntityFrameworkCore.csproj" />
     <ProjectReference Include="../../src/Shardis.Query.InMemory/Shardis.Query.InMemory.csproj" />

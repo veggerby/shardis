@@ -9,27 +9,30 @@ Key migration execution primitives for Shardis. This package contains the execut
 ## Install
 
 ```bash
-dotnet add package Shardis.Migration --version 0.1.*
+dotnet add package Shardis.Migration --version 0.2.*
 ```
 
 ## When to use
 
-- You need a deterministic, idempotent migration executor for moving keys between topologies.
-- You want reference `ICheckpointStore` implementations for tests and local runs.
+- Deterministic, idempotent key migration (copy → verify → swap) between shard topologies.
+- Need pluggable verification (checksum, rowversion via provider) & projection abstractions.
+- Require checkpointing & resume support during long-running migrations.
 
 ## What’s included
 
-- Planner models: `MigrationPlan<TKey>`, `SegmentMove<TKey>` and related helpers.
-- `ShardMigrationExecutor<TKey>` — orchestrates copy → verify → swap with checkpoints and metrics hooks.
-- `ICheckpointStore` and `InMemoryCheckpointStore` reference implementation.
+- Planner models: `MigrationPlan<TKey>`, `KeyMove<TKey>`, `MigrationCheckpoint<TKey>`.
+- `ShardMigrationExecutor<TKey>` — orchestrates copy → verify → swap with checkpoint persistence & metrics hooks.
+- Abstractions: `IShardDataMover<TKey>`, `IVerificationStrategy<TKey>`, `IShardMigrationCheckpointStore<TKey>`, `IShardMapSwapper<TKey>`, `IShardMigrationMetrics`.
+- Reference in-memory checkpoint store & test doubles (see tests) for prototyping.
+- Default stable canonicalization + hashing abstractions (`IStableCanonicalizer`, `IStableHasher`) consumed by checksum strategies. See `docs/canonicalization.md`.
 
 ## Quick start
 
 ```csharp
-// register migration runtime
-services.AddShardisMigration<string>();
+// register migration runtime + (optionally) provider-specific support (e.g. EF / Marten)
+services.AddShardisMigration<string>(); // core abstractions & executor
 
-var planner = services.GetRequiredService<IShardMigrationPlanner<string>>();
+var planner = services.GetRequiredService<IShardMigrationPlanner<string>>(); // if planner registered
 var executor = services.GetRequiredService<ShardMigrationExecutor<string>>();
 
 var plan = await planner.CreatePlanAsync(fromSnapshot, toSnapshot, CancellationToken.None);
@@ -38,11 +41,14 @@ var result = await executor.ExecuteAsync(plan, progress: null, CancellationToken
 
 ## Integration notes
 
-- For long-running migrations prefer segmented plans and a durable `ICheckpointStore` (SQL/Cosmos/Redis) to bound memory and enable resume.
+- For long migrations use durable checkpoint store implementation (custom) rather than in-memory.
+- Verification strategy can be swapped (rowversion, checksum) by provider DI extensions before execution.
+- Projection strategy (`IEntityProjectionStrategy`) allows shape normalization (exclude volatile fields) — ensure determinism.
 
 ## Samples & tests
 
 - Docs: <https://github.com/veggerby/shardis/blob/main/docs/migration-usage.md>
+- Canonicalization: <https://github.com/veggerby/shardis/blob/main/docs/canonicalization.md>
 - ADR: <https://github.com/veggerby/shardis/blob/main/docs/adr/0004-segmented-planner.md>
 - Tests: <https://github.com/veggerby/shardis/tree/main/test/Shardis.Migration.Tests>
 

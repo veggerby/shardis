@@ -15,6 +15,7 @@ This index links core conceptual and roadmap documents.
 - LINQ Query Architecture & Orchestrator: `linq.md`
 - Backlog & Feature Roadmap: `backlog.md`
 - Benchmarks & Performance Guidance: `benchmarks.md`
+- Canonicalization & Checksums: `canonicalization.md`
 
 ## Contribution
 

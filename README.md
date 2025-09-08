@@ -52,6 +52,10 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Deterministic latency-targeted page size adjustments with oscillation & final-size telemetry.
 - 🧪 **Central Public API Snapshots**
   Consolidated multi-assembly approval tests ensure stable public surface; drift produces clear `.received` diffs.
+- 🔁 **Pluggable Migration Executors & Providers**
+  Core migration package plus EF Core (rowversion / checksum) and Marten (checksum) providers with per-key copy → verify → swap pipeline, checkpointing, and deterministic retries.
+- 🔒 **Deterministic Canonicalization & Checksums**
+  Stable JSON canonicalization + pluggable hashing (`Fnv1a64Hasher` by default) powering verification strategies (see `docs/canonicalization.md`).
 
 ---
 
@@ -60,7 +64,9 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
 | Package | Purpose |
 |---------|---------|
 | `Shardis` | Core routing, hashing, shard map, metrics abstractions. |
-| `Shardis.Migration` | Key migration planning & execution pipeline. |
+| `Shardis.Migration` | Key migration planning & execution pipeline (planner, executor, checkpoints, verification abstractions). |
+| `Shardis.Migration.EntityFrameworkCore` | EF Core migration provider (rowversion + checksum verification strategies). |
+| `Shardis.Migration.Marten` | Marten migration provider (checksum verification). |
 | `Shardis.Query` | Query abstraction layer (shard-aware LINQ, executors). |
 | `Shardis.Query.EntityFrameworkCore` | EF Core query executor + shard factory adapters. |
 | `Shardis.Query.Marten` | Marten query executor with adaptive paging. |
@@ -105,7 +111,7 @@ Reference the Shardis project in your solution, or package it locally using your
 
 ### Migration (recommended)
 
-For key migration, prefer the dedicated `Shardis.Migration` package which provides a planner and an executor with in-memory defaults suitable for tests and samples.
+For key migration, prefer the dedicated `Shardis.Migration` package (planner + executor + verification abstractions). Add a backend provider (EF Core or Marten) for concrete data movers and verification strategies.
 
 Canonical DI usage:
 
@@ -123,7 +129,7 @@ var plan = await planner.CreatePlanAsync(from, to, CancellationToken.None);
 await executor.ExecuteAsync(plan, CancellationToken.None);
 ```
 
-See `docs/MIGRATION.md` and `src/Shardis.Migration/README.md` for details and production guidance.
+See `docs/MIGRATION.md`, `docs/canonicalization.md`, `src/Shardis.Migration/README.md`, and provider READMEs under `src/Shardis.Migration.*` for details and production guidance.
 
 Setting up a basic router:
 
@@ -344,14 +350,19 @@ Shardis is built around three core principles:
 
 ---
 
-## 🚧 Roadmap
+## 🚧 Roadmap (Post 0.2.x)
 
-- [ ] Persistent ShardMapStore options (SQL, Redis)
-- [ ] Shard migrator for safe rebalance operations
-- [ ] Read/Write split support
-- [ ] Multi-region / geo-sharding support
-- [ ] Lightweight metrics/telemetry package
-- [ ] Benchmarks & performance regression harness
+- [ ] Durable checkpoint store implementations (SQL, Redis)
+- [ ] Segmented migration planner (large plan pagination) – ADR 0004 follow-up
+- [ ] Dual-read / dual-write transition window (grace phase) for Tier 3 integrity
+- [ ] Alphabetical canonicalization option (stable across type refactors)
+- [ ] Server-side checksum integration (backend-provided hash short‑circuit)
+- [ ] Additional map stores (SQL provider)
+- [ ] Read/Write split router support
+- [ ] Multi-region / geo-sharding affinity routing
+- [ ] Telemetry package with OpenTelemetry exporters (metrics + traces pre-wired)
+- [ ] Checksum & canonicalization benchmarks (`ChecksumBenchmarks`)
+- [ ] Performance regression guard rails (allocation + latency budgets)
 
 ---
 
@@ -384,7 +395,9 @@ Use these to compare (by `--anyCategories`):
 
 Planned (in active design):
 
-- `merge`: Ordered vs unordered streaming merge enumerators (k‑way heap vs combined interleave) – will complement (not replace) the broadcaster suite to show impact of global ordering.
+- `merge`: Ordered vs unordered streaming merge enumerators (k‑way heap vs combined interleave) – complements broadcaster suite.
+- `migration`: Executor throughput (copy + verify + swap) across concurrency & retry scenarios (Marten checksum path & EF Core rowversion path forthcoming).
+- (Planned) `checksum`: Canonicalization + hashing throughput & allocation profile.
 
 After optimization: routing hot path avoids double hashing (via `TryGetOrAdd`) and maintains constant single miss emission under high contention.
 

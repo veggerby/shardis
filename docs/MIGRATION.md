@@ -64,6 +64,7 @@ Goal tiering (progressively implemented):
 | 0 (current) | Key map changes only; no data copy. |
 | 1 | Copy & map swap is all-or-nothing per key (best-effort). |
 | 2 | Per-key verification with checksum (size / hash). |
+| 2.1 | Canonical JSON projection + stable hash (see `canonicalization.md`). |
 | 3 | Dual-read grace window (serve from old if new missing). |
 | 4 | Cryptographic diff audit (optional). |
 

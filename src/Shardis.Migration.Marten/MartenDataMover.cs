@@ -7,21 +7,19 @@ using Shardis.Migration.Model;
 using Shardis.Model;
 
 /// <summary>
-/// Marten implementation of <see cref="IShardDataMover{TKey}"/> performing per-key copy and verify operations.
-/// Uses deterministic canonicalization + hashing for verification; no rowversion support.
+/// Marten implementation of <see cref="IShardDataMover{TKey}"/> performing per-key copy operations only.
+/// Verification is delegated to a registered <see cref="IVerificationStrategy{TKey}"/> (e.g. <see cref="Verification.DocumentChecksumVerificationStrategy{TKey}"/>).
 /// </summary>
 /// <typeparam name="TKey">Key type.</typeparam>
 public sealed class MartenDataMover<TKey>(
     IMartenSessionFactory sessionFactory,
     IEntityProjectionStrategy projection,
-    IStableCanonicalizer canonicalizer,
-    IStableHasher hasher) : IShardDataMover<TKey>
+    IVerificationStrategy<TKey> verification) : IShardDataMover<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
     private readonly IMartenSessionFactory _sessionFactory = sessionFactory;
     private readonly IEntityProjectionStrategy _projection = projection;
-    private readonly IStableCanonicalizer _canonicalizer = canonicalizer;
-    private readonly IStableHasher _hasher = hasher;
+    private readonly IVerificationStrategy<TKey> _verification = verification;
 
     /// <summary>
     /// Copies the document for the specified key from the source shard to the target shard.
@@ -46,37 +44,8 @@ public sealed class MartenDataMover<TKey>(
     }
 
     /// <summary>
-    /// Verifies the target shard document matches the source shard via canonical JSON hash comparison.
+    /// Delegates verification to the configured <see cref="IVerificationStrategy{TKey}"/> to avoid duplication.
     /// </summary>
-    /// <param name="move">Key move to verify.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>True if hashes match; false otherwise.</returns>
-    public async Task<bool> VerifyAsync(KeyMove<TKey> move, CancellationToken ct)
-    {
-        await using var sourceQuery = await _sessionFactory.CreateQuerySessionAsync(move.Source, ct).ConfigureAwait(false);
-        await using var targetQuery = await _sessionFactory.CreateQuerySessionAsync(move.Target, ct).ConfigureAwait(false);
+    public Task<bool> VerifyAsync(KeyMove<TKey> move, CancellationToken ct) => _verification.VerifyAsync(move, ct);
 
-        var sourceDoc = await sourceQuery.LoadAsync<object>(move.Key.Value!, ct).ConfigureAwait(false);
-        if (sourceDoc is null)
-        {
-            return false;
-        }
-
-        var targetDoc = await targetQuery.LoadAsync<object>(move.Key.Value!, ct).ConfigureAwait(false);
-        if (targetDoc is null)
-        {
-            return false;
-        }
-
-        var sourceProj = _projection.Project<object, object>(sourceDoc, new ProjectionContext(null, null));
-        var targetProj = _projection.Project<object, object>(targetDoc, new ProjectionContext(null, null));
-
-        var sourceBytes = _canonicalizer.ToCanonicalUtf8(sourceProj);
-        var targetBytes = _canonicalizer.ToCanonicalUtf8(targetProj);
-
-        var sourceHash = _hasher.Hash(sourceBytes);
-        var targetHash = _hasher.Hash(targetBytes);
-
-        return sourceHash == targetHash;
-    }
 }

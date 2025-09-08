@@ -6,7 +6,7 @@ Entity Framework Core migration provider for Shardis. Supplies data mover and ve
 
 * `EntityFrameworkCoreDataMover` — per-key copy + upsert
 * `RowVersionVerificationStrategy` — fast binary timestamp comparison
-* `ChecksumVerificationStrategy` — canonical JSON + stable hash
+* `ChecksumVerificationStrategy` — canonical JSON + stable hash (see root `docs/canonicalization.md` for invariants)
 * DI extensions for registration
 
 ## Quick start

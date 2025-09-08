@@ -8,7 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added (Unreleased)
 
+- Marten migration provider (`Shardis.Migration.Marten`): copy-only `MartenDataMover<TKey>`, canonical checksum verification strategy (`DocumentChecksumVerificationStrategy<TKey>`), DI extension `AddMartenMigrationSupport<TKey>()`.
+- Marten executor integration tests: happy path, resume from copied checkpoint, swap retry (optimistic conflict), mismatch then re-copy.
+- Canonicalization deep-dive documentation (`docs/canonicalization.md`) with guidance on invariants, extensibility, and future enhancements; linked from index and migration tiers.
+- Updated migration package READMEs (core, EF Core, Marten) to reflect 0.2.x features (checksum strategies, canonicalization doc links, expanded abstractions list, roadmap alignment).
+
 ### Changed (Unreleased)
+
+- Refactored `MartenDataMover<TKey>` to delegate verification to `IVerificationStrategy<TKey>` (copy-only responsibility) for parity with EF provider separation and reduced duplication.
 
 ### Fixed (Unreleased)
 
@@ -19,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ### Security (Unreleased)
 
 ### Internal / Quality (Unreleased)
+
+- Expanded Marten provider README (install, canonicalization contract, strategy matrix, projection guidance, telemetry tags, test setup).
 
 ## [0.2.0] - 2025-09-08
 

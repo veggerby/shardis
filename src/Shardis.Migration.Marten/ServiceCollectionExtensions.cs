@@ -15,8 +15,11 @@ public static class MartenMigrationServiceCollectionExtensions
     public static IServiceCollection AddMartenMigrationSupport<TKey>(this IServiceCollection services)
         where TKey : notnull, IEquatable<TKey>
     {
-        services.AddSingleton<IShardDataMover<TKey>, MartenDataMover<TKey>>();
         services.AddSingleton<IVerificationStrategy<TKey>, DocumentChecksumVerificationStrategy<TKey>>();
+        services.AddSingleton<IShardDataMover<TKey>>(sp => new MartenDataMover<TKey>(
+            sp.GetRequiredService<IMartenSessionFactory>(),
+            sp.GetRequiredService<IEntityProjectionStrategy>(),
+            sp.GetRequiredService<IVerificationStrategy<TKey>>()));
         return services;
     }
 }
