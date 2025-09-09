@@ -14,6 +14,14 @@ public sealed class ShardMigrationOptions
     private TimeSpan _retryBaseDelay = TimeSpan.FromMilliseconds(100);
     private TimeSpan _checkpointFlushInterval = TimeSpan.FromSeconds(2);
     private int _checkpointFlushEveryTransitions = 1000;
+    private TimeSpan _healthWindow = TimeSpan.FromSeconds(5);
+    private TimeSpan _maxReadStaleness = TimeSpan.FromSeconds(2);
+
+    /// <summary>Overall soft cap for concurrent key moves (copy+verify units). If set, may be used by an external governor.</summary>
+    public int? MaxConcurrentMoves { get; init; }
+
+    /// <summary>Maximum in-flight moves per shard (advisory; enforced by budget governor when present).</summary>
+    public int? MaxMovesPerShard { get; init; }
 
     /// <summary>Maximum simultaneous copy operations.</summary>
     public int CopyConcurrency
@@ -59,6 +67,12 @@ public sealed class ShardMigrationOptions
     /// <summary>If true, allows swap even if verification failed (for diagnostics / forced failover scenarios).</summary>
     public bool ForceSwapOnVerificationFailure { get; init; } = false;
 
+    /// <summary>If true, read path may consult both source and target shard during an in-progress move for a key.</summary>
+    public bool EnableDualRead { get; init; } = false;
+
+    /// <summary>If true, write path duplicates writes to source and target during a move window (higher cost).</summary>
+    public bool EnableDualWrite { get; init; } = false;
+
     /// <summary>Interval for periodic checkpoint flush (wall clock).</summary>
     public TimeSpan CheckpointFlushInterval
     {
@@ -71,6 +85,20 @@ public sealed class ShardMigrationOptions
     {
         get => _checkpointFlushEveryTransitions;
         init => _checkpointFlushEveryTransitions = ValidatePositiveBounded(value, nameof(CheckpointFlushEveryTransitions), 1_000_000);
+    }
+
+    /// <summary>Observation window for health evaluation (latency / mismatch).</summary>
+    public TimeSpan HealthWindow
+    {
+        get => _healthWindow;
+        init => _healthWindow = ValidatePositive(value, nameof(HealthWindow));
+    }
+
+    /// <summary>Target upper bound (p99) for read staleness when dual-read disabled.</summary>
+    public TimeSpan MaxReadStaleness
+    {
+        get => _maxReadStaleness;
+        init => _maxReadStaleness = ValidatePositive(value, nameof(MaxReadStaleness));
     }
 
     private static int ValidatePositiveBounded(int value, string name, int max)

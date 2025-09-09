@@ -64,6 +64,7 @@ Goal tiering (progressively implemented):
 | 0 (current) | Key map changes only; no data copy. |
 | 1 | Copy & map swap is all-or-nothing per key (best-effort). |
 | 2 | Per-key verification with checksum (size / hash). |
+| 2.1 | Canonical JSON projection + stable hash (see `canonicalization.md`). |
 | 3 | Dual-read grace window (serve from old if new missing). |
 | 4 | Cryptographic diff audit (optional). |
 
@@ -88,6 +89,10 @@ Planned extension points:
 | shardis.migration.key.committed | Counter | Mapping swap done. |
 | shardis.migration.key.failed | Counter | Key failed permanently. |
 | shardis.migration.duration | Histogram | End-to-end key migration latency. |
+| shardis.migration.copy.ms | Histogram | Copy phase per key latency (ms). |
+| shardis.migration.verify.ms | Histogram | Verify phase per key latency (ms). |
+| shardis.migration.swap.batch.ms | Histogram | Swap batch latency (ms). |
+| shardis.migration.plan.total.ms | Histogram | Total plan execution elapsed (ms). |
 
 Metrics emitted outside critical locks.
 

@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-using Shardis.DependencyInjectionagnostics;
+using Shardis.Diagnostics;
 namespace Shardis.Instrumentation;
 
 /// <summary>

@@ -1,0 +1,26 @@
+[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
+[assembly: System.Resources.NeutralResourcesLanguage("en")]
+namespace Shardis.Migration.Marten
+{
+    public interface IMartenSessionFactory
+    {
+        System.Threading.Tasks.ValueTask<Marten.IDocumentSession> CreateDocumentSessionAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.ValueTask<Marten.IQuerySession> CreateQuerySessionAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken cancellationToken = default);
+    }
+    public sealed class MartenDataMover<TKey> : Shardis.Migration.Abstractions.IShardDataMover<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public MartenDataMover(Shardis.Migration.Marten.IMartenSessionFactory sessionFactory, Shardis.Migration.Abstractions.IEntityProjectionStrategy projection, Shardis.Migration.Abstractions.IVerificationStrategy<TKey> verification) { }
+        public System.Threading.Tasks.Task CopyAsync(Shardis.Migration.Model.KeyMove<TKey> move, System.Threading.CancellationToken ct) { }
+        public System.Threading.Tasks.Task<bool> VerifyAsync(Shardis.Migration.Model.KeyMove<TKey> move, System.Threading.CancellationToken ct) { }
+    }
+}
+namespace Shardis.Migration.Marten.Verification
+{
+    public sealed class DocumentChecksumVerificationStrategy<TKey> : Shardis.Migration.Abstractions.IVerificationStrategy<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public DocumentChecksumVerificationStrategy(Shardis.Migration.Marten.IMartenSessionFactory sessionFactory, Shardis.Migration.Abstractions.IEntityProjectionStrategy projection, Shardis.Migration.Abstractions.IStableCanonicalizer canonicalizer, Shardis.Migration.Abstractions.IStableHasher hasher) { }
+        public System.Threading.Tasks.Task<bool> VerifyAsync(Shardis.Migration.Model.KeyMove<TKey> move, System.Threading.CancellationToken cancellationToken) { }
+    }
+}

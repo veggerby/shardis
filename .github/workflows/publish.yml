@@ -101,7 +101,9 @@ jobs:
           fi
           RELEASE_NOTES_ARG=""
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            RELEASE_NOTES_ARG="/p:PackageReleaseNotes=\"$(sed 's/\r//g' RELEASE_NOTES.txt)\""
+            # Collapse CR/LF, replace newlines with single spaces, escape quotes to avoid msbuild arg splitting
+            CLEAN_NOTES=$(tr '\r' ' ' < RELEASE_NOTES.txt | tr '\n' ' ' | sed 's/"/\\"/g')
+            RELEASE_NOTES_ARG="/p:PackageReleaseNotes=\"$CLEAN_NOTES\""
           fi
           mkdir -p "$NUGET_PACK_DIR"
 

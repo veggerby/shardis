@@ -1,8 +1,4 @@
-using System.Data.Common;
-
 using Marten;
-
-using Npgsql;
 
 using Xunit;
 

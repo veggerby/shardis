@@ -1,10 +1,7 @@
 using AwesomeAssertions;
 
-using Marten;
-
 using NSubstitute;
 
-using Shardis.Marten;
 using Shardis.Model;
 using Shardis.Query.Diagnostics;
 
@@ -12,10 +9,9 @@ using Xunit;
 
 namespace Shardis.Marten.Tests;
 
-public sealed class AdaptivePagingTelemetryTests : IClassFixture<PostgresContainerFixture>
+public sealed class AdaptivePagingTelemetryTests(PostgresContainerFixture fx) : IClassFixture<PostgresContainerFixture>
 {
-    private readonly PostgresContainerFixture _fx;
-    public AdaptivePagingTelemetryTests(PostgresContainerFixture fx) => _fx = fx;
+    private readonly PostgresContainerFixture _fx = fx;
 
     [PostgresFact]
     public async Task AdaptivePaging_EmitsDecision()

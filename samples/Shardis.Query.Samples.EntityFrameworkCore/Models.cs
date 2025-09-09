@@ -9,9 +9,19 @@ public sealed class Person
     public int Age { get; set; }
 }
 
-public sealed class PersonContext(DbContextOptions<PersonContext> options, string dbPath) : DbContext(options)
+// Simple DbContext per database (one database == one shard). No per-schema customization needed.
+public sealed class PersonContext(DbContextOptions<PersonContext> options) : DbContext(options)
 {
-    private readonly string _dbPath = dbPath;
-
     public DbSet<Person> People => Set<Person>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Person>(b =>
+        {
+            b.ToTable("persons");
+            b.HasKey(p => p.Id);
+            b.Property(p => p.Name).IsRequired();
+            b.Property(p => p.Age).IsRequired();
+        });
+    }
 }

@@ -1,7 +1,7 @@
 [assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
 [assembly: System.Resources.NeutralResourcesLanguage("en")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Tests")]
-namespace Shardis.DependencyInjectionagnostics
+namespace Shardis.Diagnostics
 {
     public static class ShardisDiagnostics
     {
@@ -84,6 +84,36 @@ namespace Shardis.Instrumentation
         public void RecordRouteLatency(double elapsedMs) { }
         public void RouteHit(string router, string shardId, bool existingAssignment) { }
         public void RouteMiss(string router) { }
+    }
+}
+namespace Shardis.Logging
+{
+    public interface IShardisLogger
+    {
+        bool IsEnabled(Shardis.Logging.ShardisLogLevel level);
+        void Log(Shardis.Logging.ShardisLogLevel level, string message, System.Exception? exception = null, System.Collections.Generic.IReadOnlyDictionary<string, object?>? tags = null);
+    }
+    public sealed class InMemoryShardisLogger : Shardis.Logging.IShardisLogger
+    {
+        public InMemoryShardisLogger(Shardis.Logging.ShardisLogLevel min = 0) { }
+        public System.Collections.Generic.IReadOnlyCollection<string> Entries { get; }
+        public bool IsEnabled(Shardis.Logging.ShardisLogLevel level) { }
+        public void Log(Shardis.Logging.ShardisLogLevel level, string message, System.Exception? exception = null, System.Collections.Generic.IReadOnlyDictionary<string, object?>? tags = null) { }
+    }
+    public sealed class NullShardisLogger : Shardis.Logging.IShardisLogger
+    {
+        public static readonly Shardis.Logging.NullShardisLogger Instance;
+        public bool IsEnabled(Shardis.Logging.ShardisLogLevel level) { }
+        public void Log(Shardis.Logging.ShardisLogLevel level, string message, System.Exception? exception = null, System.Collections.Generic.IReadOnlyDictionary<string, object?>? tags = null) { }
+    }
+    public enum ShardisLogLevel
+    {
+        Trace = 0,
+        Debug = 1,
+        Information = 2,
+        Warning = 3,
+        Error = 4,
+        Critical = 5,
     }
 }
 namespace Shardis.Model

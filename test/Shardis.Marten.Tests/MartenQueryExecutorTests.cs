@@ -2,11 +2,8 @@ using AwesomeAssertions;
 
 using Marten;
 
-using Shardis.Marten;
 using Shardis.Model;
 using Shardis.Querying.Linq;
-
-using Xunit;
 
 namespace Shardis.Marten.Tests;
 

@@ -15,6 +15,7 @@ This index links core conceptual and roadmap documents.
 - LINQ Query Architecture & Orchestrator: `linq.md`
 - Backlog & Feature Roadmap: `backlog.md`
 - Benchmarks & Performance Guidance: `benchmarks.md`
+- Canonicalization & Checksums: `canonicalization.md`
 
 ## Contribution
 
@@ -33,7 +34,7 @@ This index links core conceptual and roadmap documents.
 | Consistent hashing router | ✅ | README |
 | Metrics (no-op + counters) | ✅ | README / `IShardisMetrics` |
 | Migration planning | ✅ (scaffold) | README |
-| Migration execution | 🚧 | README / backlog |
+| Migration execution | ✅ | README / migration usage |
 | Fluent query API | 🚧 | `api.md`, `linq.md` |
 | Redis shard map store | ✅ | `Shardis.Redis` project |
 | Additional map stores (SQL) | 🚧 | backlog |
