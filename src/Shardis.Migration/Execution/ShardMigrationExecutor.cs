@@ -39,7 +39,7 @@ public sealed class ShardMigrationExecutor<TKey>(
     private readonly IShardMigrationMetrics _metrics = metrics;
     private readonly ShardMigrationOptions _options = options;
     private readonly Func<DateTimeOffset> _now = timeProvider ?? (() => DateTimeOffset.UtcNow);
-    private readonly IShardisLogger _log = logger ?? Shardis.Logging.NullShardisLogger.Instance;
+    private readonly IShardisLogger _log = logger ?? NullShardisLogger.Instance;
 
     private const int CheckpointVersion = 1;
     private static readonly ActivitySource Activity = ShardisDiagnostics.ActivitySource;

@@ -32,7 +32,6 @@ public sealed class SimpleShard : ISimpleShard
         QueryExecutor = queryExecutor ?? NoOpQueryExecutor<string>.Instance;
         ShardId = shardId;
         ConnectionString = connectionString;
-
     }
 
     /// <summary>

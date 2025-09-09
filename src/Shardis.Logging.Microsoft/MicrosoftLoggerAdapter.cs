@@ -21,7 +21,11 @@ public sealed class MicrosoftLoggerAdapter(ILogger logger, Func<ShardisLogLevel,
     /// <inheritdoc />
     public void Log(ShardisLogLevel level, string message, Exception? exception = null, IReadOnlyDictionary<string, object?>? tags = null)
     {
-        if (!IsEnabled(level)) return;
+        if (!IsEnabled(level))
+        {
+            return;
+        }
+
         var logLevel = _map(level);
         if (tags is { Count: > 0 })
         {
@@ -29,6 +33,7 @@ public sealed class MicrosoftLoggerAdapter(ILogger logger, Func<ShardisLogLevel,
             _logger.Log(logLevel, new EventId(), message, exception, static (s, _) => s);
             return;
         }
+
         _logger.Log(logLevel, new EventId(), message, exception, static (s, _) => s);
     }
 
@@ -54,7 +59,11 @@ public static class ShardisMicrosoftLoggingExtensions
     /// </summary>
     public static IShardisLogger CreateShardisLogger(this ILoggerFactory factory, string category = "Shardis", Func<ShardisLogLevel, LogLevel>? levelMap = null)
     {
-        if (factory == null) throw new ArgumentNullException(nameof(factory));
+        if (factory == null)
+        {
+            throw new ArgumentNullException(nameof(factory));
+        }
+
         return new MicrosoftLoggerAdapter(factory.CreateLogger(category), levelMap);
     }
 }

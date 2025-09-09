@@ -1,8 +1,4 @@
-using AwesomeAssertions;
-
 using Shardis.Logging;
-
-using Xunit;
 
 namespace Shardis.Tests.Logging;
 

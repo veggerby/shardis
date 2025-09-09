@@ -183,7 +183,7 @@ public class MartenMigrationTests
                 {
                     return existing;
                 }
-                var store = global::Marten.DocumentStore.For(opts =>
+                var store = DocumentStore.For(opts =>
                 {
                     opts.Connection(_connectionString);
                     opts.DatabaseSchemaName = $"mig_{shard.Value}"; // isolate per shard

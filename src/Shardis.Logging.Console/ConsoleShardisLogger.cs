@@ -1,5 +1,3 @@
-using Shardis.Logging;
-
 namespace Shardis.Logging.Console;
 
 /// <summary>
@@ -16,14 +14,19 @@ public sealed class ConsoleShardisLogger(ShardisLogLevel minimumLevel = ShardisL
     /// <inheritdoc />
     public void Log(ShardisLogLevel level, string message, Exception? exception = null, IReadOnlyDictionary<string, object?>? tags = null)
     {
-        if (!IsEnabled(level)) return;
-        var ts = System.DateTimeOffset.UtcNow.ToString("o");
+        if (!IsEnabled(level))
+        {
+            return;
+        }
+
+        var ts = DateTimeOffset.UtcNow.ToString("o");
         var line = $"{ts} [{level}] {message}";
         if (tags is { Count: > 0 })
         {
             var kv = string.Join(" ", tags.Select(kv => kv.Key + '=' + (kv.Value ?? "null")));
             line += " | " + kv;
         }
+
         System.Console.WriteLine(line);
         if (exception != null)
         {

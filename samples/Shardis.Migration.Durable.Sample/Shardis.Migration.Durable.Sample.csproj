@@ -10,7 +10,7 @@
     <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
     <ProjectReference Include="../../src/Shardis.Migration.EntityFrameworkCore/Shardis.Migration.EntityFrameworkCore.csproj" />
     <ProjectReference Include="../../src/Shardis.Migration.Sql/Shardis.Migration.Sql.csproj" />
-  <ProjectReference Include="../../src/Shardis.DependencyInjection/Shardis.DependencyInjection.csproj" />
+    <ProjectReference Include="../../src/Shardis.DependencyInjection/Shardis.DependencyInjection.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

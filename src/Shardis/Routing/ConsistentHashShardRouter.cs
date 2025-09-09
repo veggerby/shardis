@@ -181,7 +181,7 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     {
         if (shardKey.Value == null) throw new ArgumentNullException(nameof(shardKey));
 
-        using var activity = Shardis.Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.route", System.Diagnostics.ActivityKind.Internal);
+        using var activity = Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.route", System.Diagnostics.ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("shardis.router", RouterName);

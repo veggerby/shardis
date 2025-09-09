@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 
-using Shardis.Diagnostics;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 
@@ -32,7 +31,7 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity>(IShard
 {
     private readonly IShardDbContextFactory<TContext> _factory = factory;
     private readonly IEntityProjectionStrategy _projection = projection;
-    private readonly Logging.IShardisLogger _log = logger ?? Shardis.Logging.NullShardisLogger.Instance;
+    private readonly Logging.IShardisLogger _log = logger ?? Logging.NullShardisLogger.Instance;
 
     /// <summary>
     /// Copies the entity for <paramref name="move"/> from the source shard to the target shard.
@@ -45,7 +44,7 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity>(IShard
     {
         // Load source entity (no tracking to avoid unnecessary change tracker overhead)
 
-        using var copyActivity = Shardis.Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.migration.mover.copy", System.Diagnostics.ActivityKind.Internal);
+        using var copyActivity = Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.migration.mover.copy", System.Diagnostics.ActivityKind.Internal);
         copyActivity?.SetTag("shard.from", move.Source.Value);
         copyActivity?.SetTag("shard.to", move.Target.Value);
         copyActivity?.SetTag("migration.key", move.Key.Value?.ToString());
@@ -55,9 +54,9 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity>(IShard
         var entity = await set.FindAsync([move.Key.Value!], ct).ConfigureAwait(false);
         if (entity is null)
         {
-            if (_log.IsEnabled(Shardis.Logging.ShardisLogLevel.Trace))
+            if (_log.IsEnabled(Logging.ShardisLogLevel.Trace))
             {
-                _log.Log(Shardis.Logging.ShardisLogLevel.Trace, $"no source entity key={move.Key.Value}");
+                _log.Log(Logging.ShardisLogLevel.Trace, $"no source entity key={move.Key.Value}");
             }
             return; // nothing to copy
         }
@@ -84,9 +83,9 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity>(IShard
         }
 
         await targetCtx.SaveChangesAsync(ct).ConfigureAwait(false);
-        if (_log.IsEnabled(Shardis.Logging.ShardisLogLevel.Trace))
+        if (_log.IsEnabled(Logging.ShardisLogLevel.Trace))
         {
-            _log.Log(Shardis.Logging.ShardisLogLevel.Trace, $"upserted key={move.Key.Value} shard={move.Target.Value}");
+            _log.Log(Logging.ShardisLogLevel.Trace, $"upserted key={move.Key.Value} shard={move.Target.Value}");
         }
     }
 
@@ -100,7 +99,7 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity>(IShard
     /// <returns>True if verification passed; otherwise false.</returns>
     public async Task<bool> VerifyAsync(KeyMove<TKey> move, CancellationToken ct)
     {
-        using var verifyActivity = Shardis.Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.migration.mover.verify", System.Diagnostics.ActivityKind.Internal);
+        using var verifyActivity = Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.migration.mover.verify", System.Diagnostics.ActivityKind.Internal);
         verifyActivity?.SetTag("shard.from", move.Source.Value);
         verifyActivity?.SetTag("shard.to", move.Target.Value);
         verifyActivity?.SetTag("migration.key", move.Key.Value?.ToString());
@@ -112,18 +111,18 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity>(IShard
         var target = await targetCtx.Set<TEntity>().FindAsync([move.Key.Value!], ct).ConfigureAwait(false);
         if (source is null || target is null)
         {
-            if (_log.IsEnabled(Shardis.Logging.ShardisLogLevel.Debug))
+            if (_log.IsEnabled(Logging.ShardisLogLevel.Debug))
             {
-                _log.Log(Shardis.Logging.ShardisLogLevel.Debug, $"verify missing key={move.Key.Value} source_null={source is null} target_null={target is null}");
+                _log.Log(Logging.ShardisLogLevel.Debug, $"verify missing key={move.Key.Value} source_null={source is null} target_null={target is null}");
             }
             return false; // mismatch or missing
         }
         if (source.RowVersion is not null && target.RowVersion is not null)
         {
             var ok = source.RowVersion.AsSpan().SequenceEqual(target.RowVersion);
-            if (!ok && _log.IsEnabled(Shardis.Logging.ShardisLogLevel.Warning))
+            if (!ok && _log.IsEnabled(Logging.ShardisLogLevel.Warning))
             {
-                _log.Log(Shardis.Logging.ShardisLogLevel.Warning, $"rowversion mismatch key={move.Key.Value}");
+                _log.Log(Logging.ShardisLogLevel.Warning, $"rowversion mismatch key={move.Key.Value}");
             }
             return ok;
         }

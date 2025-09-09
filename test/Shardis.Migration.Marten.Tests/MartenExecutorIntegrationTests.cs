@@ -118,7 +118,7 @@ public class MartenExecutorIntegrationTests
             lock (_gate)
             {
                 if (_stores.TryGetValue(shard.Value, out ds)) { return ds; }
-                ds = global::Marten.DocumentStore.For(o =>
+                ds = DocumentStore.For(o =>
                 {
                     o.Connection(_conn);
                     o.DatabaseSchemaName = $"exec_{shard.Value}"; // isolate

@@ -1,4 +1,3 @@
-using Shardis.Logging;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
