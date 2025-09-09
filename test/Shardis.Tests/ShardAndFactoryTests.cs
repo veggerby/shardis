@@ -1,15 +1,10 @@
-using AwesomeAssertions;
-
 using Microsoft.Extensions.DependencyInjection;
 
 using Shardis.Factories;
 using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;
-using Shardis.Querying.Linq;
 using Shardis.Routing;
-
-using Xunit;
 
 namespace Shardis.Tests;
 
@@ -154,7 +149,7 @@ public sealed class ShardAndFactoryTests
         // arrange
         var services = new ServiceCollection();
         services.AddSingleton<IShardMapStore<string>, InMemoryShardMapStore<string>>();
-        services.AddSingleton<IShardKeyHasher<string>>(DefaultShardKeyHasher<string>.Instance);
+        services.AddSingleton(DefaultShardKeyHasher<string>.Instance);
 
         services.AddShardis<SimpleShard, string, string>(opts =>
         {
@@ -176,7 +171,7 @@ public sealed class ShardAndFactoryTests
         // arrange
         var services = new ServiceCollection();
         services.AddSingleton<IShardMapStore<string>, InMemoryShardMapStore<string>>();
-        services.AddSingleton<IShardKeyHasher<string>>(DefaultShardKeyHasher<string>.Instance);
+        services.AddSingleton(DefaultShardKeyHasher<string>.Instance);
 
         services.AddShardis<SimpleShard, string, string>(opts =>
         {

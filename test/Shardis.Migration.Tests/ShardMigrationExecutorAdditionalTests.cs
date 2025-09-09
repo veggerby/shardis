@@ -28,7 +28,7 @@ public class ShardMigrationExecutorAdditionalTests
         IShardMigrationMetrics metrics,
         ShardMigrationOptions options,
         Func<DateTimeOffset>? clock = null)
-        => new(mover, verification, swapper, checkpoint, metrics, options, clock);
+        => new(mover, verification, swapper, checkpoint, metrics, options, new Shardis.Logging.InMemoryShardisLogger(), clock);
 
     private sealed class RecordingMover : IShardDataMover<string>
     {
@@ -217,7 +217,8 @@ public class ShardMigrationExecutorAdditionalTests
 
         // assert
         summary.Done.Should().Be(20);
-        events.Count.Should().BeLessThanOrEqualTo(1);
+        // Allow a possible forced final emission producing a second snapshot.
+        events.Count.Should().BeLessThanOrEqualTo(2);
     }
 
     [Fact]

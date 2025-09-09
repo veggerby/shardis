@@ -37,4 +37,20 @@ public interface IShardMigrationMetrics
     /// <summary>Sets the current number of in-flight verification operations.</summary>
     /// <param name="value">The current verify concurrency.</param>
     void SetActiveVerify(int value);
+
+    /// <summary>Records the duration of the copy phase for a single key (in milliseconds).</summary>
+    /// <param name="ms">Elapsed milliseconds.</param>
+    void ObserveCopyDuration(double ms);
+
+    /// <summary>Records the duration of the verify phase for a single key (in milliseconds).</summary>
+    /// <param name="ms">Elapsed milliseconds.</param>
+    void ObserveVerifyDuration(double ms);
+
+    /// <summary>Records the duration of each swap batch (in milliseconds).</summary>
+    /// <param name="ms">Elapsed milliseconds.</param>
+    void ObserveSwapBatchDuration(double ms);
+
+    /// <summary>Records total execution elapsed once a plan completes (in milliseconds).</summary>
+    /// <param name="ms">Elapsed milliseconds.</param>
+    void ObserveTotalElapsed(double ms);
 }

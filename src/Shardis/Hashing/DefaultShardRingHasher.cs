@@ -11,7 +11,9 @@ public sealed class DefaultShardRingHasher : IShardRingHasher
 {
     /// <summary>Gets a singleton instance.</summary>
     public static readonly IShardRingHasher Instance = new DefaultShardRingHasher();
+
     private DefaultShardRingHasher() { }
+
     /// <inheritdoc />
     public uint Hash(string value) => ShardHasher.HashString(value);
 }

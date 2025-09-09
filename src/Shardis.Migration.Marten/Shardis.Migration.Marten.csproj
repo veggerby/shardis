@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>Shardis.Migration.Marten</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Marten migration provider for Shardis (document data mover + checksum verification).</Description>
+    <PackageTags>shardis;sharding;marten;migration;data-mover;document</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Marten" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Shardis.Migration/Shardis.Migration.csproj" />
+  </ItemGroup>
+</Project>

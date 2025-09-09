@@ -1,6 +1,9 @@
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
+using Shardis.Diagnostics;
+using Shardis.Logging;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 using Shardis.Model;
@@ -20,6 +23,7 @@ public sealed class ShardMigrationExecutor<TKey>(
     IShardMigrationCheckpointStore<TKey> checkpointStore,
     IShardMigrationMetrics metrics,
     ShardMigrationOptions options,
+    IShardisLogger? logger = null,
     Func<DateTimeOffset>? timeProvider = null)
     where TKey : notnull, IEquatable<TKey>
 {
@@ -35,8 +39,10 @@ public sealed class ShardMigrationExecutor<TKey>(
     private readonly IShardMigrationMetrics _metrics = metrics;
     private readonly ShardMigrationOptions _options = options;
     private readonly Func<DateTimeOffset> _now = timeProvider ?? (() => DateTimeOffset.UtcNow);
+    private readonly IShardisLogger _log = logger ?? NullShardisLogger.Instance;
 
     private const int CheckpointVersion = 1;
+    private static readonly ActivitySource Activity = ShardisDiagnostics.ActivitySource;
     /// <summary>Holds the last exception encountered while persisting a checkpoint in the failure path (for diagnostics).</summary>
     public Exception? LastCheckpointPersistException { get; private set; }
 
@@ -52,8 +58,11 @@ public sealed class ShardMigrationExecutor<TKey>(
         IProgress<MigrationProgressEvent>? progress,
         CancellationToken ct)
     {
-        // Capture start time for duration metrics.
+        // Capture start time + root activity for this plan execution.
         var started = _now();
+        using var root = Activity.StartActivity("shardis.migration.execute", ActivityKind.Internal);
+        root?.SetTag("migration.plan_id", plan.PlanId);
+        root?.SetTag("migration.total_keys", plan.Moves.Count);
 
         // Attempt to load an existing checkpoint for this plan. A checkpoint contains
         // the last persisted move states and the last processed index so the executor
@@ -181,9 +190,8 @@ public sealed class ShardMigrationExecutor<TKey>(
             }
         }
 
-        // Throttled progress emitter (at most once per second). Computes aggregated
-        // counts from the states map and reports them via the provided IProgress.
-        void EmitProgressIfNeeded()
+        // Throttled progress emitter (at most once per second) unless force=true.
+        void EmitProgress(bool force)
         {
             if (progress is null)
             {
@@ -192,7 +200,7 @@ public sealed class ShardMigrationExecutor<TKey>(
 
             var now = _now();
 
-            if (now - lastProgressAt < TimeSpan.FromSeconds(1))
+            if (!force && now - lastProgressAt < TimeSpan.FromSeconds(1))
             {
                 return;
             }
@@ -253,6 +261,12 @@ public sealed class ShardMigrationExecutor<TKey>(
                 // further copies without awaiting each immediately.
                 var copyTask = Task.Run(async () =>
                 {
+                    using var span = Activity.StartActivity("shardis.migration.copy", ActivityKind.Internal);
+                    span?.SetTag("migration.phase", "copy");
+                    span?.SetTag("shard.from", move.Source.Value);
+                    span?.SetTag("shard.to", move.Target.Value);
+                    span?.SetTag("migration.key", move.Key.Value?.ToString());
+                    var copyStarted = Stopwatch.GetTimestamp();
                     try
                     {
                         states[move.Key] = KeyMoveState.Copying;
@@ -262,6 +276,8 @@ public sealed class ShardMigrationExecutor<TKey>(
                             // Copy succeeded; transition to Copied and update metrics.
                             states[move.Key] = KeyMoveState.Copied;
                             _metrics.IncCopied();
+                            var elapsedMs = ElapsedMs(copyStarted);
+                            _metrics.ObserveCopyDuration(elapsedMs);
                             transitionSinceFlush++;
                         }
                     }
@@ -289,7 +305,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     inFlightCopies.Remove(finished);
                 }
 
-                EmitProgressIfNeeded();
+                EmitProgress(false);
 
                 // Periodically persist checkpoints so long-running operations can be resumed.
                 await PersistCheckpointIfNeeded(false, ct).ConfigureAwait(false);
@@ -310,7 +326,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                 }
             }
 
-            EmitProgressIfNeeded();
+            EmitProgress(false);
 
             // Prepare swap batches from verified keys and execute in batches.
             foreach (var move in plan.Moves)
@@ -335,13 +351,15 @@ public sealed class ShardMigrationExecutor<TKey>(
 
             // Force a final checkpoint to capture completion state.
             await PersistCheckpointIfNeeded(true, ct).ConfigureAwait(false);
-            EmitProgressIfNeeded();
+            EmitProgress(true);
 
             var done = states.Values.Count(s => s == KeyMoveState.Done);
             var failed = states.Values.Count(s => s == KeyMoveState.Failed);
             completed = true;
 
-            return new MigrationSummary(plan.PlanId, total, done, failed, _now() - started);
+            var elapsed = _now() - started;
+            _metrics.ObserveTotalElapsed(elapsed.TotalMilliseconds);
+            return new MigrationSummary(plan.PlanId, total, done, failed, elapsed);
         }
         finally
         {
@@ -370,7 +388,13 @@ public sealed class ShardMigrationExecutor<TKey>(
             try
             {
                 states[move.Key] = KeyMoveState.Verifying;
+                using var span = Activity.StartActivity("shardis.migration.verify", ActivityKind.Internal);
+                span?.SetTag("migration.phase", "verify");
+                span?.SetTag("shard.from", move.Source.Value);
+                span?.SetTag("shard.to", move.Target.Value);
+                span?.SetTag("migration.key", move.Key.Value?.ToString());
 
+                var verifyStarted = Stopwatch.GetTimestamp();
                 await ExecuteWithRetry(async () =>
                 {
                     var ok = await _verification.VerifyAsync(move, token).ConfigureAwait(false);
@@ -384,6 +408,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                 {
                     states[move.Key] = KeyMoveState.Verified;
                     _metrics.IncVerified();
+                    _metrics.ObserveVerifyDuration(ElapsedMs(verifyStarted));
                     transitionSinceFlush++;
                     UpdateLastProcessed(move.Key);
                 }
@@ -403,6 +428,10 @@ public sealed class ShardMigrationExecutor<TKey>(
                 return;
             }
 
+            var swapStarted = Stopwatch.GetTimestamp();
+            using var span = Activity.StartActivity("shardis.migration.swap_batch", ActivityKind.Internal);
+            span?.SetTag("migration.phase", "swap");
+            span?.SetTag("migration.batch_size", batch.Count);
             foreach (var m in batch)
             {
                 if (states[m.Key] == KeyMoveState.Verified)
@@ -423,6 +452,13 @@ public sealed class ShardMigrationExecutor<TKey>(
                     UpdateLastProcessed(m.Key);
                 }
             }
+            _metrics.ObserveSwapBatchDuration(ElapsedMs(swapStarted));
         }
+    }
+
+    private static double ElapsedMs(long startTimestamp)
+    {
+        var end = Stopwatch.GetTimestamp();
+        return (end - startTimestamp) * 1000.0 / Stopwatch.Frequency;
     }
 }

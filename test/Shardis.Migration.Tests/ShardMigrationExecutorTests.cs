@@ -1,3 +1,4 @@
+using Shardis.Logging;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
@@ -33,7 +34,7 @@ public class ShardMigrationExecutorTests
         checkpoint ??= new InMemoryCheckpointStore<string>();
         metrics ??= new SimpleShardMigrationMetrics();
         options ??= new ShardMigrationOptions { CopyConcurrency = 4, VerifyConcurrency = 4, SwapBatchSize = 32, MaxRetries = 5, RetryBaseDelay = TimeSpan.FromMilliseconds(1) };
-        return new ShardMigrationExecutor<string>(mover, verification, swapper, checkpoint, metrics, options);
+        return new ShardMigrationExecutor<string>(mover, verification, swapper, checkpoint, metrics, options, new InMemoryShardisLogger());
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
 using Shardis.Migration.Instrumentation;
+using Shardis.Migration.Throttling;
 using Shardis.Persistence;
 
 namespace Shardis.Migration;
@@ -73,6 +74,30 @@ public static class ServiceCollectionExtensions
         if (!IsRegistered(services, typeof(IShardMigrationMetrics)))
         {
             services.AddSingleton<IShardMigrationMetrics, NoOpShardMigrationMetrics>();
+        }
+
+        // Provider-agnostic extension points (projection, hashing, budgeting) only register if absent.
+        if (!IsRegistered(services, typeof(IEntityProjectionStrategy)))
+        {
+            services.AddSingleton<IEntityProjectionStrategy>(NoOpEntityProjectionStrategy.Instance);
+        }
+
+        if (!IsRegistered(services, typeof(IStableHasher)))
+        {
+            services.AddSingleton<IStableHasher, Fnv1a64Hasher>();
+        }
+
+        if (!IsRegistered(services, typeof(IStableCanonicalizer)))
+        {
+            services.AddSingleton<IStableCanonicalizer, JsonStableCanonicalizer>();
+        }
+
+        if (!IsRegistered(services, typeof(IBudgetGovernor)))
+        {
+            // Use options hints if provided for initial sizing.
+            services.AddSingleton<IBudgetGovernor>(sp => new SimpleBudgetGovernor(
+                initialGlobal: options.MaxConcurrentMoves ?? 256,
+                maxPerShard: options.MaxMovesPerShard ?? 16));
         }
 
         // Internal executor can be resolved via DI inside tests (InternalsVisibleTo) / adapters later.

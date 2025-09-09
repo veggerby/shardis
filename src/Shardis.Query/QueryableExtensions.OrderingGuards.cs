@@ -6,7 +6,7 @@ namespace Shardis.Query;
 /// <summary>Extensions that deliberately throw to signal unsupported ordering in MVP.</summary>
 public static class ShardQueryableOrderingGuards
 {
-    static NotSupportedException OrderByNotSupported()
+    private static NotSupportedException OrderByNotSupported()
         => new NotSupportedException(
             "OrderBy/ThenBy are not supported in the LINQ MVP. Use ShardStreamBroadcaster.QueryAllShardsOrderedStreamingAsync(keySelector) or perform ordering after materialization.");
 

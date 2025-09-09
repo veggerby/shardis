@@ -4,6 +4,17 @@
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Shardis.Migration.Tests")]
 namespace Shardis.Migration.Abstractions
 {
+    public sealed class Fnv1a64Hasher : Shardis.Migration.Abstractions.IStableHasher
+    {
+        public Fnv1a64Hasher() { }
+        public ulong Hash(System.ReadOnlySpan<byte> data) { }
+    }
+    public interface IEntityProjectionStrategy
+    {
+        TTarget Project<TSource, TTarget>(TSource source, Shardis.Migration.Abstractions.ProjectionContext context)
+            where TSource :  class
+            where TTarget :  class;
+    }
     public interface IShardDataMover<TKey>
         where TKey :  notnull, System.IEquatable<TKey>
     {
@@ -29,6 +40,10 @@ namespace Shardis.Migration.Abstractions
         void IncRetries(long delta = 1);
         void IncSwapped(long delta = 1);
         void IncVerified(long delta = 1);
+        void ObserveCopyDuration(double ms);
+        void ObserveSwapBatchDuration(double ms);
+        void ObserveTotalElapsed(double ms);
+        void ObserveVerifyDuration(double ms);
         void SetActiveCopy(int value);
         void SetActiveVerify(int value);
     }
@@ -37,10 +52,37 @@ namespace Shardis.Migration.Abstractions
     {
         System.Threading.Tasks.Task<Shardis.Migration.Model.MigrationPlan<TKey>> CreatePlanAsync(Shardis.Migration.Model.TopologySnapshot<TKey> from, Shardis.Migration.Model.TopologySnapshot<TKey> to, System.Threading.CancellationToken ct);
     }
+    public interface IStableCanonicalizer
+    {
+        byte[] ToCanonicalUtf8(object value);
+    }
+    public interface IStableHasher
+    {
+        ulong Hash(System.ReadOnlySpan<byte> data);
+    }
     public interface IVerificationStrategy<TKey>
         where TKey :  notnull, System.IEquatable<TKey>
     {
         System.Threading.Tasks.Task<bool> VerifyAsync(Shardis.Migration.Model.KeyMove<TKey> move, System.Threading.CancellationToken ct);
+    }
+    public sealed class JsonStableCanonicalizer : Shardis.Migration.Abstractions.IStableCanonicalizer
+    {
+        public JsonStableCanonicalizer() { }
+        public byte[] ToCanonicalUtf8(object value) { }
+    }
+    public sealed class NoOpEntityProjectionStrategy : Shardis.Migration.Abstractions.IEntityProjectionStrategy
+    {
+        public static readonly Shardis.Migration.Abstractions.NoOpEntityProjectionStrategy Instance;
+        public NoOpEntityProjectionStrategy() { }
+        public TTarget Project<TSource, TTarget>(TSource source, Shardis.Migration.Abstractions.ProjectionContext context)
+            where TSource :  class
+            where TTarget :  class { }
+    }
+    public readonly struct ProjectionContext : System.IEquatable<Shardis.Migration.Abstractions.ProjectionContext>
+    {
+        public ProjectionContext(int? SourceSchemaVersion, int? TargetSchemaVersion) { }
+        public int? SourceSchemaVersion { get; init; }
+        public int? TargetSchemaVersion { get; init; }
     }
 }
 namespace Shardis.Migration.Execution
@@ -70,7 +112,7 @@ namespace Shardis.Migration.Execution
     public sealed class ShardMigrationExecutor<TKey>
         where TKey :  notnull, System.IEquatable<TKey>
     {
-        public ShardMigrationExecutor(Shardis.Migration.Abstractions.IShardDataMover<TKey> mover, Shardis.Migration.Abstractions.IVerificationStrategy<TKey> verification, Shardis.Migration.Abstractions.IShardMapSwapper<TKey> swapper, Shardis.Migration.Abstractions.IShardMigrationCheckpointStore<TKey> checkpointStore, Shardis.Migration.Abstractions.IShardMigrationMetrics metrics, Shardis.Migration.Execution.ShardMigrationOptions options, System.Func<System.DateTimeOffset>? timeProvider = null) { }
+        public ShardMigrationExecutor(Shardis.Migration.Abstractions.IShardDataMover<TKey> mover, Shardis.Migration.Abstractions.IVerificationStrategy<TKey> verification, Shardis.Migration.Abstractions.IShardMapSwapper<TKey> swapper, Shardis.Migration.Abstractions.IShardMigrationCheckpointStore<TKey> checkpointStore, Shardis.Migration.Abstractions.IShardMigrationMetrics metrics, Shardis.Migration.Execution.ShardMigrationOptions options, Shardis.Logging.IShardisLogger? logger = null, System.Func<System.DateTimeOffset>? timeProvider = null) { }
         public System.Exception? LastCheckpointPersistException { get; }
         public System.Threading.Tasks.Task<Shardis.Migration.Execution.MigrationSummary> ExecuteAsync(Shardis.Migration.Model.MigrationPlan<TKey> plan, System.IProgress<Shardis.Migration.Execution.MigrationProgressEvent>? progress, System.Threading.CancellationToken ct) { }
     }
@@ -81,8 +123,14 @@ namespace Shardis.Migration.Execution
         public System.TimeSpan CheckpointFlushInterval { get; init; }
         public int CopyConcurrency { get; init; }
         public bool EnableDryRunHashSampling { get; init; }
+        public bool EnableDualRead { get; init; }
+        public bool EnableDualWrite { get; init; }
         public bool ForceSwapOnVerificationFailure { get; init; }
+        public System.TimeSpan HealthWindow { get; init; }
         public bool InterleaveCopyAndVerify { get; init; }
+        public int? MaxConcurrentMoves { get; init; }
+        public int? MaxMovesPerShard { get; init; }
+        public System.TimeSpan MaxReadStaleness { get; init; }
         public int MaxRetries { get; init; }
         public System.TimeSpan RetryBaseDelay { get; init; }
         public int SwapBatchSize { get; init; }
@@ -142,5 +190,34 @@ namespace Shardis.Migration
     {
         public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisMigration<TKey>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Shardis.Migration.Execution.ShardMigrationOptions>? configure = null)
             where TKey :  notnull, System.IEquatable<TKey> { }
+    }
+}
+namespace Shardis.Migration.Throttling
+{
+    public interface IBudgetGovernor
+    {
+        int CurrentGlobalBudget { get; }
+        int MaxPerShardBudget { get; }
+        void Recalculate();
+        void Release(object token, string shardId);
+        void Report(Shardis.Migration.Throttling.ShardHealth health);
+        bool TryAcquire(out object token, string shardId);
+    }
+    public readonly struct ShardHealth : System.IEquatable<Shardis.Migration.Throttling.ShardHealth>
+    {
+        public ShardHealth(string ShardId, double P95LatencyMs, double MismatchRate) { }
+        public double MismatchRate { get; init; }
+        public double P95LatencyMs { get; init; }
+        public string ShardId { get; init; }
+    }
+    public sealed class SimpleBudgetGovernor : Shardis.Migration.Throttling.IBudgetGovernor
+    {
+        public SimpleBudgetGovernor(int initialGlobal = 256, int minGlobal = 32, int maxPerShard = 16) { }
+        public int CurrentGlobalBudget { get; }
+        public int MaxPerShardBudget { get; }
+        public void Recalculate() { }
+        public void Release(object token, string shardId) { }
+        public void Report(Shardis.Migration.Throttling.ShardHealth health) { }
+        public bool TryAcquire(out object token, string shardId) { }
     }
 }
