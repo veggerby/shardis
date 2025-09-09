@@ -19,24 +19,18 @@ namespace Shardis.Migration.EntityFrameworkCore;
 /// Thread safety: a single instance is safe for concurrent use because per-operation state is confined to short-lived
 /// DbContext instances created via the injected factory.
 /// </remarks>
-public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity> : IShardDataMover<TKey>
+/// <remarks>
+/// Initializes a new instance of the <see cref="EntityFrameworkCoreDataMover{TKey, TContext, TEntity}"/> class.
+/// </remarks>
+/// <param name="factory">Shard-scoped context factory.</param>
+/// <param name="projection">Projection strategy (identity by default).</param>
+public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity>(IShardDbContextFactory<TContext> factory, IEntityProjectionStrategy projection) : IShardDataMover<TKey>
     where TKey : notnull, IEquatable<TKey>
     where TContext : DbContext
     where TEntity : class, IShardEntity<TKey>
 {
-    private readonly IShardDbContextFactory<TContext> _factory;
-    private readonly IEntityProjectionStrategy _projection;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="EntityFrameworkCoreDataMover{TKey, TContext, TEntity}"/> class.
-    /// </summary>
-    /// <param name="factory">Shard-scoped context factory.</param>
-    /// <param name="projection">Projection strategy (identity by default).</param>
-    public EntityFrameworkCoreDataMover(IShardDbContextFactory<TContext> factory, IEntityProjectionStrategy projection)
-    {
-        _factory = factory;
-        _projection = projection;
-    }
+    private readonly IShardDbContextFactory<TContext> _factory = factory;
+    private readonly IEntityProjectionStrategy _projection = projection;
 
     /// <summary>
     /// Copies the entity for <paramref name="move"/> from the source shard to the target shard.
@@ -53,6 +47,8 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity> : ISha
         var entity = await set.FindAsync([move.Key.Value!], ct).ConfigureAwait(false);
         if (entity is null)
         {
+            // Diagnostic: indicate missing source entity.
+            Console.WriteLine($"[EF Mover] Source missing for key {move.Key.Value}");
             return; // nothing to copy
         }
 
@@ -71,10 +67,12 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity> : ISha
         if (existing is null)
         {
             await targetSet.AddAsync(projected, ct).ConfigureAwait(false);
+            Console.WriteLine($"[EF Mover] Inserted key {move.Key.Value}");
         }
         else
         {
             targetCtx.Entry(existing).CurrentValues.SetValues(projected);
+            Console.WriteLine($"[EF Mover] Updated key {move.Key.Value}");
         }
 
         await targetCtx.SaveChangesAsync(ct).ConfigureAwait(false);
@@ -97,6 +95,7 @@ public sealed class EntityFrameworkCoreDataMover<TKey, TContext, TEntity> : ISha
         var target = await targetCtx.Set<TEntity>().FindAsync([move.Key.Value!], ct).ConfigureAwait(false);
         if (source is null || target is null)
         {
+            Console.WriteLine($"[EF Mover] Verify miss for key {move.Key.Value} (source null? {source is null}, target null? {target is null})");
             return false; // mismatch or missing
         }
         if (source.RowVersion is not null && target.RowVersion is not null)

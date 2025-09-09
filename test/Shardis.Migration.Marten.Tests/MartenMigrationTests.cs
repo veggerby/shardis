@@ -166,16 +166,11 @@ public class MartenMigrationTests
         (await verifier.VerifyAsync(move, CancellationToken.None)).Should().BeTrue();
     }
 
-    private sealed class TestMartenSessionFactory : IMartenSessionFactory
+    private sealed class TestMartenSessionFactory(string connectionString) : IMartenSessionFactory
     {
-        private readonly string _connectionString;
+        private readonly string _connectionString = connectionString;
         private readonly Dictionary<string, IDocumentStore> _stores = new(StringComparer.Ordinal);
         private readonly object _gate = new();
-
-        public TestMartenSessionFactory(string connectionString)
-        {
-            _connectionString = connectionString;
-        }
 
         private IDocumentStore Get(ShardId shard)
         {

@@ -14,19 +14,13 @@ namespace Shardis.TestUtilities;
 /// Not for production usage.
 /// </summary>
 /// <typeparam name="TContext">DbContext type.</typeparam>
-public sealed class SqliteShardDbContextFactory<TContext> : IShardDbContextFactory<TContext>
+public sealed class SqliteShardDbContextFactory<TContext>(Func<DbContextOptions<TContext>, TContext> contextFactory, Func<ShardId, string>? nameSelector = null) : IShardDbContextFactory<TContext>
     where TContext : DbContext
 {
     private readonly ConcurrentDictionary<string, SqliteConnection> _connections = new();
-    private readonly Func<ShardId, string> _nameSelector;
-    private readonly Func<DbContextOptions<TContext>, TContext> _contextFactory;
+    private readonly Func<ShardId, string> _nameSelector = nameSelector ?? (sid => sid.Value);
+    private readonly Func<DbContextOptions<TContext>, TContext> _contextFactory = contextFactory;
     private readonly string _instanceId = Guid.NewGuid().ToString("N");
-
-    public SqliteShardDbContextFactory(Func<DbContextOptions<TContext>, TContext> contextFactory, Func<ShardId, string>? nameSelector = null)
-    {
-        _contextFactory = contextFactory;
-        _nameSelector = nameSelector ?? (sid => sid.Value);
-    }
 
     public Task<TContext> CreateAsync(ShardId shardId, CancellationToken cancellationToken = default)
     {

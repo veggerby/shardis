@@ -9,10 +9,9 @@ using Xunit;
 
 namespace Shardis.Marten.Tests;
 
-public sealed class MartenMetricsAndCancellationTests : IClassFixture<PostgresContainerFixture>
+public sealed class MartenMetricsAndCancellationTests(PostgresContainerFixture fx) : IClassFixture<PostgresContainerFixture>
 {
-    private readonly PostgresContainerFixture _fx;
-    public MartenMetricsAndCancellationTests(PostgresContainerFixture fx) => _fx = fx;
+    private readonly PostgresContainerFixture _fx = fx;
 
     [PostgresFact]
     public async Task Metrics_Lifecycle_AdaptivePaging()

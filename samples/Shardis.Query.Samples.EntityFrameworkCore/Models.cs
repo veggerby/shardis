@@ -10,10 +10,8 @@ public sealed class Person
 }
 
 // Simple DbContext per database (one database == one shard). No per-schema customization needed.
-public sealed class PersonContext : DbContext
+public sealed class PersonContext(DbContextOptions<PersonContext> options) : DbContext(options)
 {
-    public PersonContext(DbContextOptions<PersonContext> options) : base(options) { }
-
     public DbSet<Person> People => Set<Person>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -16,27 +16,20 @@ namespace Shardis.Migration.EntityFrameworkCore.Verification;
 /// <remarks>
 /// Thread safety: stateless aside from injected services; safe for concurrent use across migration workers.
 /// </remarks>
-public sealed class ChecksumVerificationStrategy<TKey, TContext, TEntity> : IVerificationStrategy<TKey>
+/// <remarks>
+/// Initializes a new instance of the <see cref="ChecksumVerificationStrategy{TKey, TContext, TEntity}"/> class.
+/// </remarks>
+/// <param name="factory">Shard-scoped context factory.</param>
+/// <param name="canonicalizer">Canonical JSON serializer.</param>
+/// <param name="hasher">Stable hasher.</param>
+public sealed class ChecksumVerificationStrategy<TKey, TContext, TEntity>(EntityFrameworkCore.IShardDbContextFactory<TContext> factory, IStableCanonicalizer canonicalizer, IStableHasher hasher) : IVerificationStrategy<TKey>
     where TKey : notnull, IEquatable<TKey>
     where TContext : DbContext
     where TEntity : class, EntityFrameworkCore.IShardEntity<TKey>
 {
-    private readonly EntityFrameworkCore.IShardDbContextFactory<TContext> _factory;
-    private readonly IStableCanonicalizer _canonicalizer;
-    private readonly IStableHasher _hasher;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ChecksumVerificationStrategy{TKey, TContext, TEntity}"/> class.
-    /// </summary>
-    /// <param name="factory">Shard-scoped context factory.</param>
-    /// <param name="canonicalizer">Canonical JSON serializer.</param>
-    /// <param name="hasher">Stable hasher.</param>
-    public ChecksumVerificationStrategy(EntityFrameworkCore.IShardDbContextFactory<TContext> factory, IStableCanonicalizer canonicalizer, IStableHasher hasher)
-    {
-        _factory = factory;
-        _canonicalizer = canonicalizer;
-        _hasher = hasher;
-    }
+    private readonly EntityFrameworkCore.IShardDbContextFactory<TContext> _factory = factory;
+    private readonly IStableCanonicalizer _canonicalizer = canonicalizer;
+    private readonly IStableHasher _hasher = hasher;
 
     /// <summary>
     /// Loads the source and target entities and compares a stable hash of their canonical JSON representation.
