@@ -12,7 +12,7 @@ namespace Shardis.Migration.EntityFrameworkCore.Verification;
 /// </summary>
 /// <typeparam name="TKey">Underlying key type.</typeparam>
 /// <typeparam name="TContext">DbContext type.</typeparam>
-/// <typeparam name="TEntity">Entity type implementing <see cref="EntityFrameworkCore.IShardEntity{TKey}"/>.</typeparam>
+/// <typeparam name="TEntity">Entity type implementing <see cref="IShardEntity{TKey}"/>.</typeparam>
 /// <remarks>
 /// Thread safety: stateless aside from injected services; safe for concurrent use across migration workers.
 /// </remarks>
@@ -22,12 +22,12 @@ namespace Shardis.Migration.EntityFrameworkCore.Verification;
 /// <param name="factory">Shard-scoped context factory.</param>
 /// <param name="canonicalizer">Canonical JSON serializer.</param>
 /// <param name="hasher">Stable hasher.</param>
-public sealed class ChecksumVerificationStrategy<TKey, TContext, TEntity>(EntityFrameworkCore.IShardDbContextFactory<TContext> factory, IStableCanonicalizer canonicalizer, IStableHasher hasher) : IVerificationStrategy<TKey>
+public sealed class ChecksumVerificationStrategy<TKey, TContext, TEntity>(IShardDbContextFactory<TContext> factory, IStableCanonicalizer canonicalizer, IStableHasher hasher) : IVerificationStrategy<TKey>
     where TKey : notnull, IEquatable<TKey>
     where TContext : DbContext
-    where TEntity : class, EntityFrameworkCore.IShardEntity<TKey>
+    where TEntity : class, IShardEntity<TKey>
 {
-    private readonly EntityFrameworkCore.IShardDbContextFactory<TContext> _factory = factory;
+    private readonly IShardDbContextFactory<TContext> _factory = factory;
     private readonly IStableCanonicalizer _canonicalizer = canonicalizer;
     private readonly IStableHasher _hasher = hasher;
 

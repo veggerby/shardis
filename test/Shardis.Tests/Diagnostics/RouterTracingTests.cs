@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-using Shardis.DependencyInjectionagnostics;
+using Shardis.Diagnostics;
 using Shardis.Hashing;
 using Shardis.Model;
 using Shardis.Persistence;

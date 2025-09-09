@@ -1,3 +1,4 @@
+using Shardis.Logging;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
@@ -28,7 +29,7 @@ public class ShardMigrationExecutorAdditionalTests
         IShardMigrationMetrics metrics,
         ShardMigrationOptions options,
         Func<DateTimeOffset>? clock = null)
-        => new(mover, verification, swapper, checkpoint, metrics, options, clock);
+        => new(mover, verification, swapper, checkpoint, metrics, options, new Shardis.Logging.InMemoryShardisLogger(), clock);
 
     private sealed class RecordingMover : IShardDataMover<string>
     {

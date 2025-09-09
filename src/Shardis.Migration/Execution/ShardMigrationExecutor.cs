@@ -2,7 +2,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-using Shardis.DependencyInjectionagnostics;
+using Shardis.Diagnostics;
+using Shardis.Logging;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
 using Shardis.Model;
@@ -22,6 +23,7 @@ public sealed class ShardMigrationExecutor<TKey>(
     IShardMigrationCheckpointStore<TKey> checkpointStore,
     IShardMigrationMetrics metrics,
     ShardMigrationOptions options,
+    IShardisLogger? logger = null,
     Func<DateTimeOffset>? timeProvider = null)
     where TKey : notnull, IEquatable<TKey>
 {
@@ -37,6 +39,7 @@ public sealed class ShardMigrationExecutor<TKey>(
     private readonly IShardMigrationMetrics _metrics = metrics;
     private readonly ShardMigrationOptions _options = options;
     private readonly Func<DateTimeOffset> _now = timeProvider ?? (() => DateTimeOffset.UtcNow);
+    private readonly IShardisLogger _log = logger ?? Shardis.Logging.NullShardisLogger.Instance;
 
     private const int CheckpointVersion = 1;
     private static readonly ActivitySource Activity = ShardisDiagnostics.ActivitySource;

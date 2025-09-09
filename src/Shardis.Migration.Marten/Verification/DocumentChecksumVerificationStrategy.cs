@@ -1,7 +1,5 @@
 namespace Shardis.Migration.Marten.Verification;
 
-using global::Marten;
-
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Marten;
 using Shardis.Migration.Model;

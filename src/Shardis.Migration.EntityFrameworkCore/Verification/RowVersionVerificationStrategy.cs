@@ -12,18 +12,18 @@ namespace Shardis.Migration.EntityFrameworkCore.Verification;
 /// </summary>
 /// <typeparam name="TKey">Underlying key type.</typeparam>
 /// <typeparam name="TContext">DbContext type.</typeparam>
-/// <typeparam name="TEntity">Entity type implementing <see cref="EntityFrameworkCore.IShardEntity{TKey}"/>.</typeparam>
+/// <typeparam name="TEntity">Entity type implementing <see cref="IShardEntity{TKey}"/>.</typeparam>
 /// <remarks>Thread safety: stateless aside from the injected factory; safe for concurrent use.</remarks>
 /// <remarks>
 /// Initializes a new instance of the <see cref="RowVersionVerificationStrategy{TKey, TContext, TEntity}"/> class.
 /// </remarks>
 /// <param name="factory">Shard-scoped context factory.</param>
-public sealed class RowVersionVerificationStrategy<TKey, TContext, TEntity>(EntityFrameworkCore.IShardDbContextFactory<TContext> factory) : IVerificationStrategy<TKey>
+public sealed class RowVersionVerificationStrategy<TKey, TContext, TEntity>(IShardDbContextFactory<TContext> factory) : IVerificationStrategy<TKey>
     where TKey : notnull, IEquatable<TKey>
     where TContext : DbContext
-    where TEntity : class, EntityFrameworkCore.IShardEntity<TKey>
+    where TEntity : class, IShardEntity<TKey>
 {
-    private readonly EntityFrameworkCore.IShardDbContextFactory<TContext> _factory = factory;
+    private readonly IShardDbContextFactory<TContext> _factory = factory;
 
     /// <summary>
     /// Compares the binary RowVersion values for the entity on source and target shards. All conditions must hold:

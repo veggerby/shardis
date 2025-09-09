@@ -108,7 +108,8 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
             throw new ArgumentNullException(nameof(shardKey));
         }
         // start an activity for routing
-        using var activity = Shardis.DependencyInjectionagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.route", System.Diagnostics.ActivityKind.Internal);
+
+        using var activity = Shardis.Diagnostics.ShardisDiagnostics.ActivitySource.StartActivity("shardis.route", System.Diagnostics.ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("shardis.router", RouterName);

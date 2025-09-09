@@ -15,7 +15,6 @@ using NSubstitute;
 
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Marten;
-using Shardis.Migration.Marten.Verification;
 using Shardis.Migration.Model;
 using Shardis.Model;
 

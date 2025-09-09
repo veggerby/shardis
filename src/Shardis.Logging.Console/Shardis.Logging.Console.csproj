@@ -3,10 +3,11 @@
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PackageId>Shardis.Migration.Marten</PackageId>
-    <Version>0.1.0</Version>
-    <Description>Marten migration provider for Shardis (document data mover + checksum verification).</Description>
-    <PackageTags>shardis;sharding;marten;migration;data-mover;document</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>Lightweight console logger implementation for the Shardis logging abstraction. Intended for samples and local diagnostics.</Description>
+    <PackageTags>shardis;sharding;logging;console</PackageTags>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
@@ -14,9 +15,6 @@
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Marten" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="../Shardis.Migration/Shardis.Migration.csproj" />
+    <ProjectReference Include="../Shardis/Shardis.csproj" />
   </ItemGroup>
 </Project>

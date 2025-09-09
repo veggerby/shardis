@@ -17,7 +17,7 @@ public class RouteLatencyMetricTests
 
         listener.InstrumentPublished = (inst, l) =>
         {
-            if (inst.Meter.Name == Shardis.DependencyInjectionagnostics.ShardisDiagnostics.MeterName
+            if (inst.Meter.Name == Diagnostics.ShardisDiagnostics.MeterName
                 && inst.Name == "shardis.route.latency")
             {
                 l.EnableMeasurementEvents(inst);

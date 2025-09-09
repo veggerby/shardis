@@ -12,6 +12,7 @@ using AwesomeAssertions;
 
 using global::Marten;
 
+using Shardis.Logging;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.Marten;
@@ -160,7 +161,7 @@ public class MartenExecutorIntegrationTests
             InterleaveCopyAndVerify = false,
             MaxConcurrentMoves = 1
         };
-        return new ShardMigrationExecutor<string>(mover, verifier, swapper, ckpt, new NoOpMetrics(), opts);
+        return new ShardMigrationExecutor<string>(mover, verifier, swapper, ckpt, new NoOpMetrics(), opts, new InMemoryShardisLogger());
     }
 
     private sealed class NoOpMetrics : IShardMigrationMetrics

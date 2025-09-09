@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
-using Shardis.Migration.Abstractions;
 using Shardis.Migration.EntityFrameworkCore;
 using Shardis.Model;
 

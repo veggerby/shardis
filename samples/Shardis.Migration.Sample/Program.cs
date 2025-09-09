@@ -205,7 +205,7 @@ static class FailureMoverRegistration
             return decorator;
         }, descriptor.Lifetime));
         // Register the decorator concrete type for retrieval.
-        services.AddSingleton<FailureInjectingMover>(sp => (FailureInjectingMover)sp.GetRequiredService<IShardDataMover<string>>());
+        services.AddSingleton(sp => (FailureInjectingMover)sp.GetRequiredService<IShardDataMover<string>>());
         return services;
     }
 }

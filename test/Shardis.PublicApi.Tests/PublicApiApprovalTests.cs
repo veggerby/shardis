@@ -20,7 +20,7 @@ public sealed class PublicApiApprovalTests
         (typeof(Marten.MartenShard).Assembly, "Shardis.Marten"),
         (typeof(Migration.ServiceCollectionExtensions).Assembly, "Shardis.Migration"),
         (typeof(Migration.Marten.IMartenSessionFactory).Assembly, "Shardis.Migration.Marten"),
-        (typeof(Shardis.Migration.Sql.SqlCheckpointStore<int>).Assembly, "Shardis.Migration.Sql"),
+        (typeof(Migration.Sql.SqlCheckpointStore<int>).Assembly, "Shardis.Migration.Sql"),
         (typeof(Query.Execution.IShardQueryExecutor).Assembly, "Shardis.Query"),
         (typeof(Query.EntityFrameworkCore.Execution.EntityFrameworkCoreShardQueryExecutor).Assembly, "Shardis.Query.EntityFrameworkCore"),
         (typeof(InMemoryShardQueryExecutor).Assembly, "Shardis.Query.InMemory"),

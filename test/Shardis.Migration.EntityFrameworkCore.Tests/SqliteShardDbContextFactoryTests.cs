@@ -7,7 +7,7 @@ namespace Shardis.Migration.EntityFrameworkCore.Tests;
 
 public class SqliteShardDbContextFactoryTests
 {
-    private sealed class DummyEntity : Migration.EntityFrameworkCore.IShardEntity<int>
+    private sealed class DummyEntity : IShardEntity<int>
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;

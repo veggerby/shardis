@@ -1,3 +1,4 @@
+using Shardis.Logging;
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
@@ -34,7 +35,7 @@ public class MigrationPropertyAndRetryTests
         var options = new ShardMigrationOptions { CopyConcurrency = 4, VerifyConcurrency = 4, SwapBatchSize = 200 };
         var moves = Moves(200);
         var plan = new MigrationPlan<string>(Guid.NewGuid(), baseTime, moves);
-        var exec = new ShardMigrationExecutor<string>(mover, verification, swapper, store, metrics, options, clock);
+        var exec = new ShardMigrationExecutor<string>(mover, verification, swapper, store, metrics, options, new InMemoryShardisLogger(), clock);
         var events = new List<MigrationProgressEvent>();
         var progress = new Progress<MigrationProgressEvent>(e => events.Add(e));
 
@@ -78,7 +79,7 @@ public class MigrationPropertyAndRetryTests
         var store = new InMemoryCheckpointStore<string>();
         var metrics = new SimpleShardMigrationMetrics();
         var options = new ShardMigrationOptions { CopyConcurrency = copyConc, VerifyConcurrency = verifyConc, SwapBatchSize = 256 };
-        var exec = new ShardMigrationExecutor<string>(mover, verification, swapper, store, metrics, options);
+        var exec = new ShardMigrationExecutor<string>(mover, verification, swapper, store, metrics, options, new InMemoryShardisLogger());
 
         // act
         var summary1 = await exec.ExecuteAsync(plan, null, CancellationToken.None);

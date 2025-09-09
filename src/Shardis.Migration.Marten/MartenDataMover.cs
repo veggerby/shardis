@@ -1,10 +1,7 @@
 namespace Shardis.Migration.Marten;
 
-using global::Marten;
-
 using Shardis.Migration.Abstractions;
 using Shardis.Migration.Model;
-using Shardis.Model;
 
 /// <summary>
 /// Marten implementation of <see cref="IShardDataMover{TKey}"/> performing per-key copy operations only.

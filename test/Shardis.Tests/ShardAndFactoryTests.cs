@@ -149,7 +149,7 @@ public sealed class ShardAndFactoryTests
         // arrange
         var services = new ServiceCollection();
         services.AddSingleton<IShardMapStore<string>, InMemoryShardMapStore<string>>();
-        services.AddSingleton<IShardKeyHasher<string>>(DefaultShardKeyHasher<string>.Instance);
+        services.AddSingleton(DefaultShardKeyHasher<string>.Instance);
 
         services.AddShardis<SimpleShard, string, string>(opts =>
         {
@@ -171,7 +171,7 @@ public sealed class ShardAndFactoryTests
         // arrange
         var services = new ServiceCollection();
         services.AddSingleton<IShardMapStore<string>, InMemoryShardMapStore<string>>();
-        services.AddSingleton<IShardKeyHasher<string>>(DefaultShardKeyHasher<string>.Instance);
+        services.AddSingleton(DefaultShardKeyHasher<string>.Instance);
 
         services.AddShardis<SimpleShard, string, string>(opts =>
         {

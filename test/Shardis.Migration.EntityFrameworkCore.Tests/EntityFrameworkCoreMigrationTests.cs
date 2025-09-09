@@ -1,10 +1,7 @@
-using System.Collections.Concurrent;
-
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
+using Shardis.Logging;
 using Shardis.Migration.Abstractions;
-using Shardis.Migration.EntityFrameworkCore;
 using Shardis.Migration.EntityFrameworkCore.Verification;
 using Shardis.Migration.Execution;
 using Shardis.Migration.Model;
@@ -117,7 +114,7 @@ public class EntityFrameworkCoreMigrationTests
             MaxRetries = 3,
             RetryBaseDelay = TimeSpan.FromMilliseconds(10)
         };
-        return new ShardMigrationExecutor<int>(mover, verification, swapper, checkpoint, metrics, opts);
+        return new ShardMigrationExecutor<int>(mover, verification, swapper, checkpoint, metrics, opts, new InMemoryShardisLogger());
     }
 
     [Fact]

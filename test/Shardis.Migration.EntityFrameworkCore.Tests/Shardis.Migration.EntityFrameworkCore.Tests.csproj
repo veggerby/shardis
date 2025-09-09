@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
     <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
+  <ProjectReference Include="../../src/Shardis.Query.EntityFrameworkCore/Shardis.Query.EntityFrameworkCore.csproj" />
   <ProjectReference Include="../../src/Shardis.Migration.EntityFrameworkCore/Shardis.Migration.EntityFrameworkCore.csproj" />
   <ProjectReference Include="../TestUtilities/TestUtilities.csproj" />
   </ItemGroup>
