@@ -218,7 +218,8 @@ public class ShardMigrationExecutorAdditionalTests
 
         // assert
         summary.Done.Should().Be(20);
-        events.Count.Should().BeLessThanOrEqualTo(1);
+        // Allow a possible forced final emission producing a second snapshot.
+        events.Count.Should().BeLessThanOrEqualTo(2);
     }
 
     [Fact]

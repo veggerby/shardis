@@ -190,9 +190,8 @@ public sealed class ShardMigrationExecutor<TKey>(
             }
         }
 
-        // Throttled progress emitter (at most once per second). Computes aggregated
-        // counts from the states map and reports them via the provided IProgress.
-        void EmitProgressIfNeeded()
+        // Throttled progress emitter (at most once per second) unless force=true.
+        void EmitProgress(bool force)
         {
             if (progress is null)
             {
@@ -201,7 +200,7 @@ public sealed class ShardMigrationExecutor<TKey>(
 
             var now = _now();
 
-            if (now - lastProgressAt < TimeSpan.FromSeconds(1))
+            if (!force && now - lastProgressAt < TimeSpan.FromSeconds(1))
             {
                 return;
             }
@@ -306,7 +305,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     inFlightCopies.Remove(finished);
                 }
 
-                EmitProgressIfNeeded();
+                EmitProgress(false);
 
                 // Periodically persist checkpoints so long-running operations can be resumed.
                 await PersistCheckpointIfNeeded(false, ct).ConfigureAwait(false);
@@ -327,7 +326,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                 }
             }
 
-            EmitProgressIfNeeded();
+            EmitProgress(false);
 
             // Prepare swap batches from verified keys and execute in batches.
             foreach (var move in plan.Moves)
@@ -352,7 +351,7 @@ public sealed class ShardMigrationExecutor<TKey>(
 
             // Force a final checkpoint to capture completion state.
             await PersistCheckpointIfNeeded(true, ct).ConfigureAwait(false);
-            EmitProgressIfNeeded();
+            EmitProgress(true);
 
             var done = states.Values.Count(s => s == KeyMoveState.Done);
             var failed = states.Values.Count(s => s == KeyMoveState.Failed);

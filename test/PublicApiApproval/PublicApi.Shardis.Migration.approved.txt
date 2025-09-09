@@ -112,7 +112,7 @@ namespace Shardis.Migration.Execution
     public sealed class ShardMigrationExecutor<TKey>
         where TKey :  notnull, System.IEquatable<TKey>
     {
-        public ShardMigrationExecutor(Shardis.Migration.Abstractions.IShardDataMover<TKey> mover, Shardis.Migration.Abstractions.IVerificationStrategy<TKey> verification, Shardis.Migration.Abstractions.IShardMapSwapper<TKey> swapper, Shardis.Migration.Abstractions.IShardMigrationCheckpointStore<TKey> checkpointStore, Shardis.Migration.Abstractions.IShardMigrationMetrics metrics, Shardis.Migration.Execution.ShardMigrationOptions options, System.Func<System.DateTimeOffset>? timeProvider = null) { }
+        public ShardMigrationExecutor(Shardis.Migration.Abstractions.IShardDataMover<TKey> mover, Shardis.Migration.Abstractions.IVerificationStrategy<TKey> verification, Shardis.Migration.Abstractions.IShardMapSwapper<TKey> swapper, Shardis.Migration.Abstractions.IShardMigrationCheckpointStore<TKey> checkpointStore, Shardis.Migration.Abstractions.IShardMigrationMetrics metrics, Shardis.Migration.Execution.ShardMigrationOptions options, Shardis.Logging.IShardisLogger? logger = null, System.Func<System.DateTimeOffset>? timeProvider = null) { }
         public System.Exception? LastCheckpointPersistException { get; }
         public System.Threading.Tasks.Task<Shardis.Migration.Execution.MigrationSummary> ExecuteAsync(Shardis.Migration.Model.MigrationPlan<TKey> plan, System.IProgress<Shardis.Migration.Execution.MigrationProgressEvent>? progress, System.Threading.CancellationToken ct) { }
     }
