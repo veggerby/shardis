@@ -97,4 +97,38 @@ public class TopologyValidatorTests
         // assert
         await act.Should().ThrowAsync<InvalidOperationException>().Where(e => e.Message.Contains("Duplicate key"));
     }
+
+    [Fact]
+    public async Task ComputeHash_Is_Deterministic_And_Order_Independent()
+    {
+        // arrange
+        var baseItems = Enumerable.Range(0, 200).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("s" + (i % 3)))).ToList();
+        var shuffled = baseItems.OrderBy(_ => Guid.NewGuid()).ToList();
+        var store1 = new FakeEnumStore(baseItems);
+        var store2 = new FakeEnumStore(shuffled);
+
+        // act
+        var h1 = await TopologyValidator.ComputeHashAsync(store1);
+        var h2 = await TopologyValidator.ComputeHashAsync(store2);
+
+        // assert
+        h1.Should().Be(h2);
+        h1.Length.Should().Be(64); // hex SHA-256
+    }
+
+    [Fact]
+    public async Task ComputeHash_Honors_Cancellation()
+    {
+        // arrange
+        var items = Enumerable.Range(0, 1000).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("s" + (i % 5))));
+        var store = new FakeEnumStore(items);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // act
+        Func<Task> act = () => TopologyValidator.ComputeHashAsync(store, cts.Token);
+
+        // assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
 }

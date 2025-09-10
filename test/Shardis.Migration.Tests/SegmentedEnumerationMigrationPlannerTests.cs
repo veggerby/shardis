@@ -76,6 +76,26 @@ public class SegmentedEnumerationMigrationPlannerTests
     }
 
     [Fact]
+    public async Task Planner_Honors_Cancellation_Between_Segments()
+    {
+        // arrange
+        var keys = Enumerable.Range(0, 500).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("0"))).ToList();
+        var store = new FakeEnumStore(keys);
+        var targetAssignments = keys.ToDictionary(k => k.ShardKey, k => new ShardId("1"));
+        var target = new TopologySnapshot<string>(targetAssignments);
+        var planner = new SegmentedEnumerationMigrationPlanner<string>(store, segmentSize: 50);
+        using var cts = new CancellationTokenSource();
+        // cancel after first segment likely processed
+        cts.CancelAfter(1);
+
+        // act
+        Func<Task> act = () => planner.CreatePlanAsync(new TopologySnapshot<string>(new Dictionary<ShardKey<string>, ShardId>()), target, cts.Token);
+
+        // assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task DryRun_ReturnsCountsWithoutAllocatingMoves()
     {
         // arrange
@@ -92,5 +112,24 @@ public class SegmentedEnumerationMigrationPlannerTests
         examined.Should().Be(1000);
         moves.Should().BeGreaterThan(0);
         moves.Should().BeLessThan(1000);
+    }
+
+    [Fact]
+    public async Task DryRun_Honors_Cancellation()
+    {
+        // arrange
+        var keys = Enumerable.Range(0, 1000).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("0"))).ToList();
+        var store = new FakeEnumStore(keys);
+        var targetAssignments = keys.ToDictionary(k => k.ShardKey, k => new ShardId("1"));
+        var target = new TopologySnapshot<string>(targetAssignments);
+        var planner = new SegmentedEnumerationMigrationPlanner<string>(store, segmentSize: 64);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // act
+        Func<Task> act = async () => { await planner.DryRunAsync(target, cts.Token); };
+
+        // assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }
