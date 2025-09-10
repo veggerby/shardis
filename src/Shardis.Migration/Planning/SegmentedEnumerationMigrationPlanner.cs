@@ -6,20 +6,33 @@ using Shardis.Model;
 using Shardis.Persistence;
 
 /// <summary>
-/// Migration planner that streams the <c>from</c> topology from an <see cref="IShardMapEnumerationStore{TKey}"/> in sized segments
-/// instead of materializing the full snapshot in memory. Suitable for large key counts where the target snapshot can be precomputed or cheaply constructed.
+/// Migration planner that streams the authoritative <c>from</c> topology directly from an
+/// <see cref="IShardMapEnumerationStore{TKey}"/> in fixed-size segments instead of requiring the caller to materialize
+/// the complete source <see cref="TopologySnapshot{TKey}"/> in memory up front.
 /// </summary>
 /// <remarks>
-/// This implementation enumerates the authoritative mapping once and compares each key to the provided target snapshot.
-/// Memory usage is O(segmentSize + |moves|). Target snapshot is still fully materialized (optimizing target derivation is outside this scope).
-/// Ordering mirrors <see cref="InMemory.InMemoryMigrationPlanner{TKey}"/>: Source, Target, StableKeyHash.
+/// Usage: register an <see cref="IShardMapEnumerationStore{TKey}"/> implementation and call
+/// <c>services.UseSegmentedEnumerationPlanner(segmentSize)</c> after <c>AddShardisMigration</c>.
+///
+/// Characteristics:
+///  * Single full enumeration pass over the authoritative mapping.
+///  * Memory complexity: O(segmentSize + |moves|) (the target snapshot must still be materialized – optimising target construction is out of scope).
+///  * Move ordering matches <see cref="InMemory.InMemoryMigrationPlanner{TKey}"/> (Source, Target, StableKeyHash) to preserve determinism.
+///  * Suitable for very large key counts (hundreds of thousands to millions) where holding the entire source snapshot doubles memory pressure.
+///  * Cancellation is honoured between segments and per item.
+///  * Segment size trades off enumeration batching overhead vs. transient working set; values between 5k – 50k are typically reasonable.
 /// </remarks>
-internal sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigrationPlanner<TKey>
+public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigrationPlanner<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
     private readonly IShardMapEnumerationStore<TKey> _store;
     private readonly int _segmentSize;
 
+    /// <summary>
+    /// Creates a new segmented enumeration planner.
+    /// </summary>
+    /// <param name="store">Enumeration-capable shard map store representing the authoritative current assignments.</param>
+    /// <param name="segmentSize">Maximum number of mappings buffered before diffing against the target snapshot.</param>
     public SegmentedEnumerationMigrationPlanner(IShardMapEnumerationStore<TKey> store, int segmentSize = 10_000)
     {
         if (segmentSize <= 0) throw new ArgumentOutOfRangeException(nameof(segmentSize));
@@ -27,6 +40,7 @@ internal sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigrati
         _segmentSize = segmentSize;
     }
 
+    /// <inheritdoc />
     public async Task<MigrationPlan<TKey>> CreatePlanAsync(TopologySnapshot<TKey> from, TopologySnapshot<TKey> to, CancellationToken ct)
     {
         // Ignore provided 'from' snapshot (caller may pass lightweight placeholder) and enumerate authoritative store instead.

@@ -186,6 +186,12 @@ namespace Shardis.Migration.Model
 }
 namespace Shardis.Migration.Planning
 {
+    public sealed class SegmentedEnumerationMigrationPlanner<TKey> : Shardis.Migration.Abstractions.IShardMigrationPlanner<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        public SegmentedEnumerationMigrationPlanner(Shardis.Persistence.IShardMapEnumerationStore<TKey> store, int segmentSize = 10000) { }
+        public System.Threading.Tasks.Task<Shardis.Migration.Model.MigrationPlan<TKey>> CreatePlanAsync(Shardis.Migration.Model.TopologySnapshot<TKey> from, Shardis.Migration.Model.TopologySnapshot<TKey> to, System.Threading.CancellationToken ct) { }
+    }
     public static class TopologyRebalancer
     {
         public static Shardis.Migration.Model.TopologySnapshot<TKey> Rebalance<TKey>(Shardis.Migration.Model.TopologySnapshot<TKey> from, System.Func<Shardis.Model.ShardKey<TKey>, Shardis.Model.ShardId> assignment, bool onlyChanges = false)
@@ -201,6 +207,8 @@ namespace Shardis.Migration
         public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisMigration<TKey>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, Shardis.Migration.Execution.ShardMigrationOptions options)
             where TKey :  notnull, System.IEquatable<TKey> { }
         public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisMigration<TKey>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Shardis.Migration.Execution.ShardMigrationOptions>? configure = null)
+            where TKey :  notnull, System.IEquatable<TKey> { }
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection UseSegmentedEnumerationPlanner<TKey>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, int segmentSize = 10000)
             where TKey :  notnull, System.IEquatable<TKey> { }
     }
 }
@@ -238,6 +246,16 @@ namespace Shardis.Migration.Topology
     public static class TopologySnapshotFactory
     {
         public static System.Threading.Tasks.Task<Shardis.Migration.Model.TopologySnapshot<TKey>> ToSnapshotAsync<TKey>(this Shardis.Persistence.IShardMapEnumerationStore<TKey> store, int maxKeys = 1000000, System.Threading.CancellationToken cancellationToken = default)
+            where TKey :  notnull, System.IEquatable<TKey> { }
+    }
+    public static class TopologyValidator
+    {
+        public static System.Threading.Tasks.Task<string> ComputeHashAsync<TKey>(Shardis.Persistence.IShardMapEnumerationStore<TKey> store, System.Threading.CancellationToken cancellationToken = default)
+            where TKey :  notnull, System.IEquatable<TKey> { }
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "Total",
+                "Counts"})]
+        public static System.Threading.Tasks.Task<System.ValueTuple<int, System.Collections.Generic.IReadOnlyDictionary<Shardis.Model.ShardId, int>>> ValidateAsync<TKey>(Shardis.Persistence.IShardMapEnumerationStore<TKey> store, System.Threading.CancellationToken cancellationToken = default)
             where TKey :  notnull, System.IEquatable<TKey> { }
     }
 }

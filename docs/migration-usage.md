@@ -355,6 +355,44 @@ See `docs/benchmarks.md` (migration category) for measuring keys/sec under varyi
 * Adaptive concurrency controller based on observed latencies.
 * Additional verification strategies (Bloom filter pre-check, probabilistic sampling with fixed seed).
 
+## 12. Segmented Enumeration Planner (Large Keyspaces)
+
+For very large key counts (hundreds of thousands to millions) constructing a full in-memory "from" snapshot can double memory usage (source snapshot + plan + executor state). The segmented enumeration planner removes that requirement by streaming the authoritative assignments directly from an `IShardMapEnumerationStore<TKey>`.
+
+When to use:
+
+* Key count is large enough that a full `TopologySnapshot` of current assignments is expensive (memory / GC pressure).
+* You already have an enumeration-capable store (SQL table scan, paged API, etc.).
+* Target snapshot can be produced more cheaply (e.g., computed assignments or only changed assignments already known).
+
+Registration:
+
+```csharp
+services
+    .AddShardisMigration<string>(o =>
+    {
+        o.CopyConcurrency = 128;
+        o.VerifyConcurrency = 64;
+    })
+    .UseSegmentedEnumerationPlanner<string>(segmentSize: 20_000); // stream in 20k chunks
+```
+
+Guidelines:
+
+* Choose `segmentSize` to balance working set vs CPU overhead. Typical: 5k – 50k.
+* The planner still materializes the target snapshot; consider computing only differing assignments if feasible.
+* Cancellation is observed between segments; long-running enumerations should yield promptly.
+* Ordering of resulting moves stays deterministic (Source, Target, StableKeyHash) matching the in-memory planner, so downstream behavior (checkpointing, metrics) is unchanged.
+* Use `TopologyValidator.ValidateAsync` prior to planning to ensure no duplicate keys exist (defensive check for data corruption).
+* Capture a topology hash (`TopologyValidator.ComputeHashAsync`) before and after planning to detect drift if a long window exists between plan creation and execution.
+
+Limitations:
+
+* Does not reduce target snapshot memory; future work may add a fully streaming diff that also streams target computation.
+* Requires a single pass full enumeration; if your store cannot provide a stable snapshot (e.g., concurrent rewrites without versioning) you must apply a consistency strategy (see earlier section).
+
+Benchmarks: see `SegmentedPlannerBenchmarks` (add `--filter *SegmentedPlannerBenchmarks*`). The memory column should show reduced allocations compared to the in-memory planner for large key counts when the source snapshot would otherwise be materialized separately.
+
 ---
 
 If anything here is unclear or you require an additional adapter sample, open an issue referencing this guide.

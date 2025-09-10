@@ -14,9 +14,9 @@ namespace Shardis.Benchmarks;
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
 public class SegmentedPlannerBenchmarks
 {
-    [Params(10_000, 100_000)] public int KeyCount;
-    [Params(5_000)] public int Moves; // number of keys that will change shard
-    [Params(10_000)] public int SegmentSize;
+    [Params(10_000, 100_000, 1_000_000)] public int KeyCount;
+    [Params(5_000)] public int Moves; // number of keys that will change shard (kept modest for fairness)
+    [Params(5_000, 10_000, 25_000)] public int SegmentSize;
 
     private TopologySnapshot<string> _target = default!;
     private TopologySnapshot<string> _source = default!;
