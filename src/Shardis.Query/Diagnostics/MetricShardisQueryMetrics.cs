@@ -16,6 +16,7 @@ public sealed class MetricShardisQueryMetrics : IShardisQueryMetrics
             new KeyValuePair<string, object?>("provider", tags.Provider ?? string.Empty),
             new KeyValuePair<string, object?>("shard.count", tags.ShardCount),
             new KeyValuePair<string, object?>("target.shard.count", tags.TargetShardCount),
+            new KeyValuePair<string, object?>("invalid.shard.count", tags.InvalidShardCount),
             new KeyValuePair<string, object?>("merge.strategy", tags.MergeStrategy ?? string.Empty),
             new KeyValuePair<string, object?>("ordering.buffered", tags.OrderingBuffered ?? string.Empty),
             new KeyValuePair<string, object?>("fanout.concurrency", tags.FanoutConcurrency),

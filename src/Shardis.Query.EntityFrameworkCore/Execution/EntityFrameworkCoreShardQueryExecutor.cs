@@ -101,7 +101,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
             var per = shardIndexes.Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
             var merged = Cast<TResult>(_merge(per, ct), ct);
 
-            return WrapCompletion(merged, ct, activity, sw, model, enumeratedShardCount);
+            return WrapCompletion(merged, ct, activity, sw, model, enumeratedShardCount, invalidCount);
         }
         catch (Exception ex)
         {
@@ -231,7 +231,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
     }
 
-    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw, QueryModel model, int enumeratedShardCount)
+    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw, QueryModel model, int enumeratedShardCount, int invalidShardCount)
     {
         var completed = false;
         try
@@ -303,7 +303,8 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                     channelCapacity: _channelCapacity ?? -1,
                     failureMode: failureMode,
                     resultStatus: status,
-                    rootType: model.SourceType.Name));
+                    rootType: model.SourceType.Name,
+                    invalidShardCount: invalidShardCount));
             }
             else
             {
@@ -316,7 +317,8 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                     channelCapacity: _channelCapacity ?? -1,
                     failureMode: failureMode,
                     resultStatus: status,
-                    rootType: model.SourceType.Name);
+                    rootType: model.SourceType.Name,
+                    invalidShardCount: invalidShardCount);
                 _suppressNextLatencyEmission = false; // reset flag
             }
             root?.Dispose();
@@ -382,7 +384,8 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         int channelCapacity,
         string failureMode,
         string resultStatus,
-        string rootType);
+        string rootType,
+        int invalidShardCount);
 }
 
 internal static class ShardisQueryActivitySource

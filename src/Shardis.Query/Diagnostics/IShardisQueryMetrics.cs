@@ -32,6 +32,8 @@ public readonly struct QueryMetricTags
     public readonly string? ResultStatus;
     /// <summary>Simple name of root element type.</summary>
     public readonly string? RootType;
+    /// <summary>Number of invalid shard ids supplied (ignored), 0 when none.</summary>
+    public readonly int InvalidShardCount;
     /// <summary>Create a new tag set instance.</summary>
     public QueryMetricTags(string? dbSystem,
                            string? provider,
@@ -43,7 +45,8 @@ public readonly struct QueryMetricTags
                            int channelCapacity,
                            string? failureMode,
                            string? resultStatus,
-                           string? rootType)
+                           string? rootType,
+                           int invalidShardCount)
     {
         DbSystem = dbSystem;
         Provider = provider;
@@ -56,5 +59,6 @@ public readonly struct QueryMetricTags
         FailureMode = failureMode;
         ResultStatus = resultStatus;
         RootType = rootType;
+        InvalidShardCount = invalidShardCount;
     }
 }

@@ -55,6 +55,7 @@ namespace Shardis.Query.Diagnostics
         public readonly string? DbSystem;
         public readonly string? FailureMode;
         public readonly int FanoutConcurrency;
+        public readonly int InvalidShardCount;
         public readonly string? MergeStrategy;
         public readonly string? OrderingBuffered;
         public readonly string? Provider;
@@ -62,7 +63,7 @@ namespace Shardis.Query.Diagnostics
         public readonly string? RootType;
         public readonly int ShardCount;
         public readonly int TargetShardCount;
-        public QueryMetricTags(string? dbSystem, string? provider, int shardCount, int targetShardCount, string? mergeStrategy, string? orderingBuffered, int fanoutConcurrency, int channelCapacity, string? failureMode, string? resultStatus, string? rootType) { }
+        public QueryMetricTags(string? dbSystem, string? provider, int shardCount, int targetShardCount, string? mergeStrategy, string? orderingBuffered, int fanoutConcurrency, int channelCapacity, string? failureMode, string? resultStatus, string? rootType, int invalidShardCount) { }
     }
 }
 namespace Shardis.Query.Execution.FailureHandling

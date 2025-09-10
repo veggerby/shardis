@@ -175,7 +175,8 @@ public static class EfCoreShardQueryExecutor
                             channelCapacity: baseCtx.channelCapacity,
                             failureMode: baseCtx.failureMode,
                             resultStatus: status,
-                            rootType: baseCtx.rootType));
+                            rootType: baseCtx.rootType,
+                            invalidShardCount: baseCtx.invalidShardCount));
                     }
                 }
 
