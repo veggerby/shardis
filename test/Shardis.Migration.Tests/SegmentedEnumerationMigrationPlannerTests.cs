@@ -76,4 +76,23 @@ public class SegmentedEnumerationMigrationPlannerTests
         plan.Moves.Should().NotBeEmpty();
         plan.Moves.Select(m => m.Target.Value).Should().Contain("1");
     }
+
+    [Fact]
+    public async Task DryRun_ReturnsCountsWithoutAllocatingMoves()
+    {
+        // arrange
+        var keys = Enumerable.Range(0, 1000).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("0"))).ToList();
+        var store = new FakeEnumStore(keys);
+        var targetAssignments = keys.ToDictionary(k => k.ShardKey, k => (int.Parse(k.ShardKey.Value![1..]) % 3 == 0 ? new ShardId("1") : k.ShardId));
+        var target = new TopologySnapshot<string>(targetAssignments);
+        var planner = new SegmentedEnumerationMigrationPlanner<string>(store, segmentSize: 128);
+
+        // act
+        var (examined, moves) = await planner.DryRunAsync(target, CancellationToken.None);
+
+        // assert
+        examined.Should().Be(1000);
+        moves.Should().BeGreaterThan(0);
+        moves.Should().BeLessThan(1000);
+    }
 }

@@ -23,6 +23,7 @@ public class SegmentedPlannerBenchmarks
     private InMemoryShardMapStore<string> _sourceStore = default!;
     private SegmentedEnumerationMigrationPlanner<string> _segmented = default!;
     private InMemoryMigrationPlanner<string> _inMemory = default!;
+    private SegmentedEnumerationMigrationPlanner<string> _segmentedSmall = default!; // control with smaller segment
 
     [GlobalSetup]
     public void Setup()
@@ -51,18 +52,13 @@ public class SegmentedPlannerBenchmarks
         _source = new TopologySnapshot<string>(srcDict);
         _target = new TopologySnapshot<string>(targetAssignments);
         _segmented = new SegmentedEnumerationMigrationPlanner<string>(_sourceStore, SegmentSize);
+        _segmentedSmall = new SegmentedEnumerationMigrationPlanner<string>(_sourceStore, Math.Max(1000, SegmentSize/5));
         _inMemory = new InMemoryMigrationPlanner<string>();
     }
 
     [Benchmark(Baseline = true), BenchmarkCategory("Plan")] public Task<MigrationPlan<string>> InMemoryPlanner() => _inMemory.CreatePlanAsync(_source, _target, CancellationToken.None);
 
     [Benchmark, BenchmarkCategory("Plan")] public Task<MigrationPlan<string>> SegmentedPlanner() => _segmented.CreatePlanAsync(_source, _target, CancellationToken.None);
-}
 
-public static class SegmentedPlannerBenchmarkProgram
-{
-    public static void Main(string[] args)
-    {
-        BenchmarkRunner.Run<SegmentedPlannerBenchmarks>();
-    }
+    [Benchmark, BenchmarkCategory("Plan")] public Task<(int Examined, int Moves)> SegmentedDryRun() => _segmented.DryRunAsync(_target, CancellationToken.None);
 }

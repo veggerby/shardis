@@ -7,10 +7,16 @@ using Shardis.Benchmarks;
 // Optional default: when no args provided, restrict to migration category for fast local signal.
 var switcher = new BenchmarkSwitcher(
 [
-    typeof(MigrationThroughputBenchmarks),
+    typeof(AdaptivePagingAllocationsBenchmarks),
+    typeof(AdaptivePagingBenchmarks),
+    typeof(BroadcasterStreamBenchmarks),
+    typeof(HasherBenchmarks),
     typeof(MergeEnumeratorBenchmarks),
+    typeof(MigrationThroughputBenchmarks),
+    typeof(PipelineCacheBenchmarks),
+    typeof(QueryBenchmarks),
     typeof(RouterBenchmarks),
-    typeof(HasherBenchmarks)
+    typeof(SegmentedPlannerBenchmarks)
 ]);
 
 if (args.Length == 0)

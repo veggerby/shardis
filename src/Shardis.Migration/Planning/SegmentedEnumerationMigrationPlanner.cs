@@ -27,6 +27,12 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
 {
     private readonly IShardMapEnumerationStore<TKey> _store;
     private readonly int _segmentSize;
+    private readonly struct DiffAccumulator
+    {
+        public DiffAccumulator(int moves, int examined) { Moves = moves; Examined = examined; }
+        public int Moves { get; }
+        public int Examined { get; }
+    }
 
     /// <summary>
     /// Creates a new segmented enumeration planner.
@@ -70,6 +76,34 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
             .ToArray();
 
         return new MigrationPlan<TKey>(Guid.NewGuid(), DateTimeOffset.UtcNow, ordered);
+    }
+
+    /// <summary>
+    /// Performs a dry-run diff (counts only) without allocating the full move list. Useful for capacity estimation.
+    /// </summary>
+    /// <param name="to">Target topology snapshot.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Total keys examined and number of moves that would be planned.</returns>
+    public async Task<(int Examined, int Moves)> DryRunAsync(TopologySnapshot<TKey> to, CancellationToken ct = default)
+    {
+        var examined = 0;
+        var moves = 0;
+        var batchCount = 0;
+        await foreach (var map in _store.EnumerateAsync(ct))
+        {
+            ct.ThrowIfCancellationRequested();
+            examined++;
+            batchCount++;
+            if (to.Assignments.TryGetValue(map.ShardKey, out var newShard) && newShard != map.ShardId)
+            {
+                moves++;
+            }
+            if (batchCount == _segmentSize)
+            {
+                batchCount = 0; // segment boundary for potential future hooks
+            }
+        }
+        return (examined, moves);
     }
 
     private static void Diff(List<ShardMap<TKey>> segment, TopologySnapshot<TKey> to, List<KeyMove<TKey>> moves, CancellationToken ct)

@@ -191,6 +191,10 @@ namespace Shardis.Migration.Planning
     {
         public SegmentedEnumerationMigrationPlanner(Shardis.Persistence.IShardMapEnumerationStore<TKey> store, int segmentSize = 10000) { }
         public System.Threading.Tasks.Task<Shardis.Migration.Model.MigrationPlan<TKey>> CreatePlanAsync(Shardis.Migration.Model.TopologySnapshot<TKey> from, Shardis.Migration.Model.TopologySnapshot<TKey> to, System.Threading.CancellationToken ct) { }
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "Examined",
+                "Moves"})]
+        public System.Threading.Tasks.Task<System.ValueTuple<int, int>> DryRunAsync(Shardis.Migration.Model.TopologySnapshot<TKey> to, System.Threading.CancellationToken ct = default) { }
     }
     public static class TopologyRebalancer
     {

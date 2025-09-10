@@ -393,6 +393,45 @@ Limitations:
 
 Benchmarks: see `SegmentedPlannerBenchmarks` (add `--filter *SegmentedPlannerBenchmarks*`). The memory column should show reduced allocations compared to the in-memory planner for large key counts when the source snapshot would otherwise be materialized separately.
 
+## 13. Dry-Run Planning (Counts Only)
+
+When you only need to estimate migration impact (capacity checks, SLA projections) you can avoid allocating the full move list by performing a counts-only dry run with the segmented planner.
+
+`DryRunAsync` enumerates the authoritative mapping once and returns:
+
+* `Examined`: total keys scanned
+* `Moves`: number of keys whose target shard differs
+
+Usage:
+
+```csharp
+var planner = provider.GetRequiredService<SegmentedEnumerationMigrationPlanner<string>>();
+var (examined, moves) = await planner.DryRunAsync(targetSnapshot, ct);
+
+Console.WriteLine($"Examined={examined} moves={moves} ratio={(double)moves / examined:P2}");
+
+// Optional: simple per-shard capacity heuristic
+// If you also track per-shard distribution, divide moves by # target shards receiving keys to estimate incoming load.
+```
+
+Guidelines:
+
+* Always compute a recent topology hash (`TopologyValidator.ComputeHashAsync`) before and after dry-run if there is a long gap before execution.
+* If move ratio exceeds internal safety threshold (e.g., > 30%), consider phased migration (partition keys by hash prefix) rather than a single massive plan.
+* Dry-run does not guarantee stability if assignments keep mutating; pair with a snapshot version or high-water mark.
+* After capacity sign-off, call the full `CreatePlanAsync` only once and persist the resulting plan metadata (plan id + hash) for audit.
+
+Performance Notes:
+
+* `DryRunAsync` allocates O(1) relative to keys (ignoring target snapshot) — it does not build the `KeyMove` list.
+* For very large migrations (millions of keys) this reduces GC pressure significantly when you just need counts.
+* If subsequent execution happens immediately, you can skip dry-run and proceed directly to planning; dry-run is primarily for forecasting and guardrails.
+
+Limitations:
+
+* No per-shard move breakdown; if you need per-shard deltas, either extend the planner or run a second pass computing shard pair counts (future enhancement).
+* Still reads every key once; not a sampling mechanism (sampling could be layered on with hash-prefix filters if desired).
+
 ---
 
 If anything here is unclear or you require an additional adapter sample, open an issue referencing this guide.
