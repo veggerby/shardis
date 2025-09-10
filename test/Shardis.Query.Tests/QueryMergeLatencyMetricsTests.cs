@@ -122,6 +122,30 @@ public sealed class QueryMergeLatencyMetricsTests
         rec.Count.Should().Be(1);
         rec.Records[0].tags.ResultStatus.Should().Be("failed");
     }
+
+    [Fact]
+    public async Task Metrics_Recorded_On_Ordered_Path()
+    {
+        // arrange
+        var rec = new RecordingMetrics();
+        IShardFactory<DbContext> factory = new Factory(0);
+        // create unordered base with metrics, then ordered wrapper via factory helper
+        var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: rec);
+        // reflect internal ordered wrapper (public factory returns wrapper composing unordered executor)
+        var orderedExec = Shardis.Query.EntityFrameworkCore.EfCoreShardQueryExecutor.CreateOrdered<DbContext, Person>(2, factory, p => p.Id);
+        // We cannot inject metrics directly; ordered wrapper will harvest from inner via reflection and emit a second record.
+
+        var q = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
+
+        // act
+        var list = await q.ToListAsync();
+
+        // assert
+        rec.Count.Should().BeGreaterThan(0); // unordered path at least; ordered adds another best-effort
+        rec.Records.Any(r => r.tags.MergeStrategy == "ordered").Should().BeTrue();
+        rec.Records.Any(r => r.tags.MergeStrategy == "unordered").Should().BeTrue();
+        list.Should().NotBeEmpty();
+    }
 }
 
 internal static class AsyncEnumExtensions
