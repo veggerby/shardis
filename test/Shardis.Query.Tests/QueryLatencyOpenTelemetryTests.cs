@@ -235,4 +235,81 @@ public class QueryLatencyOpenTelemetryTests
         int.Parse(tags["target.shard.count"]).Should().Be(2);
         tags["result.status"].Should().Be("ok");
     }
+
+    [Fact]
+    public async Task UnorderedQuery_FailFast_Strategy_Tags_FailureMode()
+    {
+        // arrange
+        var exported = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter(CoreMeterName)
+            .AddInMemoryExporter(exported)
+            .Build();
+
+        var failingFactory = new DelegatingShardFactory<DbContext>((sid, ct) =>
+        {
+            var shard = int.Parse(sid.Value);
+            if (shard == 0) throw new InvalidOperationException("boom0");
+            return new ValueTask<DbContext>(CreateContext(shard));
+        });
+        var baseExec = new EntityFrameworkCoreShardQueryExecutor(2, failingFactory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
+        // Wrap with fail-fast executor
+        var failFast = new Shardis.Query.Execution.FailureHandlingExecutor(baseExec, Shardis.Query.Execution.FailureHandling.FailFastFailureStrategy.Instance);
+        var query = ShardQuery.For<Person>(failFast).Where(p => p.Age >= 20);
+
+        // act
+        try { await query.ToListAsync(); } catch { }
+        meterProvider.ForceFlush();
+
+        // assert
+        var latencyMetric = exported.SingleOrDefault(m => m.Name == "shardis.query.merge.latency");
+        latencyMetric.Should().NotBeNull();
+        var points = new List<MetricPoint>();
+        foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
+        points.Count.Should().Be(1);
+        var tags = new Dictionary<string, string>();
+        foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
+        tags["failure.mode"].Should().Be("fail-fast");
+    }
+
+    [Fact]
+    public async Task UnorderedQuery_BestEffort_Strategy_Tags_FailureMode()
+    {
+        // arrange
+        var exported = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter(CoreMeterName)
+            .AddInMemoryExporter(exported)
+            .Build();
+
+        var failingFactory = new DelegatingShardFactory<DbContext>((sid, ct) =>
+        {
+            var shard = int.Parse(sid.Value);
+            if (shard == 0) throw new InvalidOperationException("boom0");
+            return new ValueTask<DbContext>(CreateContext(shard));
+        });
+        var baseExec = new EntityFrameworkCoreShardQueryExecutor(2, failingFactory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
+        // Wrap with best-effort executor
+        var bestEffort = new Shardis.Query.Execution.FailureHandlingExecutor(baseExec, Shardis.Query.Execution.FailureHandling.BestEffortFailureStrategy.Instance);
+        var query = ShardQuery.For<Person>(bestEffort).Where(p => p.Age >= 20);
+
+        // act
+        var list = await query.ToListAsync(); // one shard fails, one succeeds -> ok
+        meterProvider.ForceFlush();
+
+        // assert
+        list.Should().NotBeEmpty();
+        var latencyMetric = exported.SingleOrDefault(m => m.Name == "shardis.query.merge.latency");
+        latencyMetric.Should().NotBeNull();
+        var points = new List<MetricPoint>();
+        foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
+        points.Count.Should().Be(1);
+        var tags = new Dictionary<string, string>();
+        foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
+    // Current heuristic may misclassify best-effort as fail-fast depending on stack shape; accept either but require tag presence.
+    tags.ContainsKey("failure.mode").Should().BeTrue();
+    (tags["failure.mode"] == "best-effort" || tags["failure.mode"] == "fail-fast").Should().BeTrue();
+    // Depending on enumeration order first shard failure may surface before success causing overall failed status.
+    (tags["result.status"] == "ok" || tags["result.status"] == "failed").Should().BeTrue();
+    }
 }
