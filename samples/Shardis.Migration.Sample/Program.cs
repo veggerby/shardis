@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using Shardis.Migration; // for AddShardisMigration
 using Shardis.Migration.Abstractions;

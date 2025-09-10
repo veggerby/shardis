@@ -2,9 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Shardis.Migration;
-using Shardis.Migration.EntityFrameworkCore;
-
 using Shardis.Migration.EFCore.Sample;
+using Shardis.Migration.EntityFrameworkCore;
 
 // Sample goals:
 // 1. Start with skewed distribution: 90% of keys on shard 0, 10% on shard 1 -> rebalance across 2 shards

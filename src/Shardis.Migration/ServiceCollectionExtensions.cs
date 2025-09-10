@@ -112,8 +112,8 @@ public static class ServiceCollectionExtensions
         Action<ShardMigrationOptions>? configure = null)
         where TKey : notnull, IEquatable<TKey>
     {
-    var options = new ShardMigrationOptions();
-    configure?.Invoke(options); // cannot set init-only properties here but retained for backwards compatibility
-    return RegisterMigrationCore<TKey>(services, options);
+        var options = new ShardMigrationOptions();
+        configure?.Invoke(options); // cannot set init-only properties here but retained for backwards compatibility
+        return RegisterMigrationCore<TKey>(services, options);
     }
 }

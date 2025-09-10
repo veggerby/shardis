@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - OpenTelemetry-style tracing spans (`shardis.migration.execute`, `copy`, `verify`, `swap_batch`) added via `ActivitySource` integration.
 - Samples: `Shardis.Migration.Sample` (end-to-end scenarios), `Shardis.Query.Samples.Marten`, enhanced EF sample (Postgres env-driven setup).
 - Public API baselines extended for new assemblies (Migration.Marten, Migration.Sql, Migration.EntityFrameworkCore) & new abstractions.
+- Optional shard map enumeration: `IShardMapEnumerationStore<TKey>` + in-memory & SQL implementations.
+- Snapshot factory helper: `TopologySnapshotFactory.ToSnapshotAsync` (cancellable, memory cap, tracing `shardis.snapshot.enumerate`).
+- EF Core migration sample updated to derive source topology from enumeration (no synthetic "from" snapshot).
 
 ### Changed (Unreleased)
 

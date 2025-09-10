@@ -175,6 +175,8 @@ public class BroadcasterStreamBenchmarks
 
     private sealed class BenchShard(int index, int count, TimeSpan[][] schedules, Determinism det) : IShard<int>
     {
+        private readonly Determinism _det = det;
+
         public ShardId ShardId { get; } = new($"shard-{index}");
         public int CreateSession() => index;
         public IShardQueryExecutor<int> QueryExecutor => DummyExecutor.Instance;

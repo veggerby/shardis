@@ -3,13 +3,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Npgsql;
+
 using Shardis.Migration.Abstractions;
+using Shardis.Migration.EFCore.Sample;
 using Shardis.Migration.EntityFrameworkCore;
 using Shardis.Migration.Execution;
 using Shardis.Migration.Model;
+using Shardis.Migration.Topology;
 using Shardis.Model;
-
-using Shardis.Migration.EFCore.Sample;
 
 internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime life) : IHostedService
 {
@@ -18,19 +19,22 @@ internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await EnsureShardDatabasesAsync(cancellationToken, ["0","1","2"]); // create all ahead (simplifies sample)
+        await EnsureShardDatabasesAsync(cancellationToken, ["0", "1", "2"]); // create all ahead (simplifies sample)
         await SeedSkewAsync(cancellationToken);
 
         Console.WriteLine("--- Phase 1: Rebalance skew (shard0 heavy -> distribute) ---");
-        await RunMigrationAsync(BuildSkewedTopology(), BuildBalancedTopology(2), cancellationToken);
+        var current = await GetCurrentTopologySnapshotAsync(cancellationToken);
+        await RunMigrationAsync(current, BuildBalancedTopology(2), cancellationToken);
 
         Console.WriteLine();
         Console.WriteLine("--- Phase 2: Add shard 2 (rebalance across 3) ---");
-        await RunMigrationAsync(BuildBalancedTopology(2), BuildBalancedTopology(3), cancellationToken);
+        current = await GetCurrentTopologySnapshotAsync(cancellationToken); // capture after previous migration
+        await RunMigrationAsync(current, BuildBalancedTopology(3), cancellationToken);
 
         Console.WriteLine();
         Console.WriteLine("--- Phase 3: Remove shard 1 (migrate its keys to 0 and 2) ---");
-        await RunMigrationAsync(BuildBalancedTopology(3), BuildRemoveShard1Topology(), cancellationToken);
+        current = await GetCurrentTopologySnapshotAsync(cancellationToken);
+        await RunMigrationAsync(current, BuildRemoveShard1Topology(), cancellationToken);
 
         life.StopApplication();
     }
@@ -112,7 +116,7 @@ internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime
                 Id = $"order-{i:000000}",
                 UserId = $"user-{rnd.Next(0, 10_000):000000}",
                 Amount = (decimal)(rnd.NextDouble() * 1000),
-                CreatedUtc = DateTime.UtcNow.AddMinutes(-rnd.Next(0, 60*24))
+                CreatedUtc = DateTime.UtcNow.AddMinutes(-rnd.Next(0, 60 * 24))
             });
             if (batch.Count == 1000)
             {
@@ -128,16 +132,23 @@ internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime
         }
     }
 
-    private static TopologySnapshot<string> BuildSkewedTopology()
+    private async Task<TopologySnapshot<string>> GetCurrentTopologySnapshotAsync(CancellationToken ct)
     {
-        // All orders currently on their original shard assignment (0 or 1) based on seed distribution
+        // Enumerate the authoritative shard map store if it supports enumeration; otherwise fallback to heuristic synthetic build.
+        using var scope = _sp.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<Shardis.Persistence.IShardMapStore<string>>();
+        if (store is Shardis.Persistence.IShardMapEnumerationStore<string> enumerable)
+        {
+            return await enumerable.ToSnapshotAsync(cancellationToken: ct);
+        }
+        // Fallback heuristic (should rarely happen in this sample): assume initial skew distribution.
+        Console.WriteLine("[warn] Store does not support enumeration – falling back to synthetic skew snapshot.");
         var assignments = new Dictionary<ShardKey<string>, ShardId>(capacity: 10_000);
         for (int i = 0; i < 10_000; i++)
         {
             var shard = i < 9_000 ? new ShardId("0") : new ShardId("1");
             assignments[new ShardKey<string>($"order-{i:000000}")] = shard;
         }
-
         return new TopologySnapshot<string>(assignments);
     }
 

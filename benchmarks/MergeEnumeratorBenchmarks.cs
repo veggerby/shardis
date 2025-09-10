@@ -179,6 +179,8 @@ public class MergeEnumeratorBenchmarks
 
     private sealed class TestShard(int index, string id, int count, TimeSpan[][] schedules, Determinism det) : IShard<int>
     {
+        private readonly Determinism _det = det;
+
         public ShardId ShardId { get; } = new(id);
         public int CreateSession() => index;
         public Querying.Linq.IShardQueryExecutor<int> QueryExecutor => DummyExecutor.Instance;

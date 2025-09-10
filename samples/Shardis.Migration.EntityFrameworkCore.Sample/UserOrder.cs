@@ -47,7 +47,7 @@ public sealed class OrdersContextFactory : IShardDbContextFactory<OrdersContext>
         _host = Environment.GetEnvironmentVariable("POSTGRES_HOST") ?? "localhost";
         _port = Environment.GetEnvironmentVariable("POSTGRES_PORT") ?? "5432";
         _user = Environment.GetEnvironmentVariable("POSTGRES_USER") ?? "postgres";
-        _pw   = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "postgres";
+        _pw = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "postgres";
     }
 
     private string Build(string db) => $"Host={_host};Port={_port};Username={_user};Password={_pw};Database={db}";

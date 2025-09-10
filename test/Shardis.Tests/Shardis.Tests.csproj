@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
+  <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
     <ProjectReference Include="..\..\src\Shardis.Testing\Shardis.Testing.csproj" />
   </ItemGroup>
 
