@@ -132,9 +132,9 @@ public sealed class QueryMergeLatencyMetricsTests
         IShardFactory<DbContext> factory = new Factory(0);
         // Build base unordered with metrics sink
         var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: rec);
-    var orderedFactory = new Shardis.Query.EntityFrameworkCore.EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
-    var orderLambda = (System.Linq.Expressions.Expression<System.Func<Person, object>>)(p => p.Id);
-    var orderedExec = orderedFactory.CreateOrdered(unordered, orderLambda, descending: false);
+        var orderedFactory = new Shardis.Query.EntityFrameworkCore.EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+        var orderLambda = (System.Linq.Expressions.Expression<System.Func<Person, object>>)(p => p.Id);
+        var orderedExec = orderedFactory.CreateOrdered(unordered, orderLambda, descending: false);
 
         var q = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
 

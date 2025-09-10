@@ -222,7 +222,7 @@ public static class EfCoreShardQueryExecutor
             }
         }
 
-    internal sealed class ParameterReplaceVisitor(ParameterExpression source, Expression target) : ExpressionVisitor
+        internal sealed class ParameterReplaceVisitor(ParameterExpression source, Expression target) : ExpressionVisitor
         {
             private readonly ParameterExpression _source = source;
             private readonly Expression _target = target;
