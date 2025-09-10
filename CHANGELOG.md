@@ -44,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Added `invalid.shard.count` tag to latency histogram and tracing activity; all-invalid targeting now emits a zero-result histogram with `target.shard.count=0`.
 - Best-effort failure handling now surfaces explicit `failure.mode=best-effort` in query latency histogram (previously always `fail-fast`).
 - Hardened latency metric contract: tests now enforce exactly-one histogram point per enumeration across success, cancellation, failure, ordered, and failure-handling wrappers (suppression + unified emission internally).
+- ADR 0006: Unified query latency single-emission model (documents suppression + pending context design, invariants, future work).
 
 ### Changed (Unreleased)
 
@@ -54,6 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - EF Core unordered executor now uses configured `EfCoreExecutionOptions.Concurrency` (bounded parallel shard fan-out) and respects `DisposeContextPerQuery=false` by retaining one `DbContext` per shard.
 - Benchmarks documentation extended with segmented planner and environment variable (`SHARDIS_PLAN_KEYS`) guidance; roadmap updated to reflect partial completion of planning overhead benchmark.
 - Unified ordered vs unordered query latency emission (ordered path now reuses shared instrumentation for exactly-once metric recording).
+- Removed reflection usage for ordered EF Core executor creation; introduced `DefaultOrderedEfCoreExecutorFactory` internal abstraction (public for tests) replacing `CreateOrderedFromExisting` reflective invocation.
 - Query README metrics section updated to document `best-effort` failure mode tagging and clarified `result.status` semantics for partial shard failures.
 
 ### Fixed (Unreleased)
