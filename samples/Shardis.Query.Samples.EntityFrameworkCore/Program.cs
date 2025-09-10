@@ -71,7 +71,9 @@ var exec = new EntityFrameworkCoreShardQueryExecutor(
     contextFactory: contextFactory,
     merge: (streams, ct) => UnorderedMergeHelper.Merge(streams, ct));
 
-var query = ShardQuery.For<Person>(exec)
+// New ergonomic extension: exec.Query<Person>() avoids ShardQuery.For<Person>(exec) ceremony.
+var query = exec
+    .Query<Person>()
     .Where(p => p.Age >= 30)
     .Select(p => new { p.Name, p.Age });
 
@@ -86,7 +88,7 @@ await foreach (var row in query)
 Console.WriteLine();
 Console.WriteLine("Globally ordered by Age (ascending):");
 var ordered = new List<Person>();
-await foreach (var p in ShardQuery.For<Person>(exec)) { ordered.Add(p); }
+await foreach (var p in exec.Query<Person>()) { ordered.Add(p); }
 foreach (var p in ordered.OrderBy(p => p.Age))
 {
     Console.WriteLine($" - {p.Name} ({p.Age})");
@@ -125,7 +127,7 @@ var boundedExec = new EntityFrameworkCoreShardQueryExecutor(
     shardCount: shardCount,
     contextFactory: contextFactory,
     merge: (streams, ct) => UnorderedMergeHelper.Merge(streams, ct, channelCapacity: 8));
-await foreach (var row in ShardQuery.For<Person>(boundedExec).Where(p => p.Age >= 30).Select(p => new { p.Name, p.Age }))
+await foreach (var row in boundedExec.Query<Person>().Where(p => p.Age >= 30).Select(p => new { p.Name, p.Age }))
 {
     Console.WriteLine($" - {row.Name} ({row.Age})");
 }

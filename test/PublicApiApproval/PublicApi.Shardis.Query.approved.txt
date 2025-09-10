@@ -74,6 +74,11 @@ namespace Shardis.Query
     {
         public static Shardis.Query.IShardQueryable<T> For<T>(Shardis.Query.Execution.IShardQueryExecutor executor) { }
     }
+    public static class ShardQueryExecutorExtensions
+    {
+        public static Shardis.Query.IShardQueryable<T> Query<T>(this Shardis.Query.Execution.IShardQueryExecutor executor) { }
+        public static Shardis.Query.IShardQueryable<TResult> Query<T, TResult>(this Shardis.Query.Execution.IShardQueryExecutor executor, System.Linq.Expressions.Expression<System.Func<T, bool>>? where = null, System.Linq.Expressions.Expression<System.Func<T, TResult>>? select = null) { }
+    }
     public static class ShardQueryableConsumptionExtensions
     {
         public static System.Collections.Generic.IAsyncEnumerable<T> ToAsyncEnumerable<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
@@ -93,6 +98,12 @@ namespace Shardis.Query
     public static class ShardQueryableSelectExtensions
     {
         public static Shardis.Query.IShardQueryable<TResult> Select<T, TResult>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TResult>> selector) { }
+    }
+    public static class ShardQueryableTerminalExtensions
+    {
+        public static System.Threading.Tasks.Task<bool> AnyAsync<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
+        public static System.Threading.Tasks.Task<long> CountAsync<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
+        public static System.Threading.Tasks.Task<T?> FirstOrDefaultAsync<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
     }
     public static class UnorderedMergeHelper
     {
