@@ -29,7 +29,7 @@ Semantics: Wall-clock duration from fan-out start (first shard enumeration attem
 | `ordering.buffered` | `true` for current ordered EF Core buffered path, otherwise `false`. |
 | `fanout.concurrency` | Effective parallel shard enumerations (≤ targeted shard count and ≤ configured limit). |
 | `channel.capacity` | Unordered merge channel capacity; `-1` when unbounded or not applicable. |
-| `failure.mode` | `fail-fast` or `best-effort` (best-effort: partial shard failures suppressed; emits `ok` when at least one shard succeeded). |
+| `failure.mode` | `fail-fast` or `best-effort` (best-effort: partial shard failures suppressed; emits `ok` if ≥1 shard succeeded, otherwise `failed`). |
 | `result.status` | One of: `ok`, `canceled`, `failed`. |
 | `root.type` | Short CLR type name of the query root. |
 
@@ -38,7 +38,7 @@ Semantics: Wall-clock duration from fan-out start (first shard enumeration attem
 Two values are presently emitted:
 
 * `fail-fast` – first shard failure ends enumeration and reports `result.status=failed`.
-* `best-effort` – shard failures are collected; enumeration continues. If at least one shard succeeds, the final `result.status=ok`; if all shards fail an exception is thrown (no histogram emitted in that fully failed case).
+* `best-effort` – shard failures are collected; enumeration continues. If at least one shard succeeds, the final `result.status=ok`; if all shards fail the histogram still emits with `result.status=failed`.
 
 ## Invalid Shard Targeting
 
