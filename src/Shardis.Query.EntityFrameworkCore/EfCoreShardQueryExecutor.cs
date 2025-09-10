@@ -69,6 +69,43 @@ public static class EfCoreShardQueryExecutor
         return new OrderedWrapperExecutor(existingUnordered, orderKey, descending);
     }
 
+    /// <summary>
+    /// Internal factory abstraction to avoid reflection for ordered wrapper creation.
+    /// </summary>
+    internal interface IOrderedEfCoreExecutorFactory
+    {
+        IShardQueryExecutor CreateOrdered(IShardQueryExecutor unordered, LambdaExpression orderKey, bool descending);
+    }
+
+    /// <summary>
+    /// Default implementation of <see cref="IOrderedEfCoreExecutorFactory"/> creating the buffered ordered wrapper.
+    /// Exposed publicly to allow test harnesses and advanced callers to construct ordered executors without reflection.
+    /// </summary>
+    public sealed class DefaultOrderedEfCoreExecutorFactory : IOrderedEfCoreExecutorFactory
+    {
+        /// <summary>
+        /// Create an ordered (buffered) executor wrapping the provided unordered EF Core executor.
+        /// </summary>
+        /// <param name="unordered">Underlying unordered EF executor; must be <see cref="EntityFrameworkCoreShardQueryExecutor"/>.</param>
+        /// <param name="orderKey">Lambda producing the global ordering key from the result element.</param>
+        /// <param name="descending">Whether ordering is descending.</param>
+        public IShardQueryExecutor CreateOrdered(IShardQueryExecutor unordered, LambdaExpression orderKey, bool descending)
+        {
+            if (unordered is not EntityFrameworkCoreShardQueryExecutor efExec)
+            {
+                throw new ArgumentException("Executor must be EntityFrameworkCoreShardQueryExecutor", nameof(unordered));
+            }
+            // Convert generic key (LambdaExpression) into object->object lambda as existing helper expects.
+            var objParam = Expression.Parameter(typeof(object), "o");
+            var originalParam = orderKey.Parameters[0];
+            var castParam = Expression.Convert(objParam, originalParam.Type);
+            var replacedBody = new OrderedWrapperExecutor.ParameterReplaceVisitor(originalParam, castParam).Visit(orderKey.Body)!;
+            var bodyAsObject = Expression.Convert(replacedBody, typeof(object));
+            var lambda = Expression.Lambda<Func<object, object>>(bodyAsObject, objParam);
+            return new OrderedWrapperExecutor(efExec, lambda, descending);
+        }
+    }
+
     private static IShardQueryExecutor CreateInternal(int shardCount,
                                                        IShardFactory<DbContext> contextFactory,
                                                        EfCoreExecutionOptions? options)
@@ -185,7 +222,7 @@ public static class EfCoreShardQueryExecutor
             }
         }
 
-        private sealed class ParameterReplaceVisitor(ParameterExpression source, Expression target) : ExpressionVisitor
+    internal sealed class ParameterReplaceVisitor(ParameterExpression source, Expression target) : ExpressionVisitor
         {
             private readonly ParameterExpression _source = source;
             private readonly Expression _target = target;

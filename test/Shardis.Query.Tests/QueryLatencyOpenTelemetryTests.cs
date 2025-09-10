@@ -60,14 +60,10 @@ public class QueryLatencyOpenTelemetryTests
         var factory = new Factory();
         var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
 
-        // Wrap as ordered using internal helper (reflection) so we reuse suppression/unified emission path
-        var helper = typeof(EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
-        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
-        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
-        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
-        var orderLambda = System.Linq.Expressions.Expression.Lambda<Func<object, object>>(box, objParam);
-        var orderedExec = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
+        // Wrap as ordered using new internal factory abstraction (no reflection)
+        var orderFactory = new EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+        var orderLambda = (System.Linq.Expressions.Expression<Func<Person, object>>)(p => p.Id);
+        var orderedExec = orderFactory.CreateOrdered(unordered, orderLambda, descending: false);
 
         var query = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
 

@@ -17,6 +17,11 @@ namespace Shardis.Query.EntityFrameworkCore
         public static Shardis.Query.Execution.IShardQueryExecutor CreateUnordered(int shardCount, Shardis.Factories.IShardFactory<Microsoft.EntityFrameworkCore.DbContext> contextFactory, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null) { }
         public static Shardis.Query.Execution.IShardQueryExecutor CreateUnordered<TContext>(int shardCount, Shardis.Factories.IShardFactory<TContext> contextFactory, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null)
             where TContext : Microsoft.EntityFrameworkCore.DbContext { }
+        public sealed class DefaultOrderedEfCoreExecutorFactory
+        {
+            public DefaultOrderedEfCoreExecutorFactory() { }
+            public Shardis.Query.Execution.IShardQueryExecutor CreateOrdered(Shardis.Query.Execution.IShardQueryExecutor unordered, System.Linq.Expressions.LambdaExpression orderKey, bool descending) { }
+        }
     }
     public static class ServiceCollectionExtensions
     {
