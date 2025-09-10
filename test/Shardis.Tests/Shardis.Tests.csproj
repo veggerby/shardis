@@ -1,21 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks>net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-  <PackageReference Include="AwesomeAssertions" PrivateAssets="All" />
-  <PackageReference Include="coverlet.collector" PrivateAssets="All">
+    <PackageReference Include="AwesomeAssertions" PrivateAssets="All" />
+    <PackageReference Include="coverlet.collector" PrivateAssets="All">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-  <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="All" />
-  <PackageReference Include="NSubstitute" PrivateAssets="All" />
-  <PackageReference Include="xunit" PrivateAssets="All" />
-  <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="All" />
+    <PackageReference Include="NSubstitute" PrivateAssets="All" />
+    <PackageReference Include="xunit" PrivateAssets="All" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,7 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
-  <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
+    <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
     <ProjectReference Include="..\..\src\Shardis.Testing\Shardis.Testing.csproj" />
   </ItemGroup>
 
