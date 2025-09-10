@@ -61,5 +61,7 @@ All tags listed are considered stable. New tags, if added, will be appended (nev
 * Streaming ordered merge path (buffered path will remain but be distinguishable).
 * Allocation regression guard around latency emission path.
 
+See also ADR 0006 (Unified Query Latency Single-Emission Model) for design rationale.
+
 ---
 For an overview see the provider README (`Shardis.Query/README.md`).

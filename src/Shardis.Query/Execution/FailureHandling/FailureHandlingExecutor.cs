@@ -1,5 +1,3 @@
-using System.Threading;
-
 using Shardis.Query.Execution.FailureHandling;
 
 namespace Shardis.Query.Execution;

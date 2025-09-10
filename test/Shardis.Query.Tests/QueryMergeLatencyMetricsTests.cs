@@ -5,7 +5,6 @@ using Shardis.Factories;
 using Shardis.Model;
 using Shardis.Query.Diagnostics;
 using Shardis.Query.EntityFrameworkCore.Execution;
-using Shardis.Query.Execution;
 
 namespace Shardis.Query.Tests;
 

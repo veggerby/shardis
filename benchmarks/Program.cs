@@ -15,8 +15,9 @@ var switcher = new BenchmarkSwitcher(
     typeof(MigrationThroughputBenchmarks),
     typeof(PipelineCacheBenchmarks),
     typeof(QueryBenchmarks),
+    typeof(QueryLatencyEmissionBenchmarks),
     typeof(RouterBenchmarks),
-    typeof(SegmentedPlannerBenchmarks)
+    typeof(SegmentedPlannerBenchmarks),
 ]);
 
 // if (args.Length == 0)

@@ -8,7 +8,6 @@ using Shardis.Factories;
 using Shardis.Model;
 using Shardis.Query.EntityFrameworkCore; // for ordered wrapper helper
 using Shardis.Query.EntityFrameworkCore.Execution;
-using Shardis.Query.Execution;
 
 namespace Shardis.Query.Tests;
 
