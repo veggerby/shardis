@@ -82,4 +82,54 @@ public sealed class EfCoreExecutorConcurrencyTests
 
         factory.Peak.Should().BeLessThanOrEqualTo(maxConc);
     }
+
+    [Fact]
+    public async Task Concurrency_Targeted_Less_Than_Limit_Uses_Target_Count()
+    {
+        // arrange
+        int shardCount = 8;
+        int maxConc = 4;
+        var factory = new Factory(delayMs: 30);
+        var exec = new EntityFrameworkCoreShardQueryExecutor(
+            shardCount,
+            factory,
+            (streams, ct) => UnorderedMergeHelper.Merge(streams, ct),
+            metrics: null,
+            commandTimeoutSeconds: null,
+            maxConcurrency: maxConc,
+            disposeContextPerQuery: true);
+        // target only 2 shards
+        var model = Model<Dummy>().WithTargetShards(new[] { new ShardId("0"), new ShardId("3") });
+
+        // act
+        await foreach (var _ in exec.ExecuteAsync<Dummy>(model).ConfigureAwait(false)) { }
+
+        // assert peak should be 2 not 4
+        factory.Peak.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Concurrency_Targeted_Greater_Than_Limit_Uses_Limit()
+    {
+        // arrange
+        int shardCount = 8;
+        int maxConc = 3;
+        var factory = new Factory(delayMs: 30);
+        var exec = new EntityFrameworkCoreShardQueryExecutor(
+            shardCount,
+            factory,
+            (streams, ct) => UnorderedMergeHelper.Merge(streams, ct),
+            metrics: null,
+            commandTimeoutSeconds: null,
+            maxConcurrency: maxConc,
+            disposeContextPerQuery: true);
+        // target 5 shards
+        var model = Model<Dummy>().WithTargetShards(new[] { new ShardId("0"), new ShardId("1"), new ShardId("2"), new ShardId("5"), new ShardId("6") });
+
+        // act
+        await foreach (var _ in exec.ExecuteAsync<Dummy>(model).ConfigureAwait(false)) { }
+
+        // assert peak should equal maxConc
+        factory.Peak.Should().Be(maxConc);
+    }
 }

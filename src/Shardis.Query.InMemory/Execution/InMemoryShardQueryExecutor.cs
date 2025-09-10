@@ -172,6 +172,7 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
     private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, QueryModel model)
     {
         var completed = false;
+        var enumerated = model.TargetShards?.Count ?? _shards.Count;
 
         try
         {
@@ -192,6 +193,7 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
             {
                 _metrics.OnCompleted();
             }
+            // Future: surface enumerated/effective fanout via observer extension or metrics tags.
         }
     }
 

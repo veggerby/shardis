@@ -36,6 +36,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
     private readonly Diagnostics.IQueryMetricsObserver _metrics = metrics ?? Diagnostics.NoopQueryMetricsObserver.Instance;
     private readonly int? _commandTimeoutSeconds = commandTimeoutSeconds;
     private readonly SemaphoreSlim? _concurrencyGate = maxConcurrency is > 0 and < int.MaxValue ? new SemaphoreSlim(maxConcurrency.Value) : null;
+    private readonly int? _configuredMaxConcurrency = maxConcurrency is > 0 and < int.MaxValue ? maxConcurrency : null;
     private readonly bool _disposePerQuery = disposeContextPerQuery;
     private readonly Dictionary<int, DbContext>? _retainedContexts = disposeContextPerQuery ? null : new();
     private readonly Shardis.Query.Diagnostics.IShardisQueryMetrics _queryMetrics = queryMetrics ?? Shardis.Query.Diagnostics.NoopShardisQueryMetrics.Instance;
@@ -82,10 +83,17 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 activity?.AddTag("target.shards", list);
                 activity?.AddTag("target.shard.count", targetIds.Length);
             }
+            var enumeratedShardCount = shardIndexes.Count();
+            if (_configuredMaxConcurrency is int limit)
+            {
+                activity?.AddTag("fanout.limit", limit);
+            }
+            activity?.AddTag("fanout.enumerated", enumeratedShardCount);
+
             var per = shardIndexes.Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
             var merged = Cast<TResult>(_merge(per, ct), ct);
 
-            return WrapCompletion(merged, ct, activity, sw, model);
+            return WrapCompletion(merged, ct, activity, sw, model, enumeratedShardCount);
         }
         catch (Exception ex)
         {
@@ -214,7 +222,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
     }
 
-    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw, QueryModel model)
+    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw, QueryModel model, int enumeratedShardCount)
     {
         var completed = false;
         try
@@ -249,13 +257,16 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 _metrics.OnCompleted();
                 root?.SetStatus(ActivityStatusCode.Ok);
             }
-            // Effective concurrency = number of shards enumerated this query (targeted or full set)
-            var effectiveFanout = model.TargetShards?.Count ?? _shardCount;
+            // Effective concurrency = min(enumerated shard count, configured limit if any)
+            var effectiveFanout = _configuredMaxConcurrency.HasValue
+                ? Math.Min(enumeratedShardCount, _configuredMaxConcurrency.Value)
+                : enumeratedShardCount;
+            root?.AddTag("fanout.effective", effectiveFanout);
             _queryMetrics.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
                 dbSystem: "postgresql",
                 provider: "efcore",
                 shardCount: _shardCount,
-                targetShardCount: model.TargetShards?.Count ?? _shardCount,
+                targetShardCount: enumeratedShardCount,
                 mergeStrategy: "unordered",
                 orderingBuffered: "false",
                 fanoutConcurrency: effectiveFanout,
