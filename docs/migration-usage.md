@@ -12,6 +12,73 @@ Planned → Copying → Copied → Verifying → Verified → Swapping → Done 
 
 Progress is observable via metrics and an optional `IProgress<MigrationProgressEvent>` stream.
 
+### Obtaining Topology Snapshots in Practice
+
+In the sample we construct `TopologySnapshot` objects in-memory. In production you derive them from the authoritative shard map store. For millions of keys you must (1) obtain a logically consistent view, (2) derive the target assignments, and (3) feed the planner without materializing unnecessary data.
+
+Sources of truth (examples):
+
+* Redis / SQL shard map table (key -> shardId)
+* Domain catalog service exposing a paged API of key assignments
+* Event log (append-only) of assignments with a monotonic version
+
+Consistency strategies:
+
+| Strategy | How | Trade-offs |
+|----------|-----|-----------|
+| Point-in-time snapshot (versioned table) | SELECT * WHERE version <= V | Requires versioning column / MVCC |
+| Scan with high-water mark | Read current max version; stream increments until caught up | Slightly longer acquisition time |
+| Brief assignment freeze | Temporarily disable new assignments during snapshot | Operational pause window |
+
+Building `from` snapshot (pseudo-code):
+
+```csharp
+// Example: SQL source with (Key TEXT, ShardId TEXT, Version BIGINT)
+await foreach (var row in store.EnumerateAssignmentsAsync(cutoffVersion, ct))
+{
+    fromAssignments[new ShardKey<string>(row.Key)] = new ShardId(row.ShardId);
+}
+var fromSnapshot = new TopologySnapshot<string>(fromAssignments);
+```
+
+Deriving the `to` snapshot:
+
+1. Decide target topology (add/remove shards, adjust weights / virtual nodes).
+2. Recompute each key's target shard via routing rule (e.g., consistent hash ring built with new shard set) OR apply balancing heuristic (e.g., greedy fill by size / load estimate).
+3. Only store differing assignments. (You can still construct a full `TopologySnapshot`; the planner will diff; future segmented planner will allow streaming.)
+
+Avoid full materialization when key count is very large:
+
+* Stream keys and yield moves on-the-fly (segmented / streaming planner; see ADR-0004).
+* Persist intermediate segment checkpoints to bound memory.
+* Use range or hash partition batches (e.g., process keys whose hash prefix == `00`..`0F` first) for phased migration windows.
+
+Verification at scale:
+
+| Mode | When to use | Notes |
+|------|-------------|-------|
+| Full equality | Small/medium data, strong assurance | Higher IO cost |
+| Hash (stable) | Large datasets | Pre-compute or mover emits hash to avoid re-read |
+| Sampled + escalating | Tight SLA windows | Start with sample, escalate mismatches to full |
+
+Memory considerations:
+
+* Each `KeyMove` struct/value adds overhead; millions of moves can consume significant memory.
+* Use 64-bit process & monitor allocations if building entire plan.
+* Roadmap: segmented planner reduces resident size by processing slices (see migration rationale & ADR references).
+
+Operational sequence (large migration):
+
+1. Snapshot current assignments (record snapshot version).
+2. Define target shard set & weights.
+3. Dry-run plan: compute high-level counts (#moves per shard pair) without executing.
+4. Capacity check: ensure target shards have headroom for incoming data segment by segment.
+5. Execute migration with conservative concurrency; observe metrics; adjust.
+6. Post-verify sample of stable keys to confirm no silent corruption.
+7. Decommission obsolete shards only after verification window passes.
+
+This section clarifies that the sample's in-memory construction is illustrative—production code must integrate with your map store and may require streaming planners for scale.
+
 For background on why a formal migration mechanism exists and its invariants, see `migration-rationale.md`.
 
 ### Key Migration & Data Mover Semantics
@@ -205,26 +272,26 @@ If the process is cancelled, a checkpoint is flushed. Re-running `ExecuteAsync` 
 
 Counters expected:
 
-- Planned
-- Copied
-- Verified
-- Swapped
-- Failed
-- Retries
+* Planned
+* Copied
+* Verified
+* Swapped
+* Failed
+* Retries
 
 Gauges:
 
-- ActiveCopy
-- ActiveVerify
+* ActiveCopy
+* ActiveVerify
 
 Ensure metric increments occur once per key (the executor enforces this before calling the metrics API).
 
 Durations (milliseconds) you can export by extending `IShardMigrationMetrics`:
 
-- Copy duration per key (`ObserveCopyDuration`)
-- Verify duration per key (`ObserveVerifyDuration`)
-- Swap batch duration (`ObserveSwapBatchDuration`)
-- Total elapsed per plan (`ObserveTotalElapsed`)
+* Copy duration per key (`ObserveCopyDuration`)
+* Verify duration per key (`ObserveVerifyDuration`)
+* Swap batch duration (`ObserveSwapBatchDuration`)
+* Total elapsed per plan (`ObserveTotalElapsed`)
 
 ## 5. Replacing In-Memory Components
 
@@ -242,10 +309,10 @@ services.AddShardisMigration<string>(); // keeps existing ones, adds any missing
 
 Guidelines:
 
-- Data mover must be idempotent for repeated `CopyAsync` on already-copied keys.
-- Checkpoint store must provide atomic replace semantics (no partial writes of state dictionary).
-- Swapper must guarantee all-or-nothing per batch; if not natively supported, implement compensation.
-- Verification strategy should be deterministic; avoid randomness in sample selection without a fixed seed.
+* Data mover must be idempotent for repeated `CopyAsync` on already-copied keys.
+* Checkpoint store must provide atomic replace semantics (no partial writes of state dictionary).
+* Swapper must guarantee all-or-nothing per batch; if not natively supported, implement compensation.
+* Verification strategy should be deterministic; avoid randomness in sample selection without a fixed seed.
 
 ## 6. Configuration Reference
 
@@ -268,9 +335,9 @@ Never log full key values. If logging is required, truncate or hash keys (e.g., 
 
 ## 8. Failure Semantics
 
-- Transient copy/verify errors (network, timeout) ⇒ retried with capped exponential backoff.
-- Persistent verification mismatch ⇒ key marked Failed unless `ForceSwapOnVerificationFailure` is set.
-- Swap batch failure ⇒ retried; if unrecoverable, batch rolled back (implementation responsibility) and keys remain Copied or mark Failed.
+* Transient copy/verify errors (network, timeout) ⇒ retried with capped exponential backoff.
+* Persistent verification mismatch ⇒ key marked Failed unless `ForceSwapOnVerificationFailure` is set.
+* Swap batch failure ⇒ retried; if unrecoverable, batch rolled back (implementation responsibility) and keys remain Copied or mark Failed.
 
 ## 9. Benchmarks
 
@@ -278,15 +345,15 @@ See `docs/benchmarks.md` (migration category) for measuring keys/sec under varyi
 
 ## 10. Cross References
 
-- ADR 0001 (Core Architecture): `docs/adr/0001-core-architecture.md`
-- ADR 0002 (Migration Execution): `docs/adr/0002-key-migration-execution.md`
+* ADR 0001 (Core Architecture): `docs/adr/0001-core-architecture.md`
+* ADR 0002 (Migration Execution): `docs/adr/0002-key-migration-execution.md`
 
 ## 11. Next Steps / Extensibility Ideas
 
-- Durable checkpoint store (e.g., PostgreSQL / Redis) with optimistic concurrency.
-- Segmented / streaming plan execution for very large keyspaces.
-- Adaptive concurrency controller based on observed latencies.
-- Additional verification strategies (Bloom filter pre-check, probabilistic sampling with fixed seed).
+* Durable checkpoint store (e.g., PostgreSQL / Redis) with optimistic concurrency.
+* Segmented / streaming plan execution for very large keyspaces.
+* Adaptive concurrency controller based on observed latencies.
+* Additional verification strategies (Bloom filter pre-check, probabilistic sampling with fixed seed).
 
 ---
 
