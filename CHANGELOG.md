@@ -26,6 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Optional shard map enumeration: `IShardMapEnumerationStore<TKey>` + in-memory & SQL implementations.
 - Snapshot factory helper: `TopologySnapshotFactory.ToSnapshotAsync` (cancellable, memory cap, tracing `shardis.snapshot.enumerate`).
 - EF Core migration sample updated to derive source topology from enumeration (no synthetic "from" snapshot).
+- Segmented enumeration migration planner (`SegmentedEnumerationMigrationPlanner<TKey>`) with DI opt-in `UseSegmentedEnumerationPlanner` for large keyspaces (streaming source topology, deterministic ordering maintained).
+- Dry-run diff capability (`DryRunAsync`) on segmented planner returning examined key and move counts (capacity forecasting without full move allocation).
+- Topology validation & drift utilities: `TopologyValidator.ValidateAsync` (duplicate detection) and `TopologyValidator.ComputeHashAsync` (order-independent hash) for snapshot integrity and drift detection.
+- Benchmarks: `SegmentedPlannerBenchmarks` (category `plan`) comparing in-memory vs segmented planner and dry-run allocations across key counts & segment sizes.
+- Migration usage docs updated with segmented planner section & dry-run planning guidance.
 
 ### Changed (Unreleased)
 
@@ -33,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Core migration docs updated: metrics section now documents duration histograms (copy / verify / swap batch / total elapsed) and execution status moved from scaffold to implemented baseline.
 - `ShardMigrationOptions` expanded with dual-read/write, staleness, health window, and budgeting properties (non-breaking additive changes).
 - Executor now emits tracing activities and duration metrics without altering execution semantics.
+- Benchmarks documentation extended with segmented planner and environment variable (`SHARDIS_PLAN_KEYS`) guidance; roadmap updated to reflect partial completion of planning overhead benchmark.
 
 ### Fixed (Unreleased)
 

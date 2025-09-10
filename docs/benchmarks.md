@@ -18,6 +18,8 @@ Benchmark sources live under `benchmarks/` (single project `Shardis.Benchmarks`)
 - `MigrationThroughputBenchmarks` (category `migration`) – end-to-end migration executor throughput across a controlled concurrency matrix.
 - `BroadcasterStreamBenchmarks` (category `broadcaster`) – evaluates the existing streaming broadcaster under shard speed skew (fast vs slow producers) and varying item pacing. Includes a channel capacity sweep (0=unbounded, 32..512) and a consumer‑slow variant; ordered merge modes ignore capacity (N/A) by design.
 - `MergeEnumeratorBenchmarks` (category `merge`) – compares three global merge strategies: unordered streaming (baseline), ordered streaming (bounded prefetch, low memory, early first-item), and ordered eager (parallel per-shard materialization, higher memory, potentially larger first-item delay). Also exports first‑item latency percentile CSV (p50/p95) grouped by parameter tuple.
+- `MergeEnumeratorBenchmarks` (category `merge`) – compares three global merge strategies: unordered streaming (baseline), ordered streaming (bounded prefetch, low memory, early first-item), and ordered eager (parallel per-shard materialization, higher memory, potentially larger first-item delay). Also exports first‑item latency percentile CSV (p50/p95) grouped by parameter tuple.
+- `SegmentedPlannerBenchmarks` (category `plan`) – compares in-memory vs segmented enumeration migration planning (includes optional dry-run counts) across key counts and segment sizes; allocation focus.
 
 ## Running
 
@@ -43,6 +45,7 @@ dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCat
 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories migration
 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories broadcaster
 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories migration,router
+dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --anyCategories plan
 ```
 
 By type/name filter:
@@ -63,6 +66,7 @@ dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --runtim
 |----------|--------|--------|
 | `SHARDIS_FULL` | `1` / unset | Expands migration parameter matrix when `1`; small default otherwise. CI ignores expansion. |
 | `SHARDIS_BENCH_MODE` | `full` / unset | When `full`, uses longer run (IterationCount=15, WarmupCount=5); otherwise quick signal (3/3). |
+| `SHARDIS_PLAN_KEYS` | integer (e.g. 1000000) | Overrides max key count for segmented planner benchmarks (cap). |
 
 Examples:
 
@@ -100,6 +104,38 @@ Expanded matrix when `SHARDIS_FULL=1` (local exploratory):
 | 1k,10k,100k   | 1,4,16             | 1,4,16            | true,false        | 10,100,1000        |
 
 Baseline semantics: BDN baseline is the first row (Copy=1, Verify=1) for ratio computation; only one benchmark method is needed.
+
+### SegmentedPlannerBenchmarks
+
+Parameters (quick mode):
+
+| KeyCount | Moves | SegmentSize |
+|----------|-------|-------------|
+| 10k,100k | 5k    | 5k,10k,25k  |
+
+Parameters (full mode or when `SHARDIS_PLAN_KEYS>=1000000`): adds `1_000_000` keys (ensure sufficient memory; dry-run is cheap, full plan allocations scale with #moves).
+
+Benchmarked Methods:
+
+| Method | Description | Allocation Profile |
+|--------|-------------|--------------------|
+| InMemoryPlanner | Full materialization diff | O(N) snapshot + O(M) moves |
+| SegmentedPlanner | Streaming enumeration + diff | O(segmentSize + M) |
+| SegmentedDryRun | Counts only (Examined, Moves) | O(1) (ignores move list) |
+
+Interpretation:
+
+- Prefer segmented planner when key count >> available memory headroom; dry-run first to estimate move ratio.
+- High move ratio (>30–40%) narrows allocation gap between strategies because move list dominates either path.
+- Segment size too small: higher CPU (diff overhead). Too large: increased transient batch memory. Tune where allocation flattening + throughput balance.
+
+Example:
+
+```bash
+SHARDIS_BENCH_MODE=full SHARDIS_PLAN_KEYS=1000000 dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *SegmentedPlannerBenchmarks*
+```
+
+Key Metric Focus: Allocated (bytes/op) and Gen0 GC count; time difference usually dominated by enumeration cost (I/O in real stores) rather than diff mechanics.
 
 Exporters: JSON (`*-report-full.json`) and GitHub Markdown are emitted under `BenchmarkDotNet.Artifacts/results/`. A duplicate exporter warning may appear if BDN auto-adds Markdown; harmless.
 
@@ -148,7 +184,7 @@ Consumer‑slow benchmark variant helps illustrate compounded backpressure when 
 ## Roadmap Ideas
 
 - (moved to active) Streaming merge enumerators now implemented: see `MergeEnumeratorBenchmarks`.
-- Benchmark migration planning overhead.
+- Benchmark migration planning overhead. (Partially addressed via SegmentedPlannerBenchmarks.)
 - Benchmark map store implementations (InMemory vs Redis vs SQL).
 - Add broadcaster channel capacity sweep (param) for backpressure tuning.
 
