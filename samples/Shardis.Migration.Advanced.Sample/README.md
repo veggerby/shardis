@@ -12,6 +12,7 @@ Purpose: Illustrate production-adjacent migration patterns that are intentionall
 * Metrics wiring example (custom `IShardisMetrics` implementation + minimal counters) and OpenTelemetry bridge sketch.
 
 ## Not Implemented Yet
+
 This folder is a placeholder; code will be added incrementally. Keeping a README now allows linking from primary sample.
 
 ## When To Use These Patterns

@@ -35,8 +35,9 @@ This index links core conceptual and roadmap documents.
 | Default routing | ✅ | README |
 | Consistent hashing router | ✅ | README |
 | Metrics (no-op + counters) | ✅ | README / `IShardisMetrics` |
-| Migration planning | ✅ (scaffold) | README |
+| Migration planning (in-memory + segmented) | ✅ | README / migration usage |
 | Migration execution | ✅ | README / migration usage |
+| Migration dry-run (counts) | ✅ | migration usage |
 | Fluent query API | 🚧 | `api.md`, `linq.md` |
 | Redis shard map store | ✅ | `Shardis.Redis` project |
 | Additional map stores (SQL) | 🚧 | backlog |
