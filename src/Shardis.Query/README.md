@@ -51,6 +51,22 @@ var any = await q.AnyAsync();
  - Failure handling: decorate an executor with a strategy (e.g. EF Core: `services.DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance)`).
  - Backpressure/channel capacity configurable (unordered path) via provider options (e.g. EF Core `EfCoreExecutionOptions.ChannelCapacity`).
 
+### Cancellation & Timeouts
+
+All async operators accept a `CancellationToken` propagated to underlying providers. Provider-specific timeouts (e.g. EF Core `PerShardCommandTimeout`) are applied per shard.
+
+### Failure Behavior
+
+Fail-fast by default (first exception cancels). Opt into best-effort via provider decorator registration (EF Core: `DecorateShardQueryFailureStrategy`).
+
+### Backpressure
+
+Unordered merge supports bounded buffering via provider options (channel capacity). Use to smooth producer spikes or reduce memory.
+
+### Metrics
+
+An `ActivitySource` named `Shardis.Query` is emitted by providers (currently EF Core) with standard tags (`query.*`, `shard.count`, timing). Hook via OpenTelemetry for tracing.
+
 ## Integration notes
 
  - Pair with a concrete provider package (EF Core, Marten, InMemory) for session creation.

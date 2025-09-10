@@ -88,6 +88,38 @@ var active = await client.Query<Person>().Where(p => p.IsActive).CountAsync();
 - **Ordered factory**: `AddShardisEfCoreOrdered` / `EfCoreShardQueryExecutor.CreateOrdered` buffers all shard results before ordering; use only for bounded result sets.
 - **Failure strategy decoration**: call `DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance)` (or custom) after registering an executor.
 
+### Cancellation & Timeouts
+
+All query methods accept a `CancellationToken` (propagated to EF Core async providers). If `PerShardCommandTimeout` is set, it is applied per shard query and restored for retained contexts.
+
+```csharp
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+var exec = EfCoreShardQueryExecutor.CreateUnordered(
+    shardCount,
+    contextFactory,
+    new EfCoreExecutionOptions { PerShardCommandTimeout = TimeSpan.FromSeconds(3) });
+var names = await exec.Query<Person>().Select(p => p.Name).ToListAsync(cts.Token);
+```
+
+### Backpressure
+
+`ChannelCapacity` bounds the number of buffered items produced ahead of the consumer in unordered merges. Tune for throughput vs memory (typical range: 4–256). `null` = unbounded (fastest, more memory risk under very large fan-out).
+
+### Failure Behavior
+
+Default: fail-fast — the first shard exception terminates the merged enumeration. To aggregate errors and continue best-effort across shards:
+
+```csharp
+services.DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance);
+```
+
+### Metrics & Tracing
+
+The executor emits `Activity` instances via source name `Shardis.Query` with tags:
+
+- `query.source`, `query.result`, `query.where.count`, `query.has.select`, `shard.count`, `query.duration.ms`, and per-shard `shard.index` & optional `db.command_timeout.seconds`.
+Integrate with OpenTelemetry by adding an `ActivityListener` or OTEL SDK.
+
 ## Capabilities & limits
 
 - ✅ Pushes where/select operations to EF Core where supported.

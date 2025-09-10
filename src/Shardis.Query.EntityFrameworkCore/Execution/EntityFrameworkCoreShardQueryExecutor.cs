@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using Microsoft.EntityFrameworkCore;
@@ -43,10 +44,21 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
     public IAsyncEnumerable<TResult> ExecuteAsync<TResult>(QueryModel model, CancellationToken ct = default)
     {
         var tIn = model.SourceType;
-        var per = Enumerable.Range(0, _shardCount).Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
-        var merged = Cast<TResult>(_merge(per, ct), ct);
+        var activity = StartActivity(model, typeof(TResult));
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var per = Enumerable.Range(0, _shardCount).Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
+            var merged = Cast<TResult>(_merge(per, ct), ct);
 
-        return WrapCompletion(merged, ct);
+            return WrapCompletion(merged, ct, activity, sw);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.Dispose();
+            throw;
+        }
     }
 
     private async IAsyncEnumerable<TResult> ExecShard<TResult>(int shardId, Type tIn, QueryModel model, [EnumeratorCancellation] CancellationToken ct)
@@ -55,6 +67,8 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         {
             await _concurrencyGate.WaitAsync(ct).ConfigureAwait(false);
         }
+        var shardActivity = Activity.Current is null ? null : ShardisQueryActivitySource.Instance.StartActivity("shard", ActivityKind.Internal);
+        shardActivity?.AddTag("shard.index", shardId);
         _metrics.OnShardStart(shardId);
         var shard = new ShardId(shardId.ToString());
         DbContext? ctx = null;
@@ -85,16 +99,19 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
 
         try
         {
-            // Apply optional command timeout (per shard) if specified.
-            if (_commandTimeoutSeconds is int secs && secs > 0)
+            // Apply optional command timeout (per shard) if specified (capture previous to restore on retained contexts)
+            int? previousTimeout = null;
+            if (_commandTimeoutSeconds is int secs && secs > 0 && ctx is not null)
             {
                 try
                 {
-                    ctx!.Database.SetCommandTimeout(secs);
+                    previousTimeout = ctx.Database.GetCommandTimeout();
+                    ctx.Database.SetCommandTimeout(secs);
+                    shardActivity?.AddTag("db.command_timeout.seconds", secs);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Defensive: if provider does not support setting timeout, continue without failing the whole query.
+                    shardActivity?.AddEvent(new ActivityEvent("timeout.apply.failed", tags: new ActivityTagsCollection { { "exception.message", ex.Message } }));
                 }
             }
 
@@ -124,6 +141,11 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
             finally
             {
                 _metrics.OnShardStop(shardId);
+                if (_commandTimeoutSeconds is not null && !_disposePerQuery && ctx is not null)
+                {
+                    // restore timeout on retained context
+                    try { ctx.Database.SetCommandTimeout(previousTimeout); } catch { }
+                }
                 if (created && _disposePerQuery && ctx is not null)
                 {
                     await ctx.DisposeAsync().ConfigureAwait(false);
@@ -132,6 +154,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 {
                     _concurrencyGate.Release();
                 }
+                shardActivity?.Dispose();
             }
         }
         finally
@@ -157,7 +180,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
     }
 
-    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct)
+    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw)
     {
         var completed = false;
         try
@@ -171,14 +194,35 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
         finally
         {
+            sw.Stop();
+            root?.AddTag("shard.count", _shardCount);
+            root?.AddTag("query.duration.ms", sw.Elapsed.TotalMilliseconds);
             if (ct.IsCancellationRequested && !completed)
             {
                 _metrics.OnCanceled();
+                root?.SetStatus(ActivityStatusCode.Error, "canceled");
             }
             else
             {
                 _metrics.OnCompleted();
+                root?.SetStatus(ActivityStatusCode.Ok);
             }
+            root?.Dispose();
         }
     }
+
+    private static Activity? StartActivity(QueryModel model, Type resultType)
+    {
+        var act = ShardisQueryActivitySource.Instance.StartActivity("shardis.query", ActivityKind.Client);
+        act?.AddTag("query.source", model.SourceType.FullName);
+        act?.AddTag("query.result", resultType.FullName);
+        act?.AddTag("query.where.count", model.Where.Count);
+        act?.AddTag("query.has.select", model.Select is not null);
+        return act;
+    }
+}
+
+internal static class ShardisQueryActivitySource
+{
+    public static ActivitySource Instance { get; } = new("Shardis.Query");
 }
