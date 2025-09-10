@@ -141,6 +141,55 @@ public class QueryLatencyAdditionalOpenTelemetryTests
         tags["invalid.shard.count"].Should().Be("0");
     }
 
+    [Fact]
+    public async Task FailureMode_Tag_Always_Present_NonEmpty()
+    {
+        // arrange
+        var exported = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder().AddMeter(CoreMeterName).AddInMemoryExporter(exported).Build();
+        var factory = new Factory();
+
+        // unordered fail-fast baseline
+        var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (s, ct) => Internals.UnorderedMerge.Merge(s, ct), queryMetrics: new Shardis.Query.Diagnostics.MetricShardisQueryMetrics());
+        var ffQuery = ShardQuery.For<Person>(unordered).Where(p => p.Age >= 20);
+        _ = await ffQuery.ToListAsync();
+
+        // best-effort decorated
+        var bestEffortExec = new Shardis.Query.Execution.FailureHandlingExecutor(unordered, Shardis.Query.Execution.FailureHandling.BestEffortFailureStrategy.Instance);
+        var beQuery = ShardQuery.For<Person>(bestEffortExec).Where(p => p.Age >= 21);
+        _ = await beQuery.ToListAsync();
+
+        // ordered path (fail-fast)
+        var helper = typeof(EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
+        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
+        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
+        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
+        var orderLambda = System.Linq.Expressions.Expression.Lambda<Func<object, object>>(box, objParam);
+        var orderedExec = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
+        var ordQuery = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 22);
+        _ = await ordQuery.ToListAsync();
+
+        meterProvider.ForceFlush();
+
+        // assert
+        var points = exported.Where(m => m.Name == "shardis.query.merge.latency").SelectMany(m =>
+        {
+            var list = new List<MetricPoint>();
+            foreach (ref readonly var mp in m.GetMetricPoints()) list.Add(mp);
+            return list;
+        }).ToList();
+
+        points.Count.Should().Be(3); // one per enumeration above
+        foreach (var mp in points)
+        {
+            var tags = new Dictionary<string, string>();
+            foreach (var t in mp.Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
+            tags.ContainsKey("failure.mode").Should().BeTrue();
+            tags["failure.mode"].Should().NotBeNull().And.NotBeEmpty();
+        }
+    }
+
     private static Dictionary<string, string> ExtractSingle(List<Metric> exported)
     {
         var metric = exported.Single(m => m.Name == "shardis.query.merge.latency");
