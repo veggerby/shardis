@@ -1,5 +1,29 @@
 [assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/veggerby/shardis")]
 [assembly: System.Resources.NeutralResourcesLanguage("en")]
+namespace Shardis.Query.EntityFrameworkCore
+{
+    public sealed class EfCoreExecutionOptions
+    {
+        public EfCoreExecutionOptions() { }
+        public int? ChannelCapacity { get; init; }
+        public int? Concurrency { get; init; }
+        public bool DisposeContextPerQuery { get; init; }
+        public System.TimeSpan? PerShardCommandTimeout { get; init; }
+    }
+    public static class EfCoreShardQueryExecutor
+    {
+        public static Shardis.Query.Execution.IShardQueryExecutor CreateOrdered<TContext, TOrder>(int shardCount, Shardis.Factories.IShardFactory<TContext> contextFactory, System.Linq.Expressions.Expression<System.Func<TOrder, object>> orderKey, bool descending = false, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null)
+            where TContext : Microsoft.EntityFrameworkCore.DbContext { }
+        public static Shardis.Query.Execution.IShardQueryExecutor CreateUnordered(int shardCount, Shardis.Factories.IShardFactory<Microsoft.EntityFrameworkCore.DbContext> contextFactory, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null) { }
+        public static Shardis.Query.Execution.IShardQueryExecutor CreateUnordered<TContext>(int shardCount, Shardis.Factories.IShardFactory<TContext> contextFactory, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null)
+            where TContext : Microsoft.EntityFrameworkCore.DbContext { }
+    }
+    public static class ServiceCollectionExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisEfCoreUnordered<TContext>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, int shardCount, Shardis.Factories.IShardFactory<TContext> contextFactory, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null)
+            where TContext : Microsoft.EntityFrameworkCore.DbContext { }
+    }
+}
 namespace Shardis.Query.EntityFrameworkCore.Execution
 {
     public sealed class EntityFrameworkCoreShardQueryExecutor : Shardis.Query.Execution.IShardQueryExecutor

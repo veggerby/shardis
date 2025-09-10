@@ -51,6 +51,11 @@ namespace Shardis.Query
         bool SupportsOrdering { get; }
         bool SupportsPagination { get; }
     }
+    public interface IShardQueryClient
+    {
+        Shardis.Query.IShardQueryable<T> Query<T>();
+        Shardis.Query.IShardQueryable<TResult> Query<T, TResult>(System.Linq.Expressions.Expression<System.Func<T, bool>>? where = null, System.Linq.Expressions.Expression<System.Func<T, TResult>>? select = null);
+    }
     public interface IShardQueryable<out T> : System.Collections.Generic.IAsyncEnumerable<T>
     {
         Shardis.Query.Execution.IShardQueryExecutor Executor { get; }
@@ -60,6 +65,10 @@ namespace Shardis.Query
     {
         public static System.Collections.Generic.IAsyncEnumerable<T> Merge<T, TKey>(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Threading.CancellationToken ct = default)
             where TKey : System.IComparable<TKey> { }
+    }
+    public static class QueryClientServiceCollectionExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisQueryClient(this Microsoft.Extensions.DependencyInjection.IServiceCollection services) { }
     }
     public sealed class QueryModel
     {
@@ -73,6 +82,12 @@ namespace Shardis.Query
     public static class ShardQuery
     {
         public static Shardis.Query.IShardQueryable<T> For<T>(Shardis.Query.Execution.IShardQueryExecutor executor) { }
+    }
+    public sealed class ShardQueryClient : Shardis.Query.IShardQueryClient
+    {
+        public ShardQueryClient(Shardis.Query.Execution.IShardQueryExecutor executor) { }
+        public Shardis.Query.IShardQueryable<T> Query<T>() { }
+        public Shardis.Query.IShardQueryable<TResult> Query<T, TResult>(System.Linq.Expressions.Expression<System.Func<T, bool>>? where = null, System.Linq.Expressions.Expression<System.Func<T, TResult>>? select = null) { }
     }
     public static class ShardQueryExecutorExtensions
     {
