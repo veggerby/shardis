@@ -1,0 +1,105 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+
+using Shardis.Factories;
+using Shardis.Model;
+using Shardis.Query.Diagnostics;
+using Shardis.Query.EntityFrameworkCore;
+using Shardis.Query.EntityFrameworkCore.Execution;
+using Shardis.Query.Execution;
+
+namespace Shardis.Query.Tests;
+
+[Trait("category", "metrics")]
+public class QueryLatencyOpenTelemetryTests
+{
+    // The query metrics histogram uses the core Shardis meter (see MetricShardisQueryMetrics)
+    private const string CoreMeterName = Shardis.Diagnostics.ShardisDiagnostics.MeterName; // "Shardis"
+
+    private sealed class Person { public int Id { get; set; } public int Age { get; set; } }
+    private sealed class PersonContext(DbContextOptions<PersonContext> o) : DbContext(o) { public DbSet<Person> People => Set<Person>(); }
+
+    private static PersonContext CreateContext(int shard, int rows = 3)
+    {
+        var conn = new SqliteConnection("DataSource=:memory:");
+        conn.Open();
+        var opt = new DbContextOptionsBuilder<PersonContext>().UseSqlite(conn).Options;
+        var ctx = new PersonContext(opt);
+        ctx.Database.EnsureCreated();
+        if (!ctx.People.Any())
+        {
+            for (int i = 0; i < rows; i++)
+            {
+                ctx.People.Add(new Person { Id = shard * 100 + i + 1, Age = 20 + i });
+            }
+            ctx.SaveChanges();
+        }
+        return ctx;
+    }
+
+    private sealed class Factory : IShardFactory<DbContext>
+    {
+        public ValueTask<DbContext> CreateAsync(ShardId shardId, System.Threading.CancellationToken ct = default)
+            => new(CreateContext(int.Parse(shardId.Value)));
+    }
+
+    [Fact]
+    public async Task OrderedQuery_EmitsSingleLatencyMeasurement()
+    {
+        // arrange
+        var exported = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter(CoreMeterName)
+            .AddInMemoryExporter(exported)
+            .Build();
+
+        // Build unordered EF executor with real metric sink so histogram records to the Meter
+        var factory = new Factory();
+        var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
+
+        // Wrap as ordered using internal helper (reflection) so we reuse suppression/unified emission path
+        var helper = typeof(EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
+        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
+        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
+        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
+        var orderLambda = System.Linq.Expressions.Expression.Lambda<Func<object, object>>(box, objParam);
+        var orderedExec = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
+
+        var query = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
+
+        // act
+        var list = await query.ToListAsync();
+        meterProvider.ForceFlush();
+
+        // assert
+        list.Should().NotBeEmpty();
+        var latencyMetric = exported.SingleOrDefault(m => m.Name == "shardis.query.merge.latency");
+        latencyMetric.Should().NotBeNull("histogram must be emitted");
+
+        // Expect exactly one recorded histogram point (single unified emission)
+        var points = new List<MetricPoint>();
+        foreach (ref readonly var mp in latencyMetric!.GetMetricPoints())
+        {
+            points.Add(mp);
+        }
+        points.Count.Should().Be(1);
+
+        // Validate key tags on the single point
+        var tagDict = new Dictionary<string, string>();
+        foreach (var tag in points[0].Tags)
+        {
+            tagDict[tag.Key] = tag.Value?.ToString() ?? string.Empty;
+        }
+        tagDict["merge.strategy"].Should().Be("ordered");
+        tagDict["provider"].Should().Be("efcore");
+        tagDict["result.status"].Should().Be("ok");
+        tagDict["ordering.buffered"].Should().Be("true");
+        // basic sanity on counts
+        int.Parse(tagDict["shard.count"]).Should().Be(2);
+        int.Parse(tagDict["target.shard.count"]).Should().Be(2);
+    }
+}
