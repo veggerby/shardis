@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Diagnostics;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -117,20 +118,35 @@ public static class EfCoreShardQueryExecutor
 
         private async IAsyncEnumerable<TResult> ExecuteOrderedAsync<TResult>(QueryModel model, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
         {
-            // Materialize underlying unordered results into memory (per shard implicitly by inner executor strategy) then apply ordering.
-            var all = new List<TResult>();
-            await foreach (var item in _inner.ExecuteAsync<TResult>(model, ct).WithCancellation(ct).ConfigureAwait(false))
+            var orderingActivity = ShardisQueryActivitySource.Instance.StartActivity("shardis.query.ordering", ActivityKind.Internal);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try
             {
-                all.Add(item);
-            }
+                // Materialize underlying unordered results (already merged) then apply ordering.
+                var all = new List<TResult>();
+                await foreach (var item in _inner.ExecuteAsync<TResult>(model, ct).WithCancellation(ct).ConfigureAwait(false))
+                {
+                    all.Add(item);
+                }
+                orderingActivity?.AddTag("merge.strategy", "ordered");
+                orderingActivity?.AddTag("ordering.buffered", true);
+                orderingActivity?.AddTag("ordering.materialized.count", all.Count);
 
-            // Apply ordering using dynamic selector.
-            Func<TResult, object?> key = r => _keySelectorCompiled(r!);
-            IEnumerable<TResult> ordered = _descending ? all.OrderByDescending(key) : all.OrderBy(key);
-            foreach (var item in ordered)
+                // Apply ordering using dynamic selector.
+                Func<TResult, object?> key = r => _keySelectorCompiled(r!);
+                IEnumerable<TResult> ordered = _descending ? all.OrderByDescending(key) : all.OrderBy(key);
+                foreach (var it in ordered)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    yield return it;
+                }
+            }
+            finally
             {
-                ct.ThrowIfCancellationRequested();
-                yield return item;
+                sw.Stop();
+                orderingActivity?.AddTag("ordering.duration.ms", sw.Elapsed.TotalMilliseconds);
+                orderingActivity?.SetStatus(ActivityStatusCode.Ok);
+                orderingActivity?.Dispose();
             }
         }
 

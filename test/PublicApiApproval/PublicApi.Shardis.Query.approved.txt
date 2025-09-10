@@ -70,10 +70,9 @@ namespace Shardis.Query.Execution.FailureHandling
     public sealed class BestEffortFailureStrategy : Shardis.Query.Execution.FailureHandling.IShardQueryFailureStrategy
     {
         public static readonly Shardis.Query.Execution.FailureHandling.BestEffortFailureStrategy Instance;
-        public void FinalizeOrThrow() { }
-        public void Initialize(int shardCount) { }
-        public void OnShardCompleted() { }
+        public void FinalizeOrThrow(int totalShards) { }
         public bool OnShardException(System.Exception ex, int shardIndex) { }
+        public void OnShardSuccess() { }
     }
     public sealed class FailFastFailureStrategy : Shardis.Query.Execution.FailureHandling.IShardQueryFailureStrategy
     {
