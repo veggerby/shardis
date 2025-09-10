@@ -84,8 +84,8 @@ Tag schema (stable):
 - `ordering.buffered` – `true` when ordered path is a buffered/materialized variant
 - `fanout.concurrency` – effective parallelism applied (may be lower than configured when targeted shard subset)
 - `channel.capacity` – capacity for unordered merge channel (`-1` when unbounded / not applicable)
-- `failure.mode` – `fail-fast` | `best-effort` (best-effort: partial shard failures suppressed; `result.status` still `ok` when at least one shard succeeded)
-- `result.status` – `ok` | `canceled` | `failed` (in best-effort mode a full all-shards failure throws before emission; no `failed` histogram in that case)
+- `failure.mode` – `fail-fast` | `best-effort` (best-effort: partial shard failures suppressed; `result.status`=`ok` if ≥1 shard succeeded, else `failed`)
+- `result.status` – `ok` | `canceled` | `failed`
 - `root.type` – short CLR type name for the query root / projection
 - `invalid.shard.count` – number of rejected targeted shard IDs (out of range / parse failure; zero when none)
 
@@ -105,6 +105,8 @@ var meterProvider = Sdk.CreateMeterProviderBuilder()
 ```
 
 Buckets: by default rely on your metrics backend’s dynamic bucketing; for explicit views apply `[5,10,20,50,100,200,500,1000,2000,5000]` (milliseconds) to the histogram instrument.
+
+Design rationale: see ADR 0006 (Unified Query Latency Single-Emission Model) <https://github.com/veggerby/shardis/blob/main/docs/adr/0006-unified-query-latency-single-emission.md>.
 
 ## Integration notes
 
