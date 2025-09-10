@@ -6,8 +6,6 @@ using Shardis.Factories;
 using Shardis.Model;
 using Shardis.Query.EntityFrameworkCore.Execution;
 
-using Xunit;
-
 namespace Shardis.Query.Tests;
 
 public sealed class EfCoreExecutorContextReuseTests

@@ -2,8 +2,6 @@ using System.Linq.Expressions;
 
 using Microsoft.EntityFrameworkCore;
 
-using NSubstitute;
-
 using Shardis.Factories;
 using Shardis.Model;
 using Shardis.Query.EntityFrameworkCore.Execution;

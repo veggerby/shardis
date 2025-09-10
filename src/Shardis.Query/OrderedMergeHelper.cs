@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 using Shardis.Query.Execution.Ordered;
 
 namespace Shardis.Query;

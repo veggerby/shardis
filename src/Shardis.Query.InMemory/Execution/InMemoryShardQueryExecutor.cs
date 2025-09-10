@@ -31,10 +31,36 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
         var tIn = model.SourceType;
         var key = ComputeCacheKey(model);
         var compiled = _pipelineCache.GetOrAdd(key, _ => CompilePipeline(model));
-        var per = _shards.Select((seq, shardId) => Project<TResult>(seq, tIn, model, compiled, shardId, ct)).Select(Box);
+        IEnumerable<int> shardIndexes;
+        if (model.TargetShards is { Count: > 0 })
+        {
+            var parsed = new List<int>(model.TargetShards.Count);
+            var invalid = 0;
+            foreach (var sid in model.TargetShards)
+            {
+                if (int.TryParse(sid.Value, out var n) && n >= 0 && n < _shards.Count)
+                {
+                    if (!parsed.Contains(n)) { parsed.Add(n); }
+                }
+                else
+                {
+                    invalid++;
+                }
+            }
+            shardIndexes = parsed.Count > 0 ? parsed.OrderBy(x => x).ToArray() : Enumerable.Range(0, _shards.Count);
+            if (invalid > 0)
+            {
+                // In-memory executor lacks Activity; surface via metrics event hook in future if needed.
+            }
+        }
+        else
+        {
+            shardIndexes = Enumerable.Range(0, _shards.Count);
+        }
+        var per = shardIndexes.Select(shardId => Project<TResult>(_shards[shardId], tIn, model, compiled, shardId, ct)).Select(Box);
         var merged = Cast<TResult>(_merge(per, ct), ct);
 
-        return WrapCompletion(merged, ct);
+        return WrapCompletion(merged, ct, model);
     }
 
     private static string ComputeCacheKey(QueryModel model)
@@ -143,7 +169,7 @@ public sealed class InMemoryShardQueryExecutor(IReadOnlyList<IEnumerable<object>
         }
     }
 
-    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct)
+    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, QueryModel model)
     {
         var completed = false;
 

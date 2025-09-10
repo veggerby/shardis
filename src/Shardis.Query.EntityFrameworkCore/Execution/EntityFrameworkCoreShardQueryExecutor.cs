@@ -20,13 +20,15 @@ namespace Shardis.Query.EntityFrameworkCore.Execution;
 /// <param name="commandTimeoutSeconds">Optional database command timeout in seconds applied per shard query.</param>
 /// <param name="maxConcurrency">Optional maximum degree of parallel shard queries (null = unbounded).</param>
 /// <param name="disposeContextPerQuery">When true (default) a DbContext is created and disposed per shard query enumeration. When false contexts are cached for executor lifetime.</param>
+/// <param name="queryMetrics">Optional query latency metrics sink.</param>
 public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                                                           IShardFactory<DbContext> contextFactory,
                                                           Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> merge,
                                                           Diagnostics.IQueryMetricsObserver? metrics = null,
                                                           int? commandTimeoutSeconds = null,
                                                           int? maxConcurrency = null,
-                                                          bool disposeContextPerQuery = true) : IShardQueryExecutor
+                                                          bool disposeContextPerQuery = true,
+                                                          Shardis.Query.Diagnostics.IShardisQueryMetrics? queryMetrics = null) : IShardQueryExecutor
 {
     private readonly int _shardCount = shardCount;
     private readonly IShardFactory<DbContext> _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -36,6 +38,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
     private readonly SemaphoreSlim? _concurrencyGate = maxConcurrency is > 0 and < int.MaxValue ? new SemaphoreSlim(maxConcurrency.Value) : null;
     private readonly bool _disposePerQuery = disposeContextPerQuery;
     private readonly Dictionary<int, DbContext>? _retainedContexts = disposeContextPerQuery ? null : new();
+    private readonly Shardis.Query.Diagnostics.IShardisQueryMetrics _queryMetrics = queryMetrics ?? Shardis.Query.Diagnostics.NoopShardisQueryMetrics.Instance;
 
     /// <inheritdoc />
     public IShardQueryCapabilities Capabilities { get; } = new BasicQueryCapabilities(ordering: false, pagination: false);
@@ -48,10 +51,41 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         var sw = Stopwatch.StartNew();
         try
         {
-            var per = Enumerable.Range(0, _shardCount).Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
+            int invalidCount = 0;
+            int[]? targetIds = null;
+            if (model.TargetShards is { Count: > 0 })
+            {
+                var parsed = new List<int>(model.TargetShards.Count);
+                foreach (var sid in model.TargetShards)
+                {
+                    if (int.TryParse(sid.Value, out var n) && n >= 0 && n < _shardCount)
+                    {
+                        if (!parsed.Contains(n)) { parsed.Add(n); }
+                    }
+                    else
+                    {
+                        invalidCount++;
+                    }
+                }
+                if (parsed.Count > 0) { targetIds = parsed.OrderBy(x => x).ToArray(); }
+            }
+            var shardIndexes = targetIds ?? Enumerable.Range(0, _shardCount);
+            if (invalidCount > 0)
+            {
+                activity?.AddTag("invalid.shard.count", invalidCount);
+                activity?.AddEvent(new ActivityEvent("target.invalid", tags: new ActivityTagsCollection { { "invalid.count", invalidCount } }));
+            }
+            if (targetIds is not null)
+            {
+                var list = string.Join(',', targetIds.Take(10));
+                if (targetIds.Length > 10) { list += ",10+ more"; }
+                activity?.AddTag("target.shards", list);
+                activity?.AddTag("target.shard.count", targetIds.Length);
+            }
+            var per = shardIndexes.Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
             var merged = Cast<TResult>(_merge(per, ct), ct);
 
-            return WrapCompletion(merged, ct, activity, sw);
+            return WrapCompletion(merged, ct, activity, sw, model);
         }
         catch (Exception ex)
         {
@@ -180,7 +214,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
     }
 
-    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw)
+    private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw, QueryModel model)
     {
         var completed = false;
         try
@@ -189,24 +223,46 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
             {
                 yield return item;
             }
-
             completed = true;
         }
         finally
         {
             sw.Stop();
             root?.AddTag("shard.count", _shardCount);
+            if (model.TargetShards is not null) { root?.AddTag("target.shard.count", model.TargetShards.Count); }
             root?.AddTag("query.duration.ms", sw.Elapsed.TotalMilliseconds);
+            var status = "ok";
             if (ct.IsCancellationRequested && !completed)
             {
                 _metrics.OnCanceled();
                 root?.SetStatus(ActivityStatusCode.Error, "canceled");
+                status = "canceled";
+            }
+            else if (!completed)
+            {
+                // Faulted
+                status = "failed";
+                root?.SetStatus(ActivityStatusCode.Error, "failed");
             }
             else
             {
                 _metrics.OnCompleted();
                 root?.SetStatus(ActivityStatusCode.Ok);
             }
+            // Effective concurrency = number of shards enumerated this query (targeted or full set)
+            var effectiveFanout = model.TargetShards?.Count ?? _shardCount;
+            _queryMetrics.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
+                dbSystem: "postgresql",
+                provider: "efcore",
+                shardCount: _shardCount,
+                targetShardCount: model.TargetShards?.Count ?? _shardCount,
+                mergeStrategy: "unordered",
+                orderingBuffered: "false",
+                fanoutConcurrency: effectiveFanout,
+                channelCapacity: -1,
+                failureMode: "fail-fast",
+                resultStatus: status,
+                rootType: model.SourceType.Name));
             root?.Dispose();
         }
     }
