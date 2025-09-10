@@ -4,6 +4,8 @@ using Microsoft.Extensions.Hosting;
 using Shardis.Migration;
 using Shardis.Migration.EFCore.Sample;
 using Shardis.Migration.EntityFrameworkCore;
+using Shardis.Instrumentation;
+using Shardis.Migration.EntityFrameworkCore.Sample;
 
 // Sample goals:
 // 1. Start with skewed distribution: 90% of keys on shard 0, 10% on shard 1 -> rebalance across 2 shards
@@ -23,6 +25,12 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddEntityFrameworkCoreMigrationSupport<string, OrdersContext, UserOrder>();
         services.AddSingleton<IShardDbContextFactory<OrdersContext>, OrdersContextFactory>();
         services.AddHostedService<Runner>();
+
+        // Optional metrics hook (enable by setting SHARDIS_SAMPLE_METRICS=1)
+        if (Environment.GetEnvironmentVariable("SHARDIS_SAMPLE_METRICS") == "1")
+        {
+            services.AddSingleton<IShardisMetrics, SampleConsoleMetrics>();
+        }
     })
     .Build();
 
