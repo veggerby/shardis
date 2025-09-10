@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,7 +14,6 @@ using Shardis.Migration.Model;
 using Shardis.Migration.Topology;
 using Shardis.Model;
 using Shardis.Persistence;
-using System.Security.Cryptography;
 
 internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime life) : IHostedService
 {
@@ -21,22 +22,22 @@ internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-    await EnsureShardDatabasesAsync(cancellationToken, ["0", "1", "2"]); // create all ahead (simplifies sample)
-    await SeedSkewAsync(cancellationToken);
+        await EnsureShardDatabasesAsync(cancellationToken, ["0", "1", "2"]); // create all ahead (simplifies sample)
+        await SeedSkewAsync(cancellationToken);
 
         Console.WriteLine("--- Phase 1: Rebalance skew (shard0 heavy -> distribute) ---");
-    var current = await GetCurrentTopologySnapshotAsync(cancellationToken);
-    await RunMigrationAsync(current, BuildBalancedTopology(2), cancellationToken, "phase:rebalance");
+        var current = await GetCurrentTopologySnapshotAsync(cancellationToken);
+        await RunMigrationAsync(current, BuildBalancedTopology(2), cancellationToken, "phase:rebalance");
 
         Console.WriteLine();
         Console.WriteLine("--- Phase 2: Add shard 2 (rebalance across 3) ---");
-    current = await GetCurrentTopologySnapshotAsync(cancellationToken); // capture after previous migration
-    await RunMigrationAsync(current, BuildBalancedTopology(3), cancellationToken, "phase:add-shard-2");
+        current = await GetCurrentTopologySnapshotAsync(cancellationToken); // capture after previous migration
+        await RunMigrationAsync(current, BuildBalancedTopology(3), cancellationToken, "phase:add-shard-2");
 
         Console.WriteLine();
         Console.WriteLine("--- Phase 3: Remove shard 1 (migrate its keys to 0 and 2) ---");
-    current = await GetCurrentTopologySnapshotAsync(cancellationToken);
-    await RunMigrationAsync(current, BuildRemoveShard1Topology(), cancellationToken, "phase:remove-shard-1");
+        current = await GetCurrentTopologySnapshotAsync(cancellationToken);
+        await RunMigrationAsync(current, BuildRemoveShard1Topology(), cancellationToken, "phase:remove-shard-1");
 
         life.StopApplication();
     }
@@ -70,11 +71,11 @@ internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime
             }
         });
 
-    var summary = await executor.ExecuteAsync(plan, progress, ct);
+        var summary = await executor.ExecuteAsync(plan, progress, ct);
         Console.WriteLine($"Summary: planned={summary.Planned} done={summary.Done} failed={summary.Failed} elapsed={summary.Elapsed}");
 
-    // Post-migration validation (authoritative enumeration) – safe for small key counts.
-    await ValidateAsync(label, ct);
+        // Post-migration validation (authoritative enumeration) – safe for small key counts.
+        await ValidateAsync(label, ct);
     }
 
     private async Task EnsureShardDatabasesAsync(CancellationToken ct, string[] shardIds)

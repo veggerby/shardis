@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
+
 using Shardis.Migration.InMemory;
 using Shardis.Migration.Model;
 using Shardis.Migration.Planning;

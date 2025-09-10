@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using Shardis.Instrumentation;
 using Shardis.Migration;
 using Shardis.Migration.EFCore.Sample;
 using Shardis.Migration.EntityFrameworkCore;
-using Shardis.Instrumentation;
 using Shardis.Migration.EntityFrameworkCore.Sample;
 
 // Sample goals:

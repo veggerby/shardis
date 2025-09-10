@@ -4,8 +4,8 @@ using Shardis.Migration.Abstractions;
 using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
 using Shardis.Migration.Instrumentation;
-using Shardis.Migration.Throttling;
 using Shardis.Migration.Planning;
+using Shardis.Migration.Throttling;
 using Shardis.Persistence;
 
 namespace Shardis.Migration;
