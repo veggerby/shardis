@@ -83,8 +83,8 @@ namespace Shardis.Query
     }
     public static class OrderedMergeHelper
     {
-        public static System.Collections.Generic.IAsyncEnumerable<T> Merge<T, TKey>(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Threading.CancellationToken ct = default)
-            where TKey : System.IComparable<TKey> { }
+        public static System.Collections.Generic.IAsyncEnumerable<T> Merge<T, TKey>(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Threading.CancellationToken ct = default) { }
+        public static System.Collections.Generic.IAsyncEnumerable<T> MergeStreaming<T, TKey>(System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Collections.Generic.IComparer<TKey>? comparer = null, bool descending = false, System.Threading.CancellationToken ct = default) { }
     }
     public static class QueryClientServiceCollectionExtensions
     {

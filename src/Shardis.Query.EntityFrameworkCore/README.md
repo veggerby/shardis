@@ -1,6 +1,6 @@
 # Shardis.Query.EntityFrameworkCore
 
-Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming, preview ordered buffering).
+Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming, preview ordered buffering, optional failure strategy decoration).
 
 [![NuGet](https://img.shields.io/nuget/v/Shardis.Query.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Shardis.Query.EntityFrameworkCore/)
 [![Downloads](https://img.shields.io/nuget/dt/Shardis.Query.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Shardis.Query.EntityFrameworkCore/)
@@ -21,7 +21,7 @@ dotnet add package Shardis.Query.EntityFrameworkCore --version 0.1.*
 
 - `EntityFrameworkCoreShardQueryExecutor` — concrete executor translating queries into EF Core operations.
 - `EfCoreShardQueryExecutor.CreateUnordered` and `CreateOrdered` (buffered ordered variant; materializes then orders).
-- `EfCoreExecutionOptions` (channel capacity, per-shard command timeout, future concurrency hints).
+- `EfCoreExecutionOptions` (channel capacity, per-shard command timeout, shard concurrency, context lifetime control).
 - `EntityFrameworkCoreShardFactory<TContext>` / `PooledEntityFrameworkCoreShardFactory<TContext>` for per-shard context creation.
 - Wiring examples for registering `DbContext` instances per shard.
 
@@ -63,12 +63,16 @@ var names = await query.ToListAsync();
 
 ```csharp
 var services = new ServiceCollection()
-    .AddShards<MyDbContext>(2, shard => new MyDbContext(BuildOptionsFor(shard)));
+    .AddShards<MyDbContext>(2, shard => new MyDbContext(BuildOptionsFor(shard)))
+    .AddShardisEfCoreUnordered<MyDbContext>(
+        shardCount: 2,
+        contextFactory: new EntityFrameworkCoreShardFactory<MyDbContext>(BuildOptionsFor))
+    .DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance) // optional
+    .AddShardisQueryClient();
 
 await using var provider = services.BuildServiceProvider();
-var perShardFactory = provider.GetRequiredService<IShardFactory<MyDbContext>>();
-IShardFactory<DbContext> adapter = new DelegatingShardFactory<DbContext>((sid, ct) => perShardFactory.CreateAsync(sid, ct));
-var exec = new EntityFrameworkCoreShardQueryExecutor(2, adapter, (s, ct) => UnorderedMerge.Merge(s, ct));
+var client = provider.GetRequiredService<IShardQueryClient>();
+var active = await client.Query<Person>().Where(p => p.IsActive).CountAsync();
 ```
 
 ## Samples & tests
@@ -77,11 +81,12 @@ var exec = new EntityFrameworkCoreShardQueryExecutor(2, adapter, (s, ct) => Unor
 
 ## Configuration / Options
 
-- **ChannelCapacity** (`EfCoreExecutionOptions.ChannelCapacity`): bounded backpressure for unordered merge (null = provider default / unbounded internal channel).
-- **PerShardCommandTimeout**: database command timeout applied to per-shard queries (mapped to underlying EF Core command timeout where possible).
-- **Concurrency** (reserved): future hint for shard fan-out parallelism.
-- **DisposeContextPerQuery**: if false, caller manages DbContext lifetime (default true).
-- **Ordered factory**: `CreateOrdered` buffers all shard results before ordering; use only for bounded result sets. Future streaming ordered variant will reduce memory usage.
+- **ChannelCapacity** (`EfCoreExecutionOptions.ChannelCapacity`): bounded backpressure for unordered merge (null = unbounded internal channel).
+- **PerShardCommandTimeout**: database command timeout per shard query (best‑effort; ignored if provider disallows).
+- **Concurrency**: maximum shard fan‑out (limits simultaneous DbContext queries). Null = unbounded.
+- **DisposeContextPerQuery**: if false, retains one `DbContext` per shard for executor lifetime (reduces allocations; ensure thread-safety per context usage pattern).
+- **Ordered factory**: `AddShardisEfCoreOrdered` / `EfCoreShardQueryExecutor.CreateOrdered` buffers all shard results before ordering; use only for bounded result sets.
+- **Failure strategy decoration**: call `DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance)` (or custom) after registering an executor.
 
 ## Capabilities & limits
 

@@ -36,6 +36,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Terminal operators: `FirstOrDefaultAsync`, `AnyAsync`, `CountAsync` in `ShardQueryableTerminalExtensions` (client-side enumeration helpers).
 - EF Core executor ordered (buffered) factory: `EfCoreShardQueryExecutor.CreateOrdered<TContext,TOrder>` exposing basic global ordering via materialization.
 - EF Core execution options: `EfCoreExecutionOptions` (Concurrency, ChannelCapacity, PerShardCommandTimeout, DisposeContextPerQuery) – currently ChannelCapacity + timeout applied; others reserved.
+- Failure handling strategies for queries: `FailFastFailureStrategy`, `BestEffortFailureStrategy` (public, singleton instances) with internal wrapper executor.
+- EF Core provider DI extensions: `AddShardisEfCoreOrdered<TContext,TOrder>` (buffered global ordering) and `DecorateShardQueryFailureStrategy(IShardQueryFailureStrategy)` for post-registration decoration.
+- Activated EF Core execution options: `Concurrency` and `DisposeContextPerQuery` now honored by `EntityFrameworkCoreShardQueryExecutor` (previously reserved placeholders).
 
 ### Changed (Unreleased)
 
@@ -43,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Core migration docs updated: metrics section now documents duration histograms (copy / verify / swap batch / total elapsed) and execution status moved from scaffold to implemented baseline.
 - `ShardMigrationOptions` expanded with dual-read/write, staleness, health window, and budgeting properties (non-breaking additive changes).
 - Executor now emits tracing activities and duration metrics without altering execution semantics.
+- EF Core unordered executor now uses configured `EfCoreExecutionOptions.Concurrency` (bounded parallel shard fan-out) and respects `DisposeContextPerQuery=false` by retaining one `DbContext` per shard.
 - Benchmarks documentation extended with segmented planner and environment variable (`SHARDIS_PLAN_KEYS`) guidance; roadmap updated to reflect partial completion of planning overhead benchmark.
 
 ### Fixed (Unreleased)

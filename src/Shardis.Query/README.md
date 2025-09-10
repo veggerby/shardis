@@ -25,6 +25,7 @@ dotnet add package Shardis.Query --version 0.1.*
  - Executor extensions: `Query<T>()`, `Query<T,TResult>(...)` for direct bootstrap without `ShardQuery.For<T>()`.
  - Terminal extensions: `FirstOrDefaultAsync`, `AnyAsync`, `CountAsync` (client-side aggregation helpers).
  - Streaming merge operators (unordered, ordered) and enumerators.
+ - Failure handling strategies (`FailFastFailureStrategy`, `BestEffortFailureStrategy`) with DI decoration helper in EF Core provider.
  - LINQ adapter helpers to build shard-friendly query expressions.
 
 ## Quick start
@@ -47,6 +48,7 @@ var any = await q.AnyAsync();
 ## Configuration / Options
 
  - Merge modes: unordered (fastest) and ordered (global key selector; buffered in EF Core factory `CreateOrdered` preview).
+ - Failure handling: decorate an executor with a strategy (e.g. EF Core: `services.DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance)`).
  - Backpressure/channel capacity configurable (unordered path) via provider options (e.g. EF Core `EfCoreExecutionOptions.ChannelCapacity`).
 
 ## Integration notes

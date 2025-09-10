@@ -73,7 +73,9 @@ public static class EfCoreShardQueryExecutor
             shardCount: shardCount,
             contextFactory: contextFactory,
             merge: (streams, ct) => UnorderedMergeHelper.Merge(streams, ct, channelCapacity: channelCapacity),
-            commandTimeoutSeconds: (int?)options?.PerShardCommandTimeout?.TotalSeconds);
+            commandTimeoutSeconds: (int?)options?.PerShardCommandTimeout?.TotalSeconds,
+            maxConcurrency: options?.Concurrency,
+            disposeContextPerQuery: options?.DisposeContextPerQuery ?? true);
     }
 
     private sealed class DbContextFactoryAdapter<TContext>(IShardFactory<TContext> inner) : IShardFactory<DbContext> where TContext : DbContext

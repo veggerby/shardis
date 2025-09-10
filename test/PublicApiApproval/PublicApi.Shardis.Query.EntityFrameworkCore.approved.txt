@@ -20,15 +20,18 @@ namespace Shardis.Query.EntityFrameworkCore
     }
     public static class ServiceCollectionExtensions
     {
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisEfCoreOrdered<TContext, TOrder>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, int shardCount, Shardis.Factories.IShardFactory<TContext> contextFactory, System.Linq.Expressions.Expression<System.Func<TOrder, object>> orderKey, bool descending = false, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null)
+            where TContext : Microsoft.EntityFrameworkCore.DbContext { }
         public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisEfCoreUnordered<TContext>(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, int shardCount, Shardis.Factories.IShardFactory<TContext> contextFactory, Shardis.Query.EntityFrameworkCore.EfCoreExecutionOptions? options = null)
             where TContext : Microsoft.EntityFrameworkCore.DbContext { }
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection DecorateShardQueryFailureStrategy(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, Shardis.Query.Execution.FailureHandling.IShardQueryFailureStrategy strategy) { }
     }
 }
 namespace Shardis.Query.EntityFrameworkCore.Execution
 {
     public sealed class EntityFrameworkCoreShardQueryExecutor : Shardis.Query.Execution.IShardQueryExecutor
     {
-        public EntityFrameworkCoreShardQueryExecutor(int shardCount, Shardis.Factories.IShardFactory<Microsoft.EntityFrameworkCore.DbContext> contextFactory, System.Func<System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<object>>, System.Threading.CancellationToken, System.Collections.Generic.IAsyncEnumerable<object>> merge, Shardis.Query.Diagnostics.IQueryMetricsObserver? metrics = null, int? commandTimeoutSeconds = default) { }
+        public EntityFrameworkCoreShardQueryExecutor(int shardCount, Shardis.Factories.IShardFactory<Microsoft.EntityFrameworkCore.DbContext> contextFactory, System.Func<System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<object>>, System.Threading.CancellationToken, System.Collections.Generic.IAsyncEnumerable<object>> merge, Shardis.Query.Diagnostics.IQueryMetricsObserver? metrics = null, int? commandTimeoutSeconds = default, int? maxConcurrency = default, bool disposeContextPerQuery = true) { }
         public Shardis.Query.IShardQueryCapabilities Capabilities { get; }
         public System.Collections.Generic.IAsyncEnumerable<TResult> ExecuteAsync<TResult>(Shardis.Query.QueryModel model, System.Threading.CancellationToken ct = default) { }
     }
