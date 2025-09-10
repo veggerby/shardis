@@ -40,6 +40,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
     private readonly bool _disposePerQuery = disposeContextPerQuery;
     private readonly Dictionary<int, DbContext>? _retainedContexts = disposeContextPerQuery ? null : new();
     private readonly Shardis.Query.Diagnostics.IShardisQueryMetrics _queryMetrics = queryMetrics ?? Shardis.Query.Diagnostics.NoopShardisQueryMetrics.Instance;
+    private DbContext? _lastContext; // last created or retained context for provider detection
 
     /// <inheritdoc />
     public IShardQueryCapabilities Capabilities { get; } = new BasicQueryCapabilities(ordering: false, pagination: false);
@@ -157,6 +158,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 }
             }
 
+            _lastContext = ctx ?? _lastContext;
             var setGeneric = typeof(DbContext).GetMethods().First(m => m.Name == nameof(DbContext.Set) && m.IsGenericMethodDefinition && m.GetParameters().Length == 0).MakeGenericMethod(tIn);
             var raw = setGeneric.Invoke(ctx, null)!;
             var q = (IQueryable)raw;
@@ -262,8 +264,26 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 ? Math.Min(enumeratedShardCount, _configuredMaxConcurrency.Value)
                 : enumeratedShardCount;
             root?.AddTag("fanout.effective", effectiveFanout);
+            // Attempt provider detection from first retained or last created context (best effort, stable for histogram cardinality)
+            string? dbSystem = null;
+            try
+            {
+                var anyCtx = !_disposePerQuery && _retainedContexts is { Count: > 0 } ? _retainedContexts.Values.FirstOrDefault() : null;
+                anyCtx ??= _lastContext; // last created if available
+                var providerName = anyCtx?.Database.ProviderName;
+                if (providerName is not null)
+                {
+                    if (providerName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase)) dbSystem = "sqlite";
+                    else if (providerName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase)) dbSystem = "postgresql";
+                    else if (providerName.Contains("SqlServer", StringComparison.OrdinalIgnoreCase)) dbSystem = "mssql";
+                    else if (providerName.Contains("MySql", StringComparison.OrdinalIgnoreCase)) dbSystem = "mysql";
+                    else dbSystem = "other";
+                }
+            }
+            catch { dbSystem = null; }
+            var failureMode = status == "failed" ? "fail-fast" : "fail-fast"; // placeholder for future best-effort mode
             _queryMetrics.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
-                dbSystem: "postgresql",
+                dbSystem: dbSystem ?? "",
                 provider: "efcore",
                 shardCount: _shardCount,
                 targetShardCount: enumeratedShardCount,
@@ -271,7 +291,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 orderingBuffered: "false",
                 fanoutConcurrency: effectiveFanout,
                 channelCapacity: -1,
-                failureMode: "fail-fast",
+                failureMode: failureMode,
                 resultStatus: status,
                 rootType: model.SourceType.Name));
             root?.Dispose();
