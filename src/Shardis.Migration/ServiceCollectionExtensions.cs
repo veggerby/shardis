@@ -5,6 +5,7 @@ using Shardis.Migration.Execution;
 using Shardis.Migration.InMemory;
 using Shardis.Migration.Instrumentation;
 using Shardis.Migration.Throttling;
+using Shardis.Migration.Planning;
 using Shardis.Persistence;
 
 namespace Shardis.Migration;
@@ -115,5 +116,36 @@ public static class ServiceCollectionExtensions
         var options = new ShardMigrationOptions();
         configure?.Invoke(options); // cannot set init-only properties here but retained for backwards compatibility
         return RegisterMigrationCore<TKey>(services, options);
+    }
+
+    /// <summary>
+    /// Replaces the default in-memory planner with the streaming segmented enumeration planner when an enumeration-capable store is registered.
+    /// If no <see cref="IShardMapEnumerationStore{TKey}"/> is present, the call is a no-op.
+    /// </summary>
+    public static IServiceCollection UseSegmentedEnumerationPlanner<TKey>(
+        this IServiceCollection services,
+        int segmentSize = 10_000)
+        where TKey : notnull, IEquatable<TKey>
+    {
+        // Locate existing enumeration store; if absent, silently ignore (keeps additive behavior).
+        var enumStore = services.FirstOrDefault(sd => sd.ServiceType == typeof(IShardMapEnumerationStore<TKey>));
+        if (enumStore is null)
+        {
+            return services; // nothing to do
+        }
+
+        // Remove existing planner registration(s)
+        var plannerDescriptors = services.Where(sd => sd.ServiceType == typeof(IShardMigrationPlanner<TKey>)).ToList();
+        foreach (var d in plannerDescriptors)
+        {
+            services.Remove(d);
+        }
+
+        services.AddSingleton<IShardMigrationPlanner<TKey>>(sp =>
+        {
+            var store = (IShardMapEnumerationStore<TKey>)sp.GetRequiredService(typeof(IShardMapEnumerationStore<TKey>));
+            return new SegmentedEnumerationMigrationPlanner<TKey>(store, segmentSize);
+        });
+        return services;
     }
 }

@@ -36,4 +36,26 @@ public static class TopologyValidator
 
         return (seen.Count, counts);
     }
+
+    /// <summary>
+    /// Computes a deterministic hash (SHA-256 hex) of the full key→shard assignment enumeration. Order independent.
+    /// Intended for cheap drift detection (planning vs execution window). Not for cryptographic guarantees.
+    /// </summary>
+    public static async Task<string> ComputeHashAsync<TKey>(
+        IShardMapEnumerationStore<TKey> store,
+        CancellationToken cancellationToken = default)
+        where TKey : notnull, IEquatable<TKey>
+    {
+        var list = new List<(string k, string s)>();
+        await foreach (var map in store.EnumerateAsync(cancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            list.Add((map.ShardKey.Value!.ToString()!, map.ShardId.Value));
+        }
+        list.Sort(static (a, b) => string.CompareOrdinal(a.k, b.k));
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(string.Join(';', list.Select(i => i.k + "->" + i.s)));
+        var hash = sha.ComputeHash(bytes);
+        return Convert.ToHexString(hash);
+    }
 }
