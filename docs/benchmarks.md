@@ -20,6 +20,7 @@ Benchmark sources live under `benchmarks/` (single project `Shardis.Benchmarks`)
 - `MergeEnumeratorBenchmarks` (category `merge`) – compares three global merge strategies: unordered streaming (baseline), ordered streaming (bounded prefetch, low memory, early first-item), and ordered eager (parallel per-shard materialization, higher memory, potentially larger first-item delay). Also exports first‑item latency percentile CSV (p50/p95) grouped by parameter tuple.
 - `MergeEnumeratorBenchmarks` (category `merge`) – compares three global merge strategies: unordered streaming (baseline), ordered streaming (bounded prefetch, low memory, early first-item), and ordered eager (parallel per-shard materialization, higher memory, potentially larger first-item delay). Also exports first‑item latency percentile CSV (p50/p95) grouped by parameter tuple.
 - `SegmentedPlannerBenchmarks` (category `plan`) – compares in-memory vs segmented enumeration migration planning (includes optional dry-run counts) across key counts and segment sizes; allocation focus.
+- `QueryLatencyEmissionBenchmarks` (category `query-latency`) – measures end-to-end latency emission overhead for unordered vs ordered EF Core query execution (single histogram emission path). Best-effort failure mode not separately benchmarked (same suppression/emission path).
 
 ## Running
 
@@ -198,4 +199,4 @@ When diffs show >10% regression in Mean or >2x allocation increase:
 
 ---
 
-Last updated: 2025-08-27
+Last updated: 2025-09-10

@@ -820,8 +820,8 @@ Tags (dimensions) emitted (empty / `null` omitted by exporters):
 | `ordering.buffered` | `true` if ordered (k‑way) merge path was used; `false` for unordered (present for parity). |
 | `fanout.concurrency` | Effective parallel shard enumerations (min(configured limit, targeted shard count)). |
 | `channel.capacity` | Configured channel capacity (unordered merge only; `-1` indicates unbounded). |
-| `failure.mode` | `fail-fast` (future: `best-effort`). |
-| `result.status` | `ok`, `failed`, or `canceled`. |
+| `failure.mode` | `fail-fast` or `best-effort` (best-effort: partial shard failures suppressed). |
+| `result.status` | `ok`, `failed`, or `canceled` (`ok` for best-effort when ≥1 shard succeeded even if some failed). |
 | `root.type` | CLR type name of the root element (e.g. `Person`). |
 | `invalid.shard.count` | Number of user-requested shard ids ignored because they do not exist. |
 
