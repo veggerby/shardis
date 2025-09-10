@@ -15,6 +15,7 @@ public class ShardMapEnumerationTests
             var shardId = new ShardId((i % shards).ToString());
             store.AssignShardToKey(new ShardKey<string>($"k-{i:000}"), shardId);
         }
+
         return store;
     }
 
@@ -28,12 +29,12 @@ public class ShardMapEnumerationTests
         var snapshot = await store.ToSnapshotAsync();
 
         // assert
-        Assert.Equal(100, snapshot.Assignments.Count);
+        snapshot.Assignments.Should().HaveCount(100);
         for (int i = 0; i < 100; i++)
         {
             var key = new ShardKey<string>($"k-{i:000}");
             var expected = new ShardId((i % 4).ToString());
-            Assert.Equal(expected, snapshot.Assignments[key]);
+            snapshot.Assignments[key].Should().Be(expected);
         }
     }
 
@@ -45,8 +46,11 @@ public class ShardMapEnumerationTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        // act/assert
-        await Assert.ThrowsAsync<TaskCanceledException>(async () => await store.ToSnapshotAsync(cancellationToken: cts.Token));
+        // act
+        Func<Task> act = () => store.ToSnapshotAsync(cancellationToken: cts.Token);
+
+        // assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -55,8 +59,11 @@ public class ShardMapEnumerationTests
         // arrange
         var store = Seed(50, 3);
 
-        // act/assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await store.ToSnapshotAsync(maxKeys: 10));
-        Assert.Contains("Snapshot key cap", ex.Message);
+        // act
+        Func<Task> act = () => store.ToSnapshotAsync(maxKeys: 10);
+
+        // assert
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.Which.Message.Should().Contain("Snapshot key cap");
     }
 }
