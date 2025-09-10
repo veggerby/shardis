@@ -62,6 +62,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         {
             int invalidCount = 0;
             int[]? targetIds = null;
+            bool allTargetsInvalid = false;
             if (model.TargetShards is { Count: > 0 })
             {
                 var parsed = new List<int>(model.TargetShards.Count);
@@ -77,8 +78,12 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                     }
                 }
                 if (parsed.Count > 0) { targetIds = parsed.OrderBy(x => x).ToArray(); }
+                else if (invalidCount > 0)
+                {
+                    allTargetsInvalid = true; // treat as empty fan-out
+                }
             }
-            var shardIndexes = targetIds ?? Enumerable.Range(0, _shardCount);
+            var shardIndexes = allTargetsInvalid ? Array.Empty<int>() : (targetIds ?? Enumerable.Range(0, _shardCount));
             if (invalidCount > 0)
             {
                 activity?.AddTag("invalid.shard.count", invalidCount);
@@ -98,8 +103,17 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
             }
             activity?.AddTag("fanout.enumerated", enumeratedShardCount);
 
-            var per = shardIndexes.Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
-            var merged = Cast<TResult>(_merge(per, ct), ct);
+            IAsyncEnumerable<object> mergedObj;
+            if (shardIndexes.Any())
+            {
+                var per = shardIndexes.Select(idx => ExecShard<TResult>(idx, tIn, model, ct)).Select(Box);
+                mergedObj = _merge(per, ct);
+            }
+            else
+            {
+                mergedObj = EmptyAsync();
+            }
+            var merged = Cast<TResult>(mergedObj, ct);
 
             return WrapCompletion(merged, ct, activity, sw, model, enumeratedShardCount, invalidCount);
         }
@@ -145,10 +159,6 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                     ctx = _retainedContexts.ContainsKey(shardId) ? _retainedContexts[shardId] : (_retainedContexts[shardId] = newCtx);
                 }
             }
-        }
-
-        try
-        {
             // Apply optional command timeout (per shard) if specified (capture previous to restore on retained contexts)
             int? previousTimeout = null;
             if (_commandTimeoutSeconds is int secs && secs > 0 && ctx is not null)
@@ -208,11 +218,6 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 shardActivity?.Dispose();
             }
         }
-        finally
-        {
-            // ensure semaphore released if outer try body throws before inner finally
-            // inner finally already released on success path
-        }
     }
 
     private static async IAsyncEnumerable<T> Cast<T>(IAsyncEnumerable<object> src, [EnumeratorCancellation] CancellationToken ct)
@@ -229,6 +234,12 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         {
             yield return item!;
         }
+    }
+
+    private static async IAsyncEnumerable<object> EmptyAsync()
+    {
+        await Task.CompletedTask;
+        yield break;
     }
 
     private async IAsyncEnumerable<T> WrapCompletion<T>(IAsyncEnumerable<T> src, [EnumeratorCancellation] CancellationToken ct, Activity? root, Stopwatch sw, QueryModel model, int enumeratedShardCount, int invalidShardCount)
@@ -325,32 +336,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
     }
 
-    internal static string DetectFailureMode()
-    {
-        // In this provider instance we cannot directly inspect outer wrappers; assume best-effort wrapper sets ambient marker in Activity if needed.
-        // For current implementation we look at call stack for FailureHandlingExecutor presence — lightweight heuristic.
-        try
-        {
-            var stack = new System.Diagnostics.StackTrace();
-            foreach (var frame in stack.GetFrames() ?? Array.Empty<System.Diagnostics.StackFrame>())
-            {
-                var m = frame.GetMethod();
-                if (m?.DeclaringType?.Name == "FailureHandlingExecutor")
-                {
-                    // Determine strategy field via reflection (private _strategy)
-                    var stratField = m.DeclaringType.GetField("_strategy", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (stratField != null)
-                    {
-                        var thisField = stratField.DeclaringType;
-                    }
-                    // Stack presence implies either fail-fast (redundant) or best-effort; conservatively return best-effort for visibility.
-                    return "best-effort";
-                }
-            }
-        }
-        catch { }
-        return "fail-fast";
-    }
+    internal static string DetectFailureMode() => "fail-fast"; // simplified: explicit strategy tagging reserved for future
 
     private static Activity? StartActivity(QueryModel model, Type resultType)
     {
