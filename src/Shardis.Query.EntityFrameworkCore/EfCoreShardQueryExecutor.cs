@@ -98,7 +98,7 @@ public static class EfCoreShardQueryExecutor
         private readonly IShardQueryExecutor _inner;
         private readonly Func<object, object?> _keySelectorCompiled;
         private readonly bool _descending;
-    private EntityFrameworkCoreShardQueryExecutor? _efInner; // for unified latency emission
+        private EntityFrameworkCoreShardQueryExecutor? _efInner; // for unified latency emission
 
         public OrderedWrapperExecutor(IShardQueryExecutor inner, LambdaExpression keySelector, bool descending)
         {
@@ -159,16 +159,24 @@ public static class EfCoreShardQueryExecutor
                 // Unified latency emission (single histogram) using inner executor's helper.
                 if (_efInner is not null)
                 {
-                    var resultStatus = ct.IsCancellationRequested ? "canceled" : "ok"; // failures bubble before here
-                    var targetCount = model.TargetShards?.Count ?? _efInner.InternalShardCount; // internal shard count used if all targeted
-                    if (targetCount <= 0) targetCount = _efInner.InternalShardCount; // fallback
-                    _efInner!.RecordLatencyOverride(sw.Elapsed.TotalMilliseconds,
-                        model,
-                        enumeratedShardCount: targetCount,
-                        mergeStrategy: "ordered",
-                        orderingBuffered: true,
-                        resultStatus: resultStatus,
-                        effectiveFanout: targetCount);
+                    var ctx = _efInner.ConsumePendingLatencyContext();
+                    if (ctx is not null)
+                    {
+                        var baseCtx = ctx.Value;
+                        var status = ct.IsCancellationRequested ? "canceled" : baseCtx.resultStatus; // preserve failure if occurred earlier
+                        _efInner.MetricsSink.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
+                            dbSystem: baseCtx.dbSystem,
+                            provider: "efcore",
+                            shardCount: baseCtx.shardCount,
+                            targetShardCount: baseCtx.targetShardCount,
+                            mergeStrategy: "ordered",
+                            orderingBuffered: "true",
+                            fanoutConcurrency: baseCtx.effectiveFanout,
+                            channelCapacity: baseCtx.channelCapacity,
+                            failureMode: baseCtx.failureMode,
+                            resultStatus: status,
+                            rootType: baseCtx.rootType));
+                    }
                 }
 
                 orderingActivity?.Dispose();

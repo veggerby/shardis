@@ -45,6 +45,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
     private readonly int? _channelCapacity = channelCapacity;
     private DbContext? _lastContext; // last created or retained context for provider detection
     private bool _suppressNextLatencyEmission; // set by ordered wrapper to unify single histogram emission
+    private PendingLatencyContext? _pendingLatencyContext; // captured tags for ordered wrapper unified emission
 
     /// <inheritdoc />
     public IShardQueryCapabilities Capabilities { get; } = new BasicQueryCapabilities(ordering: false, pagination: false);
@@ -306,8 +307,17 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
             }
             else
             {
-                // one-time suppression consumed
-                _suppressNextLatencyEmission = false;
+                // capture context (excluding duration which ordered wrapper will measure end-to-end including ordering cost)
+                _pendingLatencyContext = new PendingLatencyContext(
+                    dbSystem: dbSystem ?? string.Empty,
+                    shardCount: _shardCount,
+                    targetShardCount: enumeratedShardCount,
+                    effectiveFanout: effectiveFanout,
+                    channelCapacity: _channelCapacity ?? -1,
+                    failureMode: failureMode,
+                    resultStatus: status,
+                    rootType: model.SourceType.Name);
+                _suppressNextLatencyEmission = false; // reset flag
             }
             root?.Dispose();
         }
@@ -355,46 +365,24 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         _suppressNextLatencyEmission = true;
     }
 
-    internal void RecordLatencyOverride(double milliseconds,
-                                        QueryModel model,
-                                        int enumeratedShardCount,
-                                        string mergeStrategy,
-                                        bool orderingBuffered,
-                                        string resultStatus,
-                                        int effectiveFanout)
+    internal PendingLatencyContext? ConsumePendingLatencyContext()
     {
-        string? dbSystem = null;
-        try
-        {
-            var anyCtx = !_disposePerQuery && _retainedContexts is { Count: > 0 } ? _retainedContexts.Values.FirstOrDefault() : null;
-            anyCtx ??= _lastContext;
-            var providerName = anyCtx?.Database.ProviderName;
-            if (providerName is not null)
-            {
-                if (providerName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase)) dbSystem = "sqlite";
-                else if (providerName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase)) dbSystem = "postgresql";
-                else if (providerName.Contains("SqlServer", StringComparison.OrdinalIgnoreCase)) dbSystem = "mssql";
-                else if (providerName.Contains("MySql", StringComparison.OrdinalIgnoreCase)) dbSystem = "mysql";
-                else dbSystem = "other";
-            }
-        }
-        catch { dbSystem = null; }
-        var failureMode = DetectFailureMode();
-        _queryMetrics.RecordQueryMergeLatency(milliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
-            dbSystem: dbSystem ?? string.Empty,
-            provider: "efcore",
-            shardCount: _shardCount,
-            targetShardCount: enumeratedShardCount,
-            mergeStrategy: mergeStrategy,
-            orderingBuffered: orderingBuffered ? "true" : "false",
-            fanoutConcurrency: effectiveFanout,
-            channelCapacity: _channelCapacity ?? -1,
-            failureMode: failureMode,
-            resultStatus: resultStatus,
-            rootType: model.SourceType.Name));
+        var ctx = _pendingLatencyContext;
+        _pendingLatencyContext = null;
+        return ctx;
     }
 
     internal Shardis.Query.Diagnostics.IShardisQueryMetrics MetricsSink => _queryMetrics;
+
+    internal readonly record struct PendingLatencyContext(
+        string dbSystem,
+        int shardCount,
+        int targetShardCount,
+        int effectiveFanout,
+        int channelCapacity,
+        string failureMode,
+        string resultStatus,
+        string rootType);
 }
 
 internal static class ShardisQueryActivitySource
