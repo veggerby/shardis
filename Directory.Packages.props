@@ -28,7 +28,7 @@
     <PackageVersion Include="AwesomeAssertions" Version="9.1.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <!-- OpenTelemetry for metrics tests -->
-    <PackageVersion Include="OpenTelemetry" Version="1.8.1" />
+  <PackageVersion Include="OpenTelemetry" Version="1.8.1" />
   <PackageVersion Include="OpenTelemetry.Api" Version="1.8.1" />
     <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.8.1" />
     <!-- Benchmarks -->

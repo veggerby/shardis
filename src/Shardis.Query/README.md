@@ -65,21 +65,59 @@ Unordered merge supports bounded buffering via provider options (channel capacit
 
 ### Metrics
 
-An `ActivitySource` named `Shardis.Query` is emitted by providers (currently EF Core) with standard tags (`query.*`, `shard.count`, timing). Hook via OpenTelemetry for tracing.
+Shardis.Query emits both tracing Activities and an OpenTelemetry Histogram for end-to-end merge latency.
+
+Latency histogram:
+
+- Name: `shardis.query.merge.latency`
+- Unit: `ms`
+- Description: End-to-end duration of merged shard query enumeration (fan-out start to final consumer completion)
+- Cardinality guard: recorded exactly once per query enumeration (success, cancellation, or failure)
+
+Tag schema (stable):
+
+- `db.system` – storage system (e.g. `postgresql`)
+- `provider` – logical provider (e.g. `efcore`)
+- `shard.count` – total configured shards in topology
+- `target.shard.count` – shards actually targeted (respects `WhereShard`); equals `shard.count` when not targeted
+- `merge.strategy` – `unordered` | `ordered`
+- `ordering.buffered` – `true` when ordered path is a buffered/materialized variant
+- `fanout.concurrency` – effective parallelism applied (may be lower than configured when targeted shard subset)
+- `channel.capacity` – capacity for unordered merge channel (`-1` when unbounded / not applicable)
+- `failure.mode` – `fail-fast` | `best-effort` (heuristic if strategy decoration not detectable)
+- `result.status` – `ok` | `canceled` | `failed`
+- `root.type` – short CLR type name for the query root / projection
+
+Tracing:
+
+- `ActivitySource` name: `Shardis.Query`
+- Per-query activity includes overlapping tags (`shard.count`, `target.shard.count`, strategy, etc.) and timing spans.
+
+Enabling (OpenTelemetry example):
+
+```csharp
+var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("Shardis") // core
+    .AddMeter("Shardis.Query") // query-specific
+    .AddInMemoryExporter(out var exported) // or Prometheus / OTLP
+    .Build();
+```
+
+Buckets: by default rely on your metrics backend’s dynamic bucketing; for explicit views apply `[5,10,20,50,100,200,500,1000,2000,5000]` (milliseconds) to the histogram instrument.
 
 ## Integration notes
 
- - Pair with a concrete provider package (EF Core, Marten, InMemory) for session creation.
- - Register `AddShardisQueryClient()` after configuring an executor to enable ergonomic helpers.
- - For early adoption of ordered EF Core queries, use `EfCoreShardQueryExecutor.CreateOrdered` (materializes all results; suitable for bounded sets only).
+- Pair with a concrete provider package (EF Core, Marten, InMemory) for session creation.
+- Register `AddShardisQueryClient()` after configuring an executor to enable ergonomic helpers.
+- For early adoption of ordered EF Core queries, use `EfCoreShardQueryExecutor.CreateOrdered` (materializes all results; suitable for bounded sets only).
 
 ## Capabilities & limits
 
- - ✅ Streaming across shards with O(shards + channel capacity) memory
- - ✅ Pluggable store providers
- - ⚠️ Ordered (buffered) EF Core factory currently materializes all shard results (memory trades for simplicity). Avoid for unbounded result sets.
- - ⚠️ Ordered streaming (fully streaming k-way merge) is planned; current ordered path is preview.
- - 🧩 TFM: `net8.0`, `net9.0`; Shardis ≥ 0.1
+- ✅ Streaming across shards with O(shards + channel capacity) memory
+- ✅ Pluggable store providers
+- ⚠️ Ordered (buffered) EF Core factory currently materializes all shard results (memory trades for simplicity). Avoid for unbounded result sets.
+- ⚠️ Ordered streaming (fully streaming k-way merge) is planned; current ordered path is preview.
+- 🧩 TFM: `net8.0`, `net9.0`; Shardis ≥ 0.1
 
 ## Samples & tests
 

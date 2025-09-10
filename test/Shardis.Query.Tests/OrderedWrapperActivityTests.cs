@@ -1,9 +1,8 @@
 using System.Diagnostics;
 using System.Linq.Expressions;
+
 using Shardis.Query;
 using Shardis.Query.Execution;
-using Xunit;
-using AwesomeAssertions;
 
 namespace Shardis.Query.Tests;
 

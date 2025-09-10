@@ -39,6 +39,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Failure handling strategies for queries: `FailFastFailureStrategy`, `BestEffortFailureStrategy` (public, singleton instances) with internal wrapper executor.
 - EF Core provider DI extensions: `AddShardisEfCoreOrdered<TContext,TOrder>` (buffered global ordering) and `DecorateShardQueryFailureStrategy(IShardQueryFailureStrategy)` for post-registration decoration.
 - Activated EF Core execution options: `Concurrency` and `DisposeContextPerQuery` now honored by `EntityFrameworkCoreShardQueryExecutor` (previously reserved placeholders).
+- Query latency OpenTelemetry histogram `shardis.query.merge.latency` (single emission per enumeration) with stable tag schema (`db.system`, `provider`, `shard.count`, `target.shard.count`, `merge.strategy`, `ordering.buffered`, `fanout.concurrency`, `channel.capacity`, `failure.mode`, `result.status`, `root.type`).
+- OpenTelemetry test suite validating single histogram point across success, canceled, failed, ordered/unordered, targeted fan-out, and failure handling strategies (fail-fast / best-effort) plus tag correctness.
 
 ### Changed (Unreleased)
 
@@ -48,6 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Executor now emits tracing activities and duration metrics without altering execution semantics.
 - EF Core unordered executor now uses configured `EfCoreExecutionOptions.Concurrency` (bounded parallel shard fan-out) and respects `DisposeContextPerQuery=false` by retaining one `DbContext` per shard.
 - Benchmarks documentation extended with segmented planner and environment variable (`SHARDIS_PLAN_KEYS`) guidance; roadmap updated to reflect partial completion of planning overhead benchmark.
+- Unified ordered vs unordered query latency emission (ordered path now reuses shared instrumentation for exactly-once metric recording).
 
 ### Fixed (Unreleased)
 

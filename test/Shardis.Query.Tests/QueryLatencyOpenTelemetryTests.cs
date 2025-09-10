@@ -306,10 +306,10 @@ public class QueryLatencyOpenTelemetryTests
         points.Count.Should().Be(1);
         var tags = new Dictionary<string, string>();
         foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
-    // Current heuristic may misclassify best-effort as fail-fast depending on stack shape; accept either but require tag presence.
-    tags.ContainsKey("failure.mode").Should().BeTrue();
-    (tags["failure.mode"] == "best-effort" || tags["failure.mode"] == "fail-fast").Should().BeTrue();
-    // Depending on enumeration order first shard failure may surface before success causing overall failed status.
-    (tags["result.status"] == "ok" || tags["result.status"] == "failed").Should().BeTrue();
+        // Current heuristic may misclassify best-effort as fail-fast depending on stack shape; accept either but require tag presence.
+        tags.ContainsKey("failure.mode").Should().BeTrue();
+        (tags["failure.mode"] == "best-effort" || tags["failure.mode"] == "fail-fast").Should().BeTrue();
+        // Depending on enumeration order first shard failure may surface before success causing overall failed status.
+        (tags["result.status"] == "ok" || tags["result.status"] == "failed").Should().BeTrue();
     }
 }
