@@ -326,10 +326,10 @@ public class QueryLatencyOpenTelemetryTests
         });
         // unordered base
         var unordered = new EntityFrameworkCoreShardQueryExecutor(3, failingFactory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
-    // ordered wrapper via factory (reuse emission suppression)
-    var ordFactory = new EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
-    var orderLambda = (System.Linq.Expressions.Expression<Func<Person, object>>)(p => p.Id);
-    var orderedInner = ordFactory.CreateOrdered(unordered, orderLambda, descending: false);
+        // ordered wrapper via factory (reuse emission suppression)
+        var ordFactory = new EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+        var orderLambda = (System.Linq.Expressions.Expression<Func<Person, object>>)(p => p.Id);
+        var orderedInner = ordFactory.CreateOrdered(unordered, orderLambda, descending: false);
         // failure handling wrapper (best-effort)
         var bestEffortOrdered = new Shardis.Query.Execution.FailureHandlingExecutor(orderedInner, Shardis.Query.Execution.FailureHandling.BestEffortFailureStrategy.Instance);
         var query = ShardQuery.For<Person>(bestEffortOrdered).Where(p => p.Age >= 20);
@@ -354,5 +354,41 @@ public class QueryLatencyOpenTelemetryTests
         (tags["result.status"] == "ok" || tags["result.status"] == "failed").Should().BeTrue();
         int.Parse(tags["shard.count"]).Should().Be(3);
         int.Parse(tags["target.shard.count"]).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task OrderedQuery_Canceled_EmitsSingleLatencyMeasurement()
+    {
+        // arrange
+        var exported = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter(CoreMeterName)
+            .AddInMemoryExporter(exported)
+            .Build();
+
+        var factory = new Factory();
+        var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
+        var ordFactory = new EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+        var orderLambda = (System.Linq.Expressions.Expression<Func<Person, object>>)(p => p.Id);
+        var orderedExec = ordFactory.CreateOrdered(unordered, orderLambda, descending: false);
+        var query = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
+        using var cts = new CancellationTokenSource();
+
+        // act
+        var task = Task.Run(async () => await query.ToListAsync(cts.Token));
+        cts.Cancel();
+        try { await task; } catch { }
+        meterProvider.ForceFlush();
+
+        // assert
+        var metric = exported.SingleOrDefault(m => m.Name == "shardis.query.merge.latency");
+        metric.Should().NotBeNull();
+        var pts = new List<MetricPoint>();
+        foreach (ref readonly var mp in metric!.GetMetricPoints()) pts.Add(mp);
+        pts.Count.Should().Be(1);
+        var tagDict = new Dictionary<string, string>();
+        foreach (var t in pts[0].Tags) tagDict[t.Key] = t.Value?.ToString() ?? string.Empty;
+        tagDict["merge.strategy"].Should().Be("ordered");
+        tagDict["result.status"].Should().Be("canceled");
     }
 }
