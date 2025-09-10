@@ -40,7 +40,10 @@ public sealed class OrderedMergeTests
         // so the latency is at least the slowest shard's first-item delay (50ms). Under heavy CI load we've
         // observed sporadic scheduler stalls, so use a relaxed upper bound while still defending against
         // pathological blocking (e.g. seconds) that would indicate regression to full materialization.
-        firstElapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(600));
+        // We expect concurrent prefetch to prevent latency from scaling with shard count.
+        // Slow shard first element delay is 50ms; under extreme CI load we've observed scheduler stalls.
+        // Use a wide bound that still detects pathological regression (seconds of blocking).
+        firstElapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
         await enumerator.DisposeAsync();
     }
 

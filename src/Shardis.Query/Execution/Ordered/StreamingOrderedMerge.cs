@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace Shardis.Query.Execution.Ordered;
 
@@ -24,13 +25,24 @@ internal static class StreamingOrderedMerge
                 enumerators.Add(sources[i].GetAsyncEnumerator(ct));
             }
 
-            var heap = new List<HeapItem<T, TKey>>();
+            // Concurrently fetch first element from every shard to avoid N serial latency accrual.
+            var firstFetchTasks = new Task<InitialItem<T, TKey>>[enumerators.Count];
             for (var i = 0; i < enumerators.Count; i++)
             {
-                if (await enumerators[i].MoveNextAsync().ConfigureAwait(false))
+                var index = i;
+                var e = enumerators[index];
+                firstFetchTasks[index] = FetchFirstAsync(e, index, keySelector, ct);
+            }
+
+            await Task.WhenAll(firstFetchTasks).ConfigureAwait(false);
+
+            var heap = new List<HeapItem<T, TKey>>(enumerators.Count);
+            for (var i = 0; i < firstFetchTasks.Length; i++)
+            {
+                var r = firstFetchTasks[i].Result; // already completed
+                if (r.HasValue)
                 {
-                    var current = enumerators[i].Current;
-                    heap.Add(new HeapItem<T, TKey>(current, keySelector(current)!, i));
+                    heap.Add(new HeapItem<T, TKey>(r.Value, r.Key, r.ShardIndex));
                 }
             }
             if (heap.Count == 0) yield break;
@@ -105,4 +117,19 @@ internal static class StreamingOrderedMerge
     }
 
     private readonly record struct HeapItem<T, TKey>(T Value, TKey Key, int ShardIndex);
+
+    private static async Task<InitialItem<T, TKey>> FetchFirstAsync<T, TKey>(IAsyncEnumerator<T> enumerator,
+                                                                             int shardIndex,
+                                                                             Func<T, TKey> keySelector,
+                                                                             CancellationToken ct)
+    {
+        if (await enumerator.MoveNextAsync().ConfigureAwait(false))
+        {
+            var current = enumerator.Current;
+            return new InitialItem<T, TKey>(true, current!, keySelector(current)!, shardIndex);
+        }
+        return new InitialItem<T, TKey>(false, default!, default!, shardIndex);
+    }
+
+    private readonly record struct InitialItem<T, TKey>(bool HasValue, T Value, TKey Key, int ShardIndex);
 }
