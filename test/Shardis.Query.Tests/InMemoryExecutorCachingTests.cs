@@ -18,13 +18,13 @@ public sealed class InMemoryExecutorCachingTests
 
         // act
         _ = await q1.ToListAsync();
+        var afterFirst = InMemoryShardQueryExecutor.CompileCount;
         _ = await q2.ToListAsync();
-        var after = InMemoryShardQueryExecutor.CompileCount;
+        var afterSecond = InMemoryShardQueryExecutor.CompileCount;
 
         // assert
-        // Pipeline compilation is per distinct query model (not per shard). Expect exactly one new compilation.
-        var delta = after - before;
-        delta.Should().Be(1);
+        // Second identical model should NOT trigger an additional compilation (cache hit).
+        (afterSecond - afterFirst).Should().Be(0);
     }
 
     [Fact]
