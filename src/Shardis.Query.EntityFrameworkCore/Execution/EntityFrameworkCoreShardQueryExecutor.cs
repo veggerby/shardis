@@ -82,6 +82,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 }
             }
         }
+
         try
         {
             // Apply optional command timeout (per shard) if specified.
@@ -135,11 +136,8 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
         finally
         {
-            // outer try for context acquisition scope ensures release of semaphore even if pre-query reflection or timeout setting throws
-            if (_concurrencyGate is not null)
-            {
-                _concurrencyGate.Release();
-            }
+            // ensure semaphore released if outer try body throws before inner finally
+            // inner finally already released on success path
         }
     }
 
