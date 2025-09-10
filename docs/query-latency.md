@@ -29,13 +29,16 @@ Semantics: Wall-clock duration from fan-out start (first shard enumeration attem
 | `ordering.buffered` | `true` for current ordered EF Core buffered path, otherwise `false`. |
 | `fanout.concurrency` | Effective parallel shard enumerations (≤ targeted shard count and ≤ configured limit). |
 | `channel.capacity` | Unordered merge channel capacity; `-1` when unbounded or not applicable. |
-| `failure.mode` | Currently `fail-fast` (explicit best-effort tagging reserved). |
+| `failure.mode` | `fail-fast` or `best-effort` (best-effort: partial shard failures suppressed; emits `ok` when at least one shard succeeded). |
 | `result.status` | One of: `ok`, `canceled`, `failed`. |
 | `root.type` | Short CLR type name of the query root. |
 
 ## Failure Mode Tag
 
-Only `fail-fast` is emitted presently. Best-effort will become explicit when the wrapper surfaces a deterministic signal (avoids stack heuristics). Downstream backends should treat unknown future values leniently.
+Two values are presently emitted:
+
+* `fail-fast` – first shard failure ends enumeration and reports `result.status=failed`.
+* `best-effort` – shard failures are collected; enumeration continues. If at least one shard succeeds, the final `result.status=ok`; if all shards fail an exception is thrown (no histogram emitted in that fully failed case).
 
 ## Invalid Shard Targeting
 
@@ -55,8 +58,8 @@ All tags listed are considered stable. New tags, if added, will be appended (nev
 
 ## Future Work
 
-* Explicit best-effort failure strategy tagging (`failure.mode=best-effort`).
 * Streaming ordered merge path (buffered path will remain but be distinguishable).
+* Allocation regression guard around latency emission path.
 
 ---
 For an overview see the provider README (`Shardis.Query/README.md`).
