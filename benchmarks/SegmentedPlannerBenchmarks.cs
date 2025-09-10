@@ -1,6 +1,5 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Running;
 
 using Shardis.Migration.InMemory;
 using Shardis.Migration.Model;
@@ -52,7 +51,7 @@ public class SegmentedPlannerBenchmarks
         _source = new TopologySnapshot<string>(srcDict);
         _target = new TopologySnapshot<string>(targetAssignments);
         _segmented = new SegmentedEnumerationMigrationPlanner<string>(_sourceStore, SegmentSize);
-        _segmentedSmall = new SegmentedEnumerationMigrationPlanner<string>(_sourceStore, Math.Max(1000, SegmentSize/5));
+        _segmentedSmall = new SegmentedEnumerationMigrationPlanner<string>(_sourceStore, Math.Max(1000, SegmentSize / 5));
         _inMemory = new InMemoryMigrationPlanner<string>();
     }
 

@@ -1,5 +1,6 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
 using Shardis.Factories;
 using Shardis.Query.Execution;
 

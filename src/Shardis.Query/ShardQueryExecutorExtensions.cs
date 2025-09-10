@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+
 using Shardis.Query.Execution;
 
 namespace Shardis.Query;

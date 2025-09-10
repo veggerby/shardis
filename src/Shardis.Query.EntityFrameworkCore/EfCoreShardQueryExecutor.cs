@@ -1,5 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+
+using Microsoft.EntityFrameworkCore;
+
 using Shardis.Factories;
 using Shardis.Model;
 using Shardis.Query.EntityFrameworkCore.Execution;
@@ -85,18 +87,22 @@ public static class EfCoreShardQueryExecutor
     private sealed class OrderedWrapperExecutor : IShardQueryExecutor
     {
         private readonly IShardQueryExecutor _inner;
-        private readonly Expression<Func<object, object>> _keySelector;
+        private readonly Func<object, object?> _keySelectorCompiled;
         private readonly bool _descending;
 
-    public OrderedWrapperExecutor(IShardQueryExecutor inner, LambdaExpression keySelector, bool descending)
+        public OrderedWrapperExecutor(IShardQueryExecutor inner, LambdaExpression keySelector, bool descending)
         {
             _inner = inner;
             _descending = descending;
-            // Normalize to object -> object for simple application after materialization.
-            _keySelector = (Expression<Func<object, object>>)Expression.Lambda(
-                Expression.Convert(
-                    Expression.Invoke(keySelector, Expression.Convert(Expression.Parameter(typeof(object), "x"), keySelector.Parameters[0].Type)), typeof(object)),
-                Expression.Parameter(typeof(object), "x"));
+            // Rewrite the provided key selector lambda (TIn -> TKey) into a compiled delegate object -> object
+            // by replacing its parameter with an object parameter cast to the original type.
+            var objParam = Expression.Parameter(typeof(object), "o");
+            var originalParam = keySelector.Parameters[0];
+            var castParam = Expression.Convert(objParam, originalParam.Type);
+            var replacedBody = new ParameterReplaceVisitor(originalParam, castParam).Visit(keySelector.Body)!;
+            var bodyAsObject = Expression.Convert(replacedBody, typeof(object));
+            var lambda = Expression.Lambda<Func<object, object>>(bodyAsObject, objParam);
+            _keySelectorCompiled = lambda.Compile();
         }
 
         public IAsyncEnumerable<TResult> ExecuteAsync<TResult>(QueryModel model, CancellationToken ct = default)
@@ -116,12 +122,27 @@ public static class EfCoreShardQueryExecutor
             }
 
             // Apply ordering using dynamic selector.
-            Func<TResult, object?> key = (r) => _keySelector.Compile()(r!);
+            Func<TResult, object?> key = r => _keySelectorCompiled(r!);
             IEnumerable<TResult> ordered = _descending ? all.OrderByDescending(key) : all.OrderBy(key);
             foreach (var item in ordered)
             {
                 ct.ThrowIfCancellationRequested();
                 yield return item;
+            }
+        }
+
+        private sealed class ParameterReplaceVisitor(ParameterExpression source, Expression target) : ExpressionVisitor
+        {
+            private readonly ParameterExpression _source = source;
+            private readonly Expression _target = target;
+
+            protected override Expression VisitParameter(ParameterExpression node)
+            {
+                if (node == _source)
+                {
+                    return _target;
+                }
+                return base.VisitParameter(node);
             }
         }
     }

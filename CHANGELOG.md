@@ -31,6 +31,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Topology validation & drift utilities: `TopologyValidator.ValidateAsync` (duplicate detection) and `TopologyValidator.ComputeHashAsync` (order-independent hash) for snapshot integrity and drift detection.
 - Benchmarks: `SegmentedPlannerBenchmarks` (category `plan`) comparing in-memory vs segmented planner and dry-run allocations across key counts & segment sizes.
 - Migration usage docs updated with segmented planner section & dry-run planning guidance.
+- Query ergonomics: `IShardQueryClient` + `ShardQueryClient` (deferred, DI friendly) with `AddShardisQueryClient` registration.
+- Executor extensions: `IShardQueryExecutor.Query<T>()` and `Query<T,TResult>(...)` shorthand overloads.
+- Terminal operators: `FirstOrDefaultAsync`, `AnyAsync`, `CountAsync` in `ShardQueryableTerminalExtensions` (client-side enumeration helpers).
+- EF Core executor ordered (buffered) factory: `EfCoreShardQueryExecutor.CreateOrdered<TContext,TOrder>` exposing basic global ordering via materialization.
+- EF Core execution options: `EfCoreExecutionOptions` (Concurrency, ChannelCapacity, PerShardCommandTimeout, DisposeContextPerQuery) – currently ChannelCapacity + timeout applied; others reserved.
 
 ### Changed (Unreleased)
 

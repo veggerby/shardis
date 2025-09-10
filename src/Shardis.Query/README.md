@@ -1,6 +1,6 @@
 # Shardis.Query
 
-Primitives and abstractions for cross-shard query execution in Shardis: streaming enumerators, LINQ helpers, and executor interfaces.
+Primitives and abstractions for cross-shard query execution in Shardis: streaming enumerators, LINQ helpers, executor interfaces, and ergonomic client helpers.
 
 [![NuGet](https://img.shields.io/nuget/v/Shardis.Query.svg)](https://www.nuget.org/packages/Shardis.Query/)
 [![Downloads](https://img.shields.io/nuget/dt/Shardis.Query.svg)](https://www.nuget.org/packages/Shardis.Query/)
@@ -20,37 +20,48 @@ dotnet add package Shardis.Query --version 0.1.*
 
 ## What’s included
 
-- `IShardQueryExecutor<TSession>` — executor interface for shard-local queries.
-- Streaming enumerators & merge operators for unordered / ordered streaming.
-- LINQ adapter helpers to build shard-friendly query expressions.
+ - `IShardQueryExecutor` — low-level executor abstraction.
+ - `IShardQueryClient` / `ShardQueryClient` — ergonomic entrypoint (DI friendly) providing `Query<T>()` and inline composition overloads.
+ - Executor extensions: `Query<T>()`, `Query<T,TResult>(...)` for direct bootstrap without `ShardQuery.For<T>()`.
+ - Terminal extensions: `FirstOrDefaultAsync`, `AnyAsync`, `CountAsync` (client-side aggregation helpers).
+ - Streaming merge operators (unordered, ordered) and enumerators.
+ - LINQ adapter helpers to build shard-friendly query expressions.
 
 ## Quick start
 
 ```csharp
-// resolve a shard query executor and run a query
-var exec = provider.GetRequiredService<IShardQueryExecutor<MySession>>();
-await foreach (var item in exec.QueryAsync(sessionFactory, myQuery, CancellationToken.None))
-{
-    // process streamed items
-}
+// Using the ergonomic client (recommended)
+var client = provider.GetRequiredService<IShardQueryClient>();
+var adults = client.Query<Person, string>(p => p.Age >= 18, p => p.Name);
+var first = await adults.FirstOrDefaultAsync();
+var count = await adults.CountAsync();
+
+// Or directly from an executor
+var exec = provider.GetRequiredService<IShardQueryExecutor>();
+var q = exec.Query<Person>()
+            .Where(p => p.IsActive)
+            .Select(p => new { p.Id, p.Name });
+var any = await q.AnyAsync();
 ```
 
 ## Configuration / Options
 
-- Merge modes: unordered (fastest) and ordered (global key selector).
-- Backpressure/channel capacity is configurable on the broadcaster/merge layer.
+ - Merge modes: unordered (fastest) and ordered (global key selector; buffered in EF Core factory `CreateOrdered` preview).
+ - Backpressure/channel capacity configurable (unordered path) via provider options (e.g. EF Core `EfCoreExecutionOptions.ChannelCapacity`).
 
 ## Integration notes
 
-- Pair with a concrete provider package (e.g., `Shardis.Query.Marten`, EF Core sample).
-- Requires a shard session factory and a query object understood by the provider.
+ - Pair with a concrete provider package (EF Core, Marten, InMemory) for session creation.
+ - Register `AddShardisQueryClient()` after configuring an executor to enable ergonomic helpers.
+ - For early adoption of ordered EF Core queries, use `EfCoreShardQueryExecutor.CreateOrdered` (materializes all results; suitable for bounded sets only).
 
 ## Capabilities & limits
 
-- ✅ Streaming across shards with O(shards + channel capacity) memory
-- ✅ Pluggable store providers
-- ⚠️ Ordered streaming requires a stable key selector and may add latency
-- 🧩 TFM: `net8.0`, `net9.0`; Shardis ≥ 0.1
+ - ✅ Streaming across shards with O(shards + channel capacity) memory
+ - ✅ Pluggable store providers
+ - ⚠️ Ordered (buffered) EF Core factory currently materializes all shard results (memory trades for simplicity). Avoid for unbounded result sets.
+ - ⚠️ Ordered streaming (fully streaming k-way merge) is planned; current ordered path is preview.
+ - 🧩 TFM: `net8.0`, `net9.0`; Shardis ≥ 0.1
 
 ## Samples & tests
 

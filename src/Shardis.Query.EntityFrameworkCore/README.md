@@ -1,6 +1,6 @@
 # Shardis.Query.EntityFrameworkCore
 
-Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming).
+Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming, preview ordered buffering).
 
 [![NuGet](https://img.shields.io/nuget/v/Shardis.Query.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Shardis.Query.EntityFrameworkCore/)
 [![Downloads](https://img.shields.io/nuget/dt/Shardis.Query.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Shardis.Query.EntityFrameworkCore/)
@@ -19,7 +19,9 @@ dotnet add package Shardis.Query.EntityFrameworkCore --version 0.1.*
 
 ## What’s included
 
-- `EntityFrameworkCoreShardQueryExecutor` — concrete executor that translates queries into EF Core operations.
+- `EntityFrameworkCoreShardQueryExecutor` — concrete executor translating queries into EF Core operations.
+- `EfCoreShardQueryExecutor.CreateUnordered` and `CreateOrdered` (buffered ordered variant; materializes then orders).
+- `EfCoreExecutionOptions` (channel capacity, per-shard command timeout, future concurrency hints).
 - `EntityFrameworkCoreShardFactory<TContext>` / `PooledEntityFrameworkCoreShardFactory<TContext>` for per-shard context creation.
 - Wiring examples for registering `DbContext` instances per shard.
 
@@ -75,13 +77,17 @@ var exec = new EntityFrameworkCoreShardQueryExecutor(2, adapter, (s, ct) => Unor
 
 ## Configuration / Options
 
-- **PageSize**: control the EF Core query page size for paged streaming (provider-specific).
-- **Shard factory**: supply an `IShardFactory<DbContext>` (e.g. `EntityFrameworkCoreShardFactory<TContext>` + adapter) for pure creation; seed separately.
+- **ChannelCapacity** (`EfCoreExecutionOptions.ChannelCapacity`): bounded backpressure for unordered merge (null = provider default / unbounded internal channel).
+- **PerShardCommandTimeout**: database command timeout applied to per-shard queries (mapped to underlying EF Core command timeout where possible).
+- **Concurrency** (reserved): future hint for shard fan-out parallelism.
+- **DisposeContextPerQuery**: if false, caller manages DbContext lifetime (default true).
+- **Ordered factory**: `CreateOrdered` buffers all shard results before ordering; use only for bounded result sets. Future streaming ordered variant will reduce memory usage.
 
 ## Capabilities & limits
 
 - ✅ Pushes where/select operations to EF Core where supported.
-- ⚠️ Ordered streaming can add latency and requires a stable key selector across shards.
+- ⚠️ Ordered (buffered) factory materializes all results. Avoid for unbounded / very large sets.
+- ⚠️ Ordered streaming improvements (k-way merge) planned; present variant trades memory for simplicity.
 - 🧩 Requires EF Core provider matching your database version.
 
 ## Versioning & compatibility
