@@ -200,4 +200,39 @@ public class QueryLatencyOpenTelemetryTests
         foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
         tags["result.status"].Should().Be("failed");
     }
+
+    [Fact]
+    public async Task UnorderedQuery_TargetedShardReduction_EmitsCorrectTargetShardCount()
+    {
+        // arrange
+        var exported = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter(CoreMeterName)
+            .AddInMemoryExporter(exported)
+            .Build();
+
+        var factory = new Factory();
+        var unordered = new EntityFrameworkCoreShardQueryExecutor(5, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
+        // target only shards 1 and 3
+        var query = ShardQuery.For<Person>(unordered)
+            .WhereShard(new ShardId("1"), new ShardId("3"))
+            .Where(p => p.Age >= 20);
+
+        // act
+        var list = await query.ToListAsync();
+        meterProvider.ForceFlush();
+
+        // assert
+        list.Should().NotBeEmpty();
+        var latencyMetric = exported.SingleOrDefault(m => m.Name == "shardis.query.merge.latency");
+        latencyMetric.Should().NotBeNull();
+        var points = new List<MetricPoint>();
+        foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
+        points.Count.Should().Be(1);
+        var tags = new Dictionary<string, string>();
+        foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
+        int.Parse(tags["shard.count"]).Should().Be(5);
+        int.Parse(tags["target.shard.count"]).Should().Be(2);
+        tags["result.status"].Should().Be("ok");
+    }
 }
