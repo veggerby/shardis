@@ -28,7 +28,7 @@ public sealed class FailureHandlingExecutorTests
     public async Task FailFast_Propagates_First_Exception()
     {
         // arrange
-        var inner = new ThrowingExecutor(failAt:2);
+        var inner = new ThrowingExecutor(failAt: 2);
         var exec = new FailureHandlingExecutor(inner, FailFastFailureStrategy.Instance);
         var model = QueryModel.Create(typeof(int));
 
@@ -48,7 +48,7 @@ public sealed class FailureHandlingExecutorTests
     public async Task BestEffort_Skips_Failed_Items()
     {
         // arrange
-        var inner = new ThrowingExecutor(failAt:3);
+        var inner = new ThrowingExecutor(failAt: 3);
         var strategy = BestEffortFailureStrategy.Instance;
         var exec = new FailureHandlingExecutor(inner, strategy);
         var model = QueryModel.Create(typeof(int));
@@ -61,6 +61,6 @@ public sealed class FailureHandlingExecutorTests
         }
 
         // assert (3 causes failure, so we collected 0,1,2 then skipped failing element and terminated)
-        collected.Should().BeEquivalentTo(new[] { 0,1,2 });
+        collected.Should().BeEquivalentTo(new[] { 0, 1, 2 });
     }
 }
