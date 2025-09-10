@@ -84,27 +84,34 @@ jobs:
                 tag
               });
               core.setOutput('body', release.body || '');
-            } catch (e) {
+            } catch {
               core.setOutput('body', '');
             }
-      - name: Write release notes
+
+      - name: Write release notes to file
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          echo "${RELEASE_NOTES:-No release notes provided.}" > RELEASE_NOTES.txt
+          NOTES_FILE="$RUNNER_TEMP/RELEASE_NOTES.txt"
+          # Preserve all characters and real newlines:
+          printf "%s" "$RELEASE_NOTES" > "$NOTES_FILE"
+          echo "NOTES_FILE=$NOTES_FILE" >> "$GITHUB_ENV"
         env:
-          RELEASE_NOTES: ${{ steps.get_release_notes.outputs.body || '' }}
+          RELEASE_NOTES: ${{ steps.get_release_notes.outputs.body }}
+
       - name: Pack (all public libraries)
+        shell: bash
         run: |
           VERSION_SUFFIX=""
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
             VERSION_SUFFIX="-pr${{ github.event.pull_request.number }}.${{ github.run_number }}"
           fi
-          RELEASE_NOTES_ARG=""
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            # Collapse CR/LF, replace newlines with single spaces, escape quotes to avoid msbuild arg splitting
-            CLEAN_NOTES=$(tr '\r' ' ' < RELEASE_NOTES.txt | tr '\n' ' ' | sed 's/"/\\"/g')
-            RELEASE_NOTES_ARG="/p:PackageReleaseNotes=\"$CLEAN_NOTES\""
+
+          RELEASE_NOTES_ARG=()
+          if [[ "${GITHUB_REF}" == refs/tags/* && -n "${NOTES_FILE:-}" ]]; then
+            # Quote the property value so spaces are safe
+            RELEASE_NOTES_ARG=(/p:PackageReleaseNotesFile="$NOTES_FILE")
           fi
+
           mkdir -p "$NUGET_PACK_DIR"
 
           dotnet pack Shardis.sln \
@@ -112,7 +119,7 @@ jobs:
             --no-build \
             --output "$NUGET_PACK_DIR" \
             /p:Version=${{ steps.gitversion.outputs.nuGetVersionV2 }}$VERSION_SUFFIX \
-            $RELEASE_NOTES_ARG
+            "${RELEASE_NOTES_ARG[@]}"
 
       - name: Upload NuGet Packages
         uses: actions/upload-artifact@v4
