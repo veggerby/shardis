@@ -164,6 +164,7 @@ public static class EfCoreShardQueryExecutor
                     {
                         var baseCtx = ctx.Value;
                         var status = ct.IsCancellationRequested ? "canceled" : baseCtx.resultStatus; // preserve failure if occurred earlier
+                        var failureMode = FailureHandlingAmbientAccessor.TryGet() ?? baseCtx.failureMode;
                         _efInner.MetricsSink.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
                             dbSystem: baseCtx.dbSystem,
                             provider: "efcore",
@@ -173,7 +174,7 @@ public static class EfCoreShardQueryExecutor
                             orderingBuffered: "true",
                             fanoutConcurrency: baseCtx.effectiveFanout,
                             channelCapacity: baseCtx.channelCapacity,
-                            failureMode: baseCtx.failureMode,
+                            failureMode: failureMode,
                             resultStatus: status,
                             rootType: baseCtx.rootType,
                             invalidShardCount: baseCtx.invalidShardCount));

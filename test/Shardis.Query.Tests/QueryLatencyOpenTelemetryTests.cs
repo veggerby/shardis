@@ -86,9 +86,7 @@ public class QueryLatencyOpenTelemetryTests
         {
             points.Add(mp);
         }
-    (points.Count == 1 || points.Count == 2).Should().BeTrue();
-
-        // Validate key tags on the single point
+        points.Count.Should().Be(1);
         var tagDict = new Dictionary<string, string>();
         foreach (var tag in points[0].Tags)
         {
@@ -127,22 +125,9 @@ public class QueryLatencyOpenTelemetryTests
         latencyMetric.Should().NotBeNull();
         var points = new List<MetricPoint>();
         foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
-        (points.Count == 1 || points.Count == 2).Should().BeTrue();
+        points.Count.Should().Be(1);
         var tags = new Dictionary<string, string>();
-        MetricPoint chosen = points[0];
-        if (points.Count > 1)
-        {
-            foreach (var p in points)
-            {
-                string? tsc = null;
-                foreach (var tag in p.Tags)
-                {
-                    if (tag.Key == "target.shard.count") { tsc = tag.Value?.ToString(); break; }
-                }
-                if (tsc == "3") { chosen = p; break; }
-            }
-        }
-        foreach (var t in chosen.Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
+        foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
         tags["merge.strategy"].Should().Be("unordered");
         tags["result.status"].Should().Be("ok");
         int.Parse(tags["target.shard.count"]).Should().Be(3);
@@ -174,10 +159,10 @@ public class QueryLatencyOpenTelemetryTests
         latencyMetric.Should().NotBeNull();
         var points = new List<MetricPoint>();
         foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
-        (points.Count == 1 || points.Count == 2).Should().BeTrue();
+        points.Count.Should().Be(1);
         var tags = new Dictionary<string, string>();
         foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
-        (tags["result.status"] == "canceled" || tags["result.status"] == "ok").Should().BeTrue();
+        tags["result.status"].Should().Be("canceled");
     }
 
     [Fact]
@@ -208,11 +193,10 @@ public class QueryLatencyOpenTelemetryTests
         latencyMetric.Should().NotBeNull();
         var points = new List<MetricPoint>();
         foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
-        (points.Count == 1 || points.Count == 2).Should().BeTrue();
+        points.Count.Should().Be(1);
         var tags = new Dictionary<string, string>();
         foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
-        // Depending on wrapper ordering / early emission path failure may surface as failed or ok (temporary allowance)
-        (tags["result.status"] == "failed" || tags["result.status"] == "ok").Should().BeTrue();
+        tags["result.status"].Should().Be("failed");
     }
 
     [Fact]
@@ -242,7 +226,7 @@ public class QueryLatencyOpenTelemetryTests
         latencyMetric.Should().NotBeNull();
         var points = new List<MetricPoint>();
         foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
-        (points.Count == 1 || points.Count == 2).Should().BeTrue();
+        points.Count.Should().Be(1);
         var tags = new Dictionary<string, string>();
         foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
         int.Parse(tags["shard.count"]).Should().Be(5);
@@ -280,7 +264,7 @@ public class QueryLatencyOpenTelemetryTests
         latencyMetric.Should().NotBeNull();
         var points = new List<MetricPoint>();
         foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
-        (points.Count == 1 || points.Count == 2).Should().BeTrue();
+        points.Count.Should().Be(1);
         var tags = new Dictionary<string, string>();
         foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
         tags["failure.mode"].Should().Be("fail-fast");
@@ -317,13 +301,10 @@ public class QueryLatencyOpenTelemetryTests
         latencyMetric.Should().NotBeNull();
         var points = new List<MetricPoint>();
         foreach (ref readonly var mp in latencyMetric!.GetMetricPoints()) points.Add(mp);
-        (points.Count == 1 || points.Count == 2).Should().BeTrue();
+        points.Count.Should().Be(1);
         var tags = new Dictionary<string, string>();
         foreach (var t in points[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
-        // Current heuristic may misclassify best-effort as fail-fast depending on stack shape; accept either but require tag presence.
-        tags.ContainsKey("failure.mode").Should().BeTrue();
-        (tags["failure.mode"] == "best-effort" || tags["failure.mode"] == "fail-fast").Should().BeTrue();
-        // Depending on enumeration order first shard failure may surface before success causing overall failed status.
-        (tags["result.status"] == "ok" || tags["result.status"] == "failed").Should().BeTrue();
+        tags["failure.mode"].Should().Be("best-effort");
+        tags["result.status"].Should().Be("ok");
     }
 }

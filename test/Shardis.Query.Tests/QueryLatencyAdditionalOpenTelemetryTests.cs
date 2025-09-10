@@ -54,20 +54,9 @@ public class QueryLatencyAdditionalOpenTelemetryTests
         // rows may be filtered; ensure execution succeeded (metric emitted)
         var metric = exported.Single(m => m.Name == "shardis.query.merge.latency");
         var mpList = new List<MetricPoint>(); foreach (ref readonly var mp in metric.GetMetricPoints()) mpList.Add(mp);
-        (mpList.Count == 1 || mpList.Count == 2).Should().BeTrue();
-        Dictionary<string, string>? tags = null;
-        foreach (var point in mpList)
-        {
-            var td = new Dictionary<string, string>();
-            foreach (var t in point.Tags) td[t.Key] = t.Value?.ToString() ?? string.Empty;
-            if (td.TryGetValue("target.shard.count", out var tsc) && tsc == "2" && td.TryGetValue("fanout.concurrency", out var fc) && fc == "2")
-            {
-                tags = td;
-                break;
-            }
-        }
-        tags.Should().NotBeNull();
-        int.Parse(tags!["target.shard.count"]).Should().Be(2);
+        mpList.Count.Should().Be(1);
+        var tags = new Dictionary<string, string>(); foreach (var t in mpList[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
+        int.Parse(tags["target.shard.count"]).Should().Be(2);
         int.Parse(tags["fanout.concurrency"]).Should().Be(2);
     }
 
@@ -84,11 +73,11 @@ public class QueryLatencyAdditionalOpenTelemetryTests
         meterProvider.ForceFlush();
         var metric = exported.Single(m => m.Name == "shardis.query.merge.latency");
         var mpList = new List<MetricPoint>(); foreach (ref readonly var mp in metric.GetMetricPoints()) mpList.Add(mp);
-        (mpList.Count == 1 || mpList.Count == 2).Should().BeTrue();
-        var tags = new Dictionary<string, string>(); foreach (var t in mpList[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
-        int.Parse(tags["target.shard.count"]).Should().Be(0);
-        int.Parse(tags["invalid.shard.count"]).Should().Be(2);
-        tags["result.status"].Should().Be("ok");
+        mpList.Count.Should().Be(1);
+        var selected = new Dictionary<string, string>(); foreach (var t in mpList[0].Tags) selected[t.Key] = t.Value?.ToString() ?? string.Empty;
+        int.Parse(selected["target.shard.count"]).Should().Be(0);
+        int.Parse(selected["invalid.shard.count"]).Should().Be(2);
+        selected["result.status"].Should().Be("ok");
     }
 
     [Fact]
@@ -101,8 +90,11 @@ public class QueryLatencyAdditionalOpenTelemetryTests
         var query = ShardQuery.For<Person>(exec);
         _ = await query.ToListAsync();
         meterProvider.ForceFlush();
-        var tags = ExtractSingle(exported);
-        tags["channel.capacity"].Should().Be("16");
+        var metric = exported.Single(m => m.Name == "shardis.query.merge.latency");
+        var mpList = new List<MetricPoint>(); foreach (ref readonly var mp in metric.GetMetricPoints()) mpList.Add(mp);
+        mpList.Count.Should().Be(1);
+        var selected = new Dictionary<string, string>(); foreach (var t in mpList[0].Tags) selected[t.Key] = t.Value?.ToString() ?? string.Empty;
+        selected["channel.capacity"].Should().Be("16");
     }
 
     [Fact]
@@ -140,28 +132,8 @@ public class QueryLatencyAdditionalOpenTelemetryTests
         // Prefer ordered emission if dual points exist (temporary until universal suppression finalized)
         var metric = exported.Single(m => m.Name == "shardis.query.merge.latency");
         var mpList = new List<MetricPoint>(); foreach (ref readonly var mp in metric.GetMetricPoints()) mpList.Add(mp);
-        (mpList.Count == 1 || mpList.Count == 2).Should().BeTrue();
-        Dictionary<string, string> tags = new();
-        MetricPoint? chosen = null;
-        foreach (var point in mpList)
-        {
-            bool isOrdered = false;
-            foreach (var tag in point.Tags)
-            {
-                if (tag.Key == "merge.strategy" && (tag.Value?.ToString() ?? string.Empty) == "ordered")
-                {
-                    isOrdered = true;
-                    break;
-                }
-            }
-            if (isOrdered)
-            {
-                chosen = point;
-                break;
-            }
-        }
-        chosen ??= mpList[0];
-        foreach (var t in chosen.Value.Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
+        mpList.Count.Should().Be(1);
+        var tags = new Dictionary<string, string>(); foreach (var t in mpList[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
         tags["merge.strategy"].Should().Be("ordered");
         tags["ordering.buffered"].Should().Be("true");
         int.Parse(tags["target.shard.count"]).Should().Be(3);
@@ -173,7 +145,7 @@ public class QueryLatencyAdditionalOpenTelemetryTests
     {
         var metric = exported.Single(m => m.Name == "shardis.query.merge.latency");
         var mpList = new List<MetricPoint>(); foreach (ref readonly var mp in metric.GetMetricPoints()) mpList.Add(mp);
-        (mpList.Count == 1 || mpList.Count == 2).Should().BeTrue();
+        mpList.Count.Should().Be(1);
         var tags = new Dictionary<string, string>(); foreach (var t in mpList[0].Tags) tags[t.Key] = t.Value?.ToString() ?? string.Empty;
         return tags;
     }

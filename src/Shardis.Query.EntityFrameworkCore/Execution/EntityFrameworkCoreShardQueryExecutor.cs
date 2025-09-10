@@ -342,7 +342,13 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         }
     }
 
-    internal static string DetectFailureMode() => "fail-fast"; // simplified: explicit strategy tagging reserved for future
+    internal static string DetectFailureMode()
+    {
+        // Prefer ambient failure handling mode if set by wrapper; otherwise default.
+        var ambient = FailureHandlingAmbientAccessor.TryGet();
+        if (!string.IsNullOrEmpty(ambient)) { return ambient; }
+        return "fail-fast";
+    }
 
     private static Activity? StartActivity(QueryModel model, Type resultType)
     {
@@ -383,4 +389,18 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
 internal static class ShardisQueryActivitySource
 {
     public static ActivitySource Instance { get; } = new("Shardis.Query");
+}
+
+internal static class FailureHandlingAmbientAccessor
+{
+    public static string? TryGet()
+    {
+        // Access cross-assembly ambient if present via reflection to avoid tight coupling.
+        var ambientType = Type.GetType("Shardis.Query.Execution.FailureHandlingAmbient, Shardis.Query");
+        if (ambientType is null) { return null; }
+        var prop = ambientType.GetProperty("CurrentMode");
+        if (prop?.GetValue(null) is not object asyncLocal) { return null; }
+        var valueProp = asyncLocal.GetType().GetProperty("Value");
+        return valueProp?.GetValue(asyncLocal) as string;
+    }
 }
