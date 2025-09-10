@@ -118,13 +118,9 @@ public class QueryLatencyAdditionalOpenTelemetryTests
         using var meterProvider = Sdk.CreateMeterProviderBuilder().AddMeter(CoreMeterName).AddInMemoryExporter(exported).Build();
         var factory = new Factory();
         var unordered = new EntityFrameworkCoreShardQueryExecutor(3, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new Shardis.Query.Diagnostics.MetricShardisQueryMetrics());
-        var helper = typeof(EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
-        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
-        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
-        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
-        var orderLambda = System.Linq.Expressions.Expression.Lambda<Func<object, object>>(box, objParam);
-        var orderedExec = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
+        var orderedFactory = new EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+        var orderLambda = (System.Linq.Expressions.Expression<Func<Person, object>>)(p => p.Id);
+        var orderedExec = orderedFactory.CreateOrdered(unordered, orderLambda, descending: false);
         var query = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
         var list = await query.ToListAsync();
         // ordered path may yield items; emptiness not critical for tag emission
@@ -160,13 +156,9 @@ public class QueryLatencyAdditionalOpenTelemetryTests
         _ = await beQuery.ToListAsync();
 
         // ordered path (fail-fast)
-        var helper = typeof(EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
-        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
-        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
-        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
-        var orderLambda = System.Linq.Expressions.Expression.Lambda<Func<object, object>>(box, objParam);
-        var orderedExec = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
+        var orderedFactory2 = new EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+        var orderLambda2 = (System.Linq.Expressions.Expression<Func<Person, object>>)(p => p.Id);
+        var orderedExec = orderedFactory2.CreateOrdered(unordered, orderLambda2, descending: false);
         var ordQuery = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 22);
         _ = await ordQuery.ToListAsync();
 

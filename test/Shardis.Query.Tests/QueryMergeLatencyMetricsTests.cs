@@ -132,15 +132,9 @@ public sealed class QueryMergeLatencyMetricsTests
         IShardFactory<DbContext> factory = new Factory(0);
         // Build base unordered with metrics sink
         var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: rec);
-        // Use internal helper via reflection to wrap existing unordered so metrics sink is reused
-        var helper = typeof(Shardis.Query.EntityFrameworkCore.EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        // Build key selector extracting Person.Id from boxed object
-        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
-        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
-        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
-        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
-        var orderLambda = System.Linq.Expressions.Expression.Lambda<System.Func<object, object>>(box, objParam);
-        var orderedExec = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
+    var orderedFactory = new Shardis.Query.EntityFrameworkCore.EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+    var orderLambda = (System.Linq.Expressions.Expression<System.Func<Person, object>>)(p => p.Id);
+    var orderedExec = orderedFactory.CreateOrdered(unordered, orderLambda, descending: false);
 
         var q = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
 

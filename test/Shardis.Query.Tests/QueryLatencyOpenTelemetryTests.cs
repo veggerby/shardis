@@ -326,14 +326,10 @@ public class QueryLatencyOpenTelemetryTests
         });
         // unordered base
         var unordered = new EntityFrameworkCoreShardQueryExecutor(3, failingFactory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: new MetricShardisQueryMetrics());
-        // ordered wrapper via internal helper (reuse emission suppression)
-        var helper = typeof(EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
-        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
-        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
-        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
-        var orderLambda = System.Linq.Expressions.Expression.Lambda<Func<object, object>>(box, objParam);
-        var orderedInner = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
+    // ordered wrapper via factory (reuse emission suppression)
+    var ordFactory = new EfCoreShardQueryExecutor.DefaultOrderedEfCoreExecutorFactory();
+    var orderLambda = (System.Linq.Expressions.Expression<Func<Person, object>>)(p => p.Id);
+    var orderedInner = ordFactory.CreateOrdered(unordered, orderLambda, descending: false);
         // failure handling wrapper (best-effort)
         var bestEffortOrdered = new Shardis.Query.Execution.FailureHandlingExecutor(orderedInner, Shardis.Query.Execution.FailureHandling.BestEffortFailureStrategy.Instance);
         var query = ShardQuery.For<Person>(bestEffortOrdered).Where(p => p.Age >= 20);
