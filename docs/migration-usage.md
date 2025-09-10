@@ -12,6 +12,133 @@ Planned → Copying → Copied → Verifying → Verified → Swapping → Done 
 
 Progress is observable via metrics and an optional `IProgress<MigrationProgressEvent>` stream.
 
+For background on why a formal migration mechanism exists and its invariants, see `migration-rationale.md`.
+
+### Key Migration & Data Mover Semantics
+
+The migration executor orchestrates per-key state transitions; the `IShardDataMover<TKey>` is a narrowly scoped collaborator responsible **only** for moving bytes/entities for a single key from its source shard to its target shard (and any provider-specific staging needed to enable verification).
+
+Semantic coupling boundaries:
+
+| Concern | Migration Executor | Data Mover |
+|---------|--------------------|------------|
+| Plan ordering / which keys | Decides based on `MigrationPlan` | Not aware |
+| Concurrency policy | Applies copy/verify semaphores | Not aware (must be thread-safe) |
+| Copy operation | Invokes | Implements idempotent `CopyAsync` |
+| Verification decision | Orchestrates (may call a separate verification strategy) | May optionally prep data (e.g., materialized projection) but does not assert success/failure unless unrecoverable |
+| Retry classification | Interprets thrown exceptions (transient vs fatal) | Surfaces domain-specific exceptions (e.g., `SourceMissingException`) |
+| State transitions | Owns state machine & checkpoint persistence | Stateless aside from transient local buffers |
+| Swap (map mutation) | Invokes `IShardMapSwapper` after verification | Never mutates shard map |
+| Metrics emission | Emits counters/gauges exactly once per transition | Should not emit migration metrics directly |
+| Logging | Coordinates structured, redacted logs per key | Emits minimal contextual logs (no full key values) |
+
+Key invariants enforced at the seam:
+
+1. `CopyAsync` MUST be idempotent: rerunning after a partial / previous successful copy leaves target in an equivalent state.
+2. `CopyAsync` MUST NOT perform shard map updates or finalize visibility; authoritative routing only changes during Swap.
+3. Data Mover SHOULD throw a clearly distinguishable exception type for permanent (fatal) conditions vs transient ones (timeout, network) so the executor can apply retries only where safe.
+4. Data Mover MUST NOT perform verification side-effects (e.g., marking success) – it only prepares data; the executor (optionally with a verification strategy) transitions to `Verified`.
+5. No randomness without a fixed seed: repeated runs under identical inputs yield the same target representation (supports verification hash/equality).
+
+Recommended exception taxonomy (example – adapt to project):
+
+```csharp
+// Transient (retry eligible)
+class ShardDataTransientException : Exception { /* network, timeout */ }
+
+// Permanent (fatal – mark Failed)
+class ShardDataPermanentException : Exception { /* source missing, schema mismatch */ }
+```
+
+Execution interplay summary:
+
+1. Executor selects next Planned key (ordering from plan).
+2. Invokes `CopyAsync`; classifies outcome (success → `Copied`, retry, or `Failed`).
+3. (Interleaved) Invokes verification strategy (which may rely on artifacts produced by the mover – e.g., pre-computed hash, projection snapshot).
+4. After verification success, key awaits batch Swap; Data Mover is no longer engaged for that key.
+5. On resume (after checkpoint), executor will not re-invoke `CopyAsync` for keys already beyond `Copied` unless verification requires re-copy (future extension); idempotency allows safe duplication if it occurs.
+
+This design keeps the coupling **semantic** (shared understanding of state boundaries & idempotency) while avoiding structural coupling (Data Mover has no knowledge of plan, checkpointing, or swapping). The executor can thus substitute movers (EF, Marten, SQL) without altering migration orchestration logic.
+
+### Execution Flow (High-Level)
+
+```mermaid
+flowchart TD
+    plan[Plan Created] --> planned[Planned]
+    planned --> copying[Copying]
+    copying -->|success| copied[Copied]
+    copying -->|retry| copying
+    copying -->|fatal| failed[Failed]
+    copied -->|verify? yes| verifying[Verifying]
+    copied -->|verify? no| verifying
+    verifying -->|success| verified[Verified]
+    verifying -->|retry| verifying
+    verifying -->|mismatch/fatal| failed
+    verified --> swap[Swapping]
+    swap -->|success| done[Done]
+    swap -->|retry| swap
+    swap -->|fatal| failed
+    failed --> summary[Summary]
+    done --> summary
+
+    %% checkpoint annotations
+    copied --> cp[(Checkpoint)]
+    verifying --> cp
+    verified --> cp
+    swap --> cp
+
+    classDef terminal fill:#0b79d0,stroke:#036,stroke-width:1,color:#fff;
+    class done,failed,summary terminal;
+```
+
+### Data Movement & Verification Sequence
+
+```mermaid
+sequenceDiagram
+    participant Exec as MigrationExecutor
+    participant Mover as DataMover
+    participant Ver as Verifier
+    participant Swap as MapSwapper
+    participant Store as CheckpointStore
+
+    Exec->>Store: Load checkpoint (if any)
+    loop For each key (ordered)
+        Exec->>Mover: CopyAsync(key)
+        Mover-->>Exec: CopyResult
+        alt Copy transient failure
+            Exec->>Mover: Retry CopyAsync
+        else Copy fatal
+            Exec->>Store: Mark Failed
+            Note over Exec,Store: Skip to next key
+        end
+        opt Verification (interleaved)
+            Exec->>Ver: VerifyAsync(key)
+            Ver-->>Exec: VerifyResult
+            alt Verify retry
+                Exec->>Ver: Retry VerifyAsync
+            else Verify mismatch
+                Exec->>Store: Mark Failed
+                Note over Exec,Store: Skip to next key
+            end
+        end
+        Exec->>Store: Persist state (Copied/Verified)
+    end
+    Exec->>Swap: SwapAsync(batch)
+    Swap-->>Exec: SwapResult
+    alt Swap retry
+        Exec->>Swap: Retry SwapAsync
+    else Swap fatal
+        Exec->>Store: Mark batch Failed
+    end
+    Exec->>Store: Final checkpoint & summary
+```
+
+### Interpretation
+
+The flowchart captures the per-key state machine; the sequence diagram shows the interplay between executor and abstractions. Checkpoints are persisted after significant transitions to ensure idempotent resume. Interleaving allows verification to overlap copy operations improving throughput while respecting configured concurrency.
+
+Consult ADR 0002 for the formal invariants governing these diagrams.
+
 ## 1. Service Registration
 
 Register Shardis core + migration services. The generic key type (e.g. `string`, `Guid`, `long`) must match your application key type.

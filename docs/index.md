@@ -7,6 +7,8 @@ This index links core conceptual and roadmap documents.
 - Routing & Hashing: see README sections (Deterministic Routing, Dependency Injection Options).
 - Metrics Integration: README Metrics Integration section.
 - Migration scaffolding: README Migration section.
+- Terminology Glossary: `terms.md` (canonical Shardis & domain vocabulary)
+- Migration Rationale: `migration-rationale.md` (why a formal mechanism exists)
 
 ## Detailed Design / Roadmap Docs
 
