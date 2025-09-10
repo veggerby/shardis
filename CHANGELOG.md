@@ -46,7 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Hardened latency metric contract: tests now enforce exactly-one histogram point per enumeration across success, cancellation, failure, ordered, and failure-handling wrappers (suppression + unified emission internally).
 - ADR 0006: Unified query latency single-emission model (documents suppression + pending context design, invariants, future work).
 - Added ordered cancellation telemetry test (ensures single emission on cancel in ordered path).
-- Added benchmark `QueryLatencyEmissionBenchmarks` measuring unordered vs ordered vs best-effort emission overhead.
+- Added benchmark `QueryLatencyEmissionBenchmarks` measuring unordered vs ordered latency emission overhead (best-effort path shares same suppression code path; excluded to avoid duplicate measurement).
 
 ### Changed (Unreleased)
 
