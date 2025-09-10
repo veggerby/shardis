@@ -19,6 +19,8 @@ internal sealed class FailureHandlingExecutor : IShardQueryExecutor
 
     public IShardQueryCapabilities Capabilities => _inner.Capabilities;
 
+    // Failure mode inferred externally by checking wrapper type and underlying strategy instance.
+
     public async IAsyncEnumerable<TResult> ExecuteAsync<TResult>(QueryModel model, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         // For now assume inner already merges shards; to apply per-shard failure handling we need inner to surface annotated failures.

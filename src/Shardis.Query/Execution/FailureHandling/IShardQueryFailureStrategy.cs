@@ -1,20 +1,13 @@
 namespace Shardis.Query.Execution.FailureHandling;
 
-/// <summary>
-/// Defines how shard-level exceptions are handled during distributed query execution.
-/// </summary>
+/// <summary>Defines how shard-level exceptions are handled during distributed query execution.</summary>
 public interface IShardQueryFailureStrategy
 {
-    /// <summary>
-    /// Handle a shard exception. Return <c>true</c> if execution should continue processing remaining shards; <c>false</c> if it should stop.
-    /// Implementations may rethrow to fail immediately.
-    /// </summary>
+    /// <summary>Handle a shard exception. Return true to continue (best-effort), false to stop (fail-fast). Strategy may rethrow.</summary>
     bool OnShardException(Exception ex, int shardIndex);
 }
 
-/// <summary>
-/// Fail immediately on the first shard exception.
-/// </summary>
+/// <summary>Fail immediately on the first shard exception.</summary>
 public sealed class FailFastFailureStrategy : IShardQueryFailureStrategy
 {
     /// <summary>Singleton instance.</summary>
@@ -24,16 +17,12 @@ public sealed class FailFastFailureStrategy : IShardQueryFailureStrategy
     /// <inheritdoc />
     public bool OnShardException(Exception ex, int shardIndex)
     {
-        // rethrow preserving original stack
         System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex).Throw();
         return false; // unreachable
     }
 }
 
-/// <summary>
-/// Collect shard exceptions and continue. Enumeration completes yielding only successful items.
-/// AggregateException is thrown only if ALL shards fail (to signal total failure) to avoid silent empty result.
-/// </summary>
+/// <summary>Collect shard exceptions and continue enumerating remaining shards.</summary>
 public sealed class BestEffortFailureStrategy : IShardQueryFailureStrategy
 {
     /// <summary>Singleton instance.</summary>
@@ -41,36 +30,20 @@ public sealed class BestEffortFailureStrategy : IShardQueryFailureStrategy
     private BestEffortFailureStrategy() { }
 
     private readonly List<Exception> _failures = new();
-    private int _shardCount;
     private int _successCount;
-
-    /// <summary>Initialize internal counters for a new execution (not currently invoked by wrapper; reserved for future per-shard integration).</summary>
-    public void Initialize(int shardCount)
-    {
-        _shardCount = shardCount;
-        _successCount = 0;
-        _failures.Clear();
-    }
 
     /// <inheritdoc />
     public bool OnShardException(Exception ex, int shardIndex)
     {
-        lock (_failures)
-        {
-            _failures.Add(ex);
-        }
-        // continue processing others
-        return true;
+        lock (_failures) { _failures.Add(ex); }
+        return true; // swallow & continue
     }
 
-    /// <summary>Record successful shard completion.</summary>
-    public void OnShardCompleted()
-    {
-        Interlocked.Increment(ref _successCount);
-    }
+    /// <summary>Record success path (optional external hook).</summary>
+    public void OnShardSuccess() => Interlocked.Increment(ref _successCount);
 
-    /// <summary>Throw aggregate if all shards failed (no successes) to avoid silent empty output.</summary>
-    public void FinalizeOrThrow()
+    /// <summary>Throw aggregate if every shard failed (prevents silent empty result).</summary>
+    public void FinalizeOrThrow(int totalShards)
     {
         if (_successCount == 0 && _failures.Count > 0)
         {

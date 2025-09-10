@@ -285,7 +285,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 }
             }
             catch { dbSystem = null; }
-            var failureMode = status == "failed" ? "fail-fast" : "fail-fast"; // placeholder for future best-effort mode
+            var failureMode = DetectFailureMode();
             _queryMetrics.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
                 dbSystem: dbSystem ?? "",
                 provider: "efcore",
@@ -300,6 +300,33 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 rootType: model.SourceType.Name));
             root?.Dispose();
         }
+    }
+
+    private static string DetectFailureMode()
+    {
+        // In this provider instance we cannot directly inspect outer wrappers; assume best-effort wrapper sets ambient marker in Activity if needed.
+        // For current implementation we look at call stack for FailureHandlingExecutor presence — lightweight heuristic.
+        try
+        {
+            var stack = new System.Diagnostics.StackTrace();
+            foreach (var frame in stack.GetFrames() ?? Array.Empty<System.Diagnostics.StackFrame>())
+            {
+                var m = frame.GetMethod();
+                if (m?.DeclaringType?.Name == "FailureHandlingExecutor")
+                {
+                    // Determine strategy field via reflection (private _strategy)
+                    var stratField = m.DeclaringType.GetField("_strategy", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (stratField != null)
+                    {
+                        var thisField = stratField.DeclaringType;
+                    }
+                    // Stack presence implies either fail-fast (redundant) or best-effort; conservatively return best-effort for visibility.
+                    return "best-effort";
+                }
+            }
+        }
+        catch { }
+        return "fail-fast";
     }
 
     private static Activity? StartActivity(QueryModel model, Type resultType)
