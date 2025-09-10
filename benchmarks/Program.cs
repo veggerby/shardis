@@ -19,11 +19,11 @@ var switcher = new BenchmarkSwitcher(
     typeof(SegmentedPlannerBenchmarks)
 ]);
 
-if (args.Length == 0)
-{
-    // Default to migration benchmarks only (can override by passing args)
-    args = ["--anyCategories", "migration"];
-}
+// if (args.Length == 0)
+// {
+//     // Default to migration benchmarks only (can override by passing args)
+//     args = ["--anyCategories", "migration"];
+// }
 
 var summaries = switcher.Run(args);
 // Treat any benchmark with non-empty validation errors as failure.
