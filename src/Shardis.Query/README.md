@@ -20,13 +20,13 @@ dotnet add package Shardis.Query --version 0.1.*
 
 ## What’s included
 
- - `IShardQueryExecutor` — low-level executor abstraction.
- - `IShardQueryClient` / `ShardQueryClient` — ergonomic entrypoint (DI friendly) providing `Query<T>()` and inline composition overloads.
- - Executor extensions: `Query<T>()`, `Query<T,TResult>(...)` for direct bootstrap without `ShardQuery.For<T>()`.
- - Terminal extensions: `FirstOrDefaultAsync`, `AnyAsync`, `CountAsync` (client-side aggregation helpers).
- - Streaming merge operators (unordered, ordered) and enumerators.
- - Failure handling strategies (`FailFastFailureStrategy`, `BestEffortFailureStrategy`) with DI decoration helper in EF Core provider.
- - LINQ adapter helpers to build shard-friendly query expressions.
+- `IShardQueryExecutor` — low-level executor abstraction.
+- `IShardQueryClient` / `ShardQueryClient` — ergonomic entrypoint (DI friendly) providing `Query<T>()` and inline composition overloads.
+- Executor extensions: `Query<T>()`, `Query<T,TResult>(...)` for direct bootstrap without `ShardQuery.For<T>()`.
+- Terminal extensions: `FirstOrDefaultAsync`, `AnyAsync`, `CountAsync` (client-side aggregation helpers).
+- Streaming merge operators (unordered, ordered) and enumerators.
+- Failure handling strategies (`FailFastFailureStrategy`, `BestEffortFailureStrategy`) with DI decoration helper in EF Core provider.
+- LINQ adapter helpers to build shard-friendly query expressions.
 
 ## Quick start
 
@@ -47,9 +47,9 @@ var any = await q.AnyAsync();
 
 ## Configuration / Options
 
- - Merge modes: unordered (fastest) and ordered (global key selector; buffered in EF Core factory `CreateOrdered` preview).
- - Failure handling: decorate an executor with a strategy (e.g. EF Core: `services.DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance)`).
- - Backpressure/channel capacity configurable (unordered path) via provider options (e.g. EF Core `EfCoreExecutionOptions.ChannelCapacity`).
+- Merge modes: unordered (fastest) and ordered (global key selector; buffered in EF Core factory `CreateOrdered` preview).
+- Failure handling: decorate an executor with a strategy (e.g. EF Core: `services.DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance)`).
+- Backpressure/channel capacity configurable (unordered path) via provider options (e.g. EF Core `EfCoreExecutionOptions.ChannelCapacity`).
 
 ### Cancellation & Timeouts
 
@@ -84,8 +84,8 @@ Tag schema (stable):
 - `ordering.buffered` – `true` when ordered path is a buffered/materialized variant
 - `fanout.concurrency` – effective parallelism applied (may be lower than configured when targeted shard subset)
 - `channel.capacity` – capacity for unordered merge channel (`-1` when unbounded / not applicable)
-- `failure.mode` – currently `fail-fast` (explicit tagging for best-effort reserved for future release)
-- `result.status` – `ok` | `canceled` | `failed`
+- `failure.mode` – `fail-fast` | `best-effort` (best-effort: partial shard failures suppressed; `result.status` still `ok` when at least one shard succeeded)
+- `result.status` – `ok` | `canceled` | `failed` (in best-effort mode a full all-shards failure throws before emission; no `failed` histogram in that case)
 - `root.type` – short CLR type name for the query root / projection
 - `invalid.shard.count` – number of rejected targeted shard IDs (out of range / parse failure; zero when none)
 
