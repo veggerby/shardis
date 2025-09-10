@@ -128,7 +128,7 @@ public class ShardStreamBroadcasterTests
         lastFast.Timestamp.Should().BeLessThan(firstSlow.Timestamp);
     }
 
-    private async IAsyncEnumerable<string> GetMockedResults(string session)
+    private static async IAsyncEnumerable<string> GetMockedResults(string session)
     {
         yield return $"{session}-Result1";
         await Task.Yield();

@@ -47,7 +47,7 @@ public class OrderedStreamingMergeTests
             var (values, shardIndex) = data[session];
             for (int i = 0; i < values.Length; i++)
             {
-                await det.DelayForShardAsync(schedules, shardIndex, i);
+                await Determinism.DelayForShardAsync(schedules, shardIndex, i);
                 yield return values[i];
             }
         }

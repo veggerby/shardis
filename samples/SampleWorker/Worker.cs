@@ -50,7 +50,7 @@ public class Worker(ILogger<Worker> logger, IShardStreamBroadcaster<string> broa
     }
 
 
-    private async IAsyncEnumerable<string> GetMockedResults(string session, params int[] delays)
+    private static async IAsyncEnumerable<string> GetMockedResults(string session, params int[] delays)
     {
         yield return $"{session}-Result0";
         int c = 1;

@@ -101,18 +101,26 @@ internal sealed class Runner(IServiceProvider services, IHostApplicationLifetime
         Console.WriteLine("Seeded 100 users in source shard.");
     }
 
-    private Task ShowShardMapAsync() { Console.WriteLine("Sample complete."); return Task.CompletedTask; }
+    private static Task ShowShardMapAsync()
+    {
+        Console.WriteLine("Sample complete.");
+        return Task.CompletedTask;
+    }
 
     private async Task EnsureDurableTablesAsync(CancellationToken ct)
     {
         await using var conn = new NpgsqlConnection(_cfg.ConnectionString);
+
         await conn.OpenAsync(ct);
+
         // Create checkpoint table used by PostgresCheckpointStore
         await using (var cmd = new NpgsqlCommand(@"CREATE TABLE IF NOT EXISTS migration_checkpoint (
             plan_id UUID PRIMARY KEY,
             version INT NOT NULL,
             updated_utc TIMESTAMPTZ NOT NULL,
             payload JSONB NOT NULL);", conn))
-        { await cmd.ExecuteNonQueryAsync(ct); }
+        {
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
     }
 }

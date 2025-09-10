@@ -116,7 +116,7 @@ public class BroadcasterStreamBenchmarks
             if (first < 0) { first = ElapsedUs(_sw); }
             count++;
             // deterministic tiny consumer delay (slows reader side)
-            await _det.DelayForShardAsync(_consumerSchedule, 0, count - 1).ConfigureAwait(false);
+            await Determinism.DelayForShardAsync(_consumerSchedule, 0, count - 1).ConfigureAwait(false);
         }
         lock (_gate)
         {
@@ -183,7 +183,7 @@ public class BroadcasterStreamBenchmarks
             for (int i = 0; i < count; i++)
             {
                 if (ct.IsCancellationRequested) yield break;
-                await det.DelayForShardAsync(schedules, index, i, ct).ConfigureAwait(false);
+                await Determinism.DelayForShardAsync(schedules, index, i, ct).ConfigureAwait(false);
                 yield return i;
             }
         }

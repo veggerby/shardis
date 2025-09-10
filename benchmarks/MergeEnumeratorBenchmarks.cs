@@ -189,7 +189,7 @@ public class MergeEnumeratorBenchmarks
         {
             for (int i = 0; i < count; i++)
             {
-                await det.DelayForShardAsync(schedules, index, i, cancellationToken).ConfigureAwait(false);
+                await Determinism.DelayForShardAsync(schedules, index, i, cancellationToken).ConfigureAwait(false);
                 yield return i; // strictly increasing ordering inside shard
             }
         }
