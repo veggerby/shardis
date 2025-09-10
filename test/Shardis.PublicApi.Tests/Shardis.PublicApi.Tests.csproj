@@ -17,7 +17,9 @@
     <ProjectReference Include="../../src/Shardis.Query.Marten/Shardis.Query.Marten.csproj" />
     <ProjectReference Include="../../src/Shardis.Redis/Shardis.Redis.csproj" />
     <ProjectReference Include="../../src/Shardis.Testing/Shardis.Testing.csproj" />
-    <ProjectReference Include="..\..\src\Shardis.DependencyInjection\Shardis.DependencyInjection.csproj" />
+    <ProjectReference Include="../../src/Shardis.DependencyInjection/Shardis.DependencyInjection.csproj" />
+    <ProjectReference Include="../../src/Shardis.Logging.Console/Shardis.Logging.Console.csproj" />
+    <ProjectReference Include="../../src/Shardis.Logging.Microsoft/Shardis.Logging.Microsoft.csproj" />
   </ItemGroup>
 
   <ItemGroup>
