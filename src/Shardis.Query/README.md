@@ -84,9 +84,10 @@ Tag schema (stable):
 - `ordering.buffered` – `true` when ordered path is a buffered/materialized variant
 - `fanout.concurrency` – effective parallelism applied (may be lower than configured when targeted shard subset)
 - `channel.capacity` – capacity for unordered merge channel (`-1` when unbounded / not applicable)
-- `failure.mode` – `fail-fast` | `best-effort` (heuristic if strategy decoration not detectable)
+- `failure.mode` – currently `fail-fast` (explicit tagging for best-effort reserved for future release)
 - `result.status` – `ok` | `canceled` | `failed`
 - `root.type` – short CLR type name for the query root / projection
+- `invalid.shard.count` – number of rejected targeted shard IDs (out of range / parse failure; zero when none)
 
 Tracing:
 

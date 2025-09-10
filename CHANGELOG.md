@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Activated EF Core execution options: `Concurrency` and `DisposeContextPerQuery` now honored by `EntityFrameworkCoreShardQueryExecutor` (previously reserved placeholders).
 - Query latency OpenTelemetry histogram `shardis.query.merge.latency` (single emission per enumeration) with stable tag schema (`db.system`, `provider`, `shard.count`, `target.shard.count`, `merge.strategy`, `ordering.buffered`, `fanout.concurrency`, `channel.capacity`, `failure.mode`, `result.status`, `root.type`).
 - OpenTelemetry test suite validating single histogram point across success, canceled, failed, ordered/unordered, targeted fan-out, and failure handling strategies (fail-fast / best-effort) plus tag correctness.
+- Added `invalid.shard.count` tag to latency histogram and tracing activity; all-invalid targeting now emits a zero-result histogram with `target.shard.count=0`.
 
 ### Changed (Unreleased)
 

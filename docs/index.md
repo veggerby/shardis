@@ -5,7 +5,7 @@ This index links core conceptual and roadmap documents.
 ## Core Concepts
 
 - Routing & Hashing: see README sections (Deterministic Routing, Dependency Injection Options).
-- Metrics Integration: README Metrics Integration section.
+- Metrics Integration: README Metrics section + [Query Merge Latency](./query-latency.md)
 - Migration scaffolding: README Migration section.
 - Terminology Glossary: `terms.md` (canonical Shardis & domain vocabulary)
 - Migration Rationale: `migration-rationale.md` (why a formal mechanism exists)

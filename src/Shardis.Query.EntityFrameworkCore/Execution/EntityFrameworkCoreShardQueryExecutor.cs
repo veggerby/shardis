@@ -131,12 +131,16 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         {
             await _concurrencyGate.WaitAsync(ct).ConfigureAwait(false);
         }
+
         var shardActivity = Activity.Current is null ? null : ShardisQueryActivitySource.Instance.StartActivity("shard", ActivityKind.Internal);
         shardActivity?.AddTag("shard.index", shardId);
         _metrics.OnShardStart(shardId);
+
         var shard = new ShardId(shardId.ToString());
         DbContext? ctx = null;
         bool created = false;
+
+        // Acquire / create context
         if (_disposePerQuery)
         {
             ctx = await _contextFactory.CreateAsync(shard, ct).ConfigureAwait(false);
@@ -159,64 +163,66 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                     ctx = _retainedContexts.ContainsKey(shardId) ? _retainedContexts[shardId] : (_retainedContexts[shardId] = newCtx);
                 }
             }
-            // Apply optional command timeout (per shard) if specified (capture previous to restore on retained contexts)
-            int? previousTimeout = null;
-            if (_commandTimeoutSeconds is int secs && secs > 0 && ctx is not null)
-            {
-                try
-                {
-                    previousTimeout = ctx.Database.GetCommandTimeout();
-                    ctx.Database.SetCommandTimeout(secs);
-                    shardActivity?.AddTag("db.command_timeout.seconds", secs);
-                }
-                catch (Exception ex)
-                {
-                    shardActivity?.AddEvent(new ActivityEvent("timeout.apply.failed", tags: new ActivityTagsCollection { { "exception.message", ex.Message } }));
-                }
-            }
+        }
 
-            _lastContext = ctx ?? _lastContext;
-            var setGeneric = typeof(DbContext).GetMethods().First(m => m.Name == nameof(DbContext.Set) && m.IsGenericMethodDefinition && m.GetParameters().Length == 0).MakeGenericMethod(tIn);
-            var raw = setGeneric.Invoke(ctx, null)!;
-            var q = (IQueryable)raw;
-            var apply = typeof(QueryComposer).GetMethod(nameof(QueryComposer.ApplyQueryable))!.MakeGenericMethod(tIn, typeof(TResult));
-            var applied = (IQueryable<TResult>)apply.Invoke(null, [q, model])!;
-
-            // Default to AsNoTracking for query performance / reduced change tracking overhead
-            var asNoTracking = typeof(EntityFrameworkQueryableExtensions)
-                .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-                .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
-                .MakeGenericMethod(typeof(TResult));
-
-            applied = (IQueryable<TResult>)asNoTracking.Invoke(null, [applied])!;
-
+        int? previousTimeout = null;
+        if (_commandTimeoutSeconds is int secs && secs > 0 && ctx is not null)
+        {
             try
             {
-                await foreach (var item in applied.AsAsyncEnumerable().WithCancellation(ct).ConfigureAwait(false))
-                {
-                    if (ct.IsCancellationRequested) { _metrics.OnCanceled(); yield break; }
-                    _metrics.OnItemsProduced(shardId, 1);
-                    yield return item;
-                }
+                previousTimeout = ctx.Database.GetCommandTimeout();
+                ctx.Database.SetCommandTimeout(secs);
+                shardActivity?.AddTag("db.command_timeout.seconds", secs);
             }
-            finally
+            catch (Exception ex)
             {
-                _metrics.OnShardStop(shardId);
-                if (_commandTimeoutSeconds is not null && !_disposePerQuery && ctx is not null)
-                {
-                    // restore timeout on retained context
-                    try { ctx.Database.SetCommandTimeout(previousTimeout); } catch { }
-                }
-                if (created && _disposePerQuery && ctx is not null)
-                {
-                    await ctx.DisposeAsync().ConfigureAwait(false);
-                }
-                if (_concurrencyGate is not null)
-                {
-                    _concurrencyGate.Release();
-                }
-                shardActivity?.Dispose();
+                shardActivity?.AddEvent(new ActivityEvent("timeout.apply.failed", tags: new ActivityTagsCollection { { "exception.message", ex.Message } }));
             }
+        }
+
+        _lastContext = ctx ?? _lastContext;
+
+        // Build base query (DbSet<TEntity>) dynamically
+        var setGeneric = typeof(DbContext).GetMethods().First(m => m.Name == nameof(DbContext.Set) && m.IsGenericMethodDefinition && m.GetParameters().Length == 0).MakeGenericMethod(tIn);
+        var raw = setGeneric.Invoke(ctx, null)!;
+        var q = (IQueryable)raw;
+        var apply = typeof(QueryComposer).GetMethod(nameof(QueryComposer.ApplyQueryable))!.MakeGenericMethod(tIn, typeof(TResult));
+        var applied = (IQueryable<TResult>)apply.Invoke(null, [q, model])!;
+
+        // Default to AsNoTracking for query performance / reduced change tracking overhead
+        var asNoTracking = typeof(EntityFrameworkQueryableExtensions)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.AsNoTracking) && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
+            .MakeGenericMethod(typeof(TResult));
+
+        applied = (IQueryable<TResult>)asNoTracking.Invoke(null, [applied])!;
+
+        try
+        {
+            await foreach (var item in applied.AsAsyncEnumerable().WithCancellation(ct).ConfigureAwait(false))
+            {
+                if (ct.IsCancellationRequested) { _metrics.OnCanceled(); yield break; }
+                _metrics.OnItemsProduced(shardId, 1);
+                yield return item;
+            }
+        }
+        finally
+        {
+            _metrics.OnShardStop(shardId);
+            // Restore timeout for retained contexts
+            if (_commandTimeoutSeconds is not null && !_disposePerQuery && ctx is not null)
+            {
+                try { ctx.Database.SetCommandTimeout(previousTimeout); } catch { }
+            }
+            if (created && _disposePerQuery && ctx is not null)
+            {
+                try { await ctx.DisposeAsync().ConfigureAwait(false); } catch { }
+            }
+            if (_concurrencyGate is not null)
+            {
+                _concurrencyGate.Release();
+            }
+            shardActivity?.Dispose();
         }
     }
 
