@@ -44,9 +44,12 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
     private readonly Shardis.Query.Diagnostics.IShardisQueryMetrics _queryMetrics = queryMetrics ?? Shardis.Query.Diagnostics.NoopShardisQueryMetrics.Instance;
     private readonly int? _channelCapacity = channelCapacity;
     private DbContext? _lastContext; // last created or retained context for provider detection
+    private bool _suppressNextLatencyEmission; // set by ordered wrapper to unify single histogram emission
 
     /// <inheritdoc />
     public IShardQueryCapabilities Capabilities { get; } = new BasicQueryCapabilities(ordering: false, pagination: false);
+
+    internal int InternalShardCount => _shardCount;
 
     /// <inheritdoc />
     public IAsyncEnumerable<TResult> ExecuteAsync<TResult>(QueryModel model, CancellationToken ct = default)
@@ -286,23 +289,31 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
             }
             catch { dbSystem = null; }
             var failureMode = DetectFailureMode();
-            _queryMetrics.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
-                dbSystem: dbSystem ?? "",
-                provider: "efcore",
-                shardCount: _shardCount,
-                targetShardCount: enumeratedShardCount,
-                mergeStrategy: "unordered",
-                orderingBuffered: "false",
-                fanoutConcurrency: effectiveFanout,
-                channelCapacity: _channelCapacity ?? -1,
-                failureMode: failureMode,
-                resultStatus: status,
-                rootType: model.SourceType.Name));
+            if (!_suppressNextLatencyEmission)
+            {
+                _queryMetrics.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
+                    dbSystem: dbSystem ?? "",
+                    provider: "efcore",
+                    shardCount: _shardCount,
+                    targetShardCount: enumeratedShardCount,
+                    mergeStrategy: "unordered",
+                    orderingBuffered: "false",
+                    fanoutConcurrency: effectiveFanout,
+                    channelCapacity: _channelCapacity ?? -1,
+                    failureMode: failureMode,
+                    resultStatus: status,
+                    rootType: model.SourceType.Name));
+            }
+            else
+            {
+                // one-time suppression consumed
+                _suppressNextLatencyEmission = false;
+            }
             root?.Dispose();
         }
     }
 
-    private static string DetectFailureMode()
+    internal static string DetectFailureMode()
     {
         // In this provider instance we cannot directly inspect outer wrappers; assume best-effort wrapper sets ambient marker in Activity if needed.
         // For current implementation we look at call stack for FailureHandlingExecutor presence — lightweight heuristic.
@@ -338,6 +349,52 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
         act?.AddTag("query.has.select", model.Select is not null);
         return act;
     }
+
+    internal void SuppressNextLatencyEmission()
+    {
+        _suppressNextLatencyEmission = true;
+    }
+
+    internal void RecordLatencyOverride(double milliseconds,
+                                        QueryModel model,
+                                        int enumeratedShardCount,
+                                        string mergeStrategy,
+                                        bool orderingBuffered,
+                                        string resultStatus,
+                                        int effectiveFanout)
+    {
+        string? dbSystem = null;
+        try
+        {
+            var anyCtx = !_disposePerQuery && _retainedContexts is { Count: > 0 } ? _retainedContexts.Values.FirstOrDefault() : null;
+            anyCtx ??= _lastContext;
+            var providerName = anyCtx?.Database.ProviderName;
+            if (providerName is not null)
+            {
+                if (providerName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase)) dbSystem = "sqlite";
+                else if (providerName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase)) dbSystem = "postgresql";
+                else if (providerName.Contains("SqlServer", StringComparison.OrdinalIgnoreCase)) dbSystem = "mssql";
+                else if (providerName.Contains("MySql", StringComparison.OrdinalIgnoreCase)) dbSystem = "mysql";
+                else dbSystem = "other";
+            }
+        }
+        catch { dbSystem = null; }
+        var failureMode = DetectFailureMode();
+        _queryMetrics.RecordQueryMergeLatency(milliseconds, new Shardis.Query.Diagnostics.QueryMetricTags(
+            dbSystem: dbSystem ?? string.Empty,
+            provider: "efcore",
+            shardCount: _shardCount,
+            targetShardCount: enumeratedShardCount,
+            mergeStrategy: mergeStrategy,
+            orderingBuffered: orderingBuffered ? "true" : "false",
+            fanoutConcurrency: effectiveFanout,
+            channelCapacity: _channelCapacity ?? -1,
+            failureMode: failureMode,
+            resultStatus: resultStatus,
+            rootType: model.SourceType.Name));
+    }
+
+    internal Shardis.Query.Diagnostics.IShardisQueryMetrics MetricsSink => _queryMetrics;
 }
 
 internal static class ShardisQueryActivitySource

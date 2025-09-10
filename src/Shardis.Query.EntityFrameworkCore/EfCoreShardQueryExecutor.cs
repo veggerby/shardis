@@ -1,8 +1,5 @@
 using System.Linq.Expressions;
 using System.Diagnostics;
-using System.Reflection;
-
-using Shardis.Query.Diagnostics;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -61,10 +58,15 @@ public static class EfCoreShardQueryExecutor
         ArgumentNullException.ThrowIfNull(orderKey);
 
         var adapter = new DbContextFactoryAdapter<TContext>(contextFactory);
-        // For now we re-use unordered execution then post-process ordering by materializing. This keeps implementation incremental.
-        // A dedicated ordered executor could be introduced later with streaming k-way merge.
         var unordered = CreateInternal(shardCount, adapter, options);
         return new OrderedWrapperExecutor(unordered, orderKey, descending);
+    }
+
+    internal static IShardQueryExecutor CreateOrderedFromExisting(EntityFrameworkCoreShardQueryExecutor existingUnordered,
+                                                                  Expression<Func<object, object>> orderKey,
+                                                                  bool descending)
+    {
+        return new OrderedWrapperExecutor(existingUnordered, orderKey, descending);
     }
 
     private static IShardQueryExecutor CreateInternal(int shardCount,
@@ -96,16 +98,7 @@ public static class EfCoreShardQueryExecutor
         private readonly IShardQueryExecutor _inner;
         private readonly Func<object, object?> _keySelectorCompiled;
         private readonly bool _descending;
-        private IShardisQueryMetrics? _metrics; // harvested from inner EF executor when available
-
-        private static readonly FieldInfo? QueryMetricsField = typeof(EntityFrameworkCoreShardQueryExecutor)
-            .GetField("_queryMetrics", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static readonly FieldInfo? ShardCountField = typeof(EntityFrameworkCoreShardQueryExecutor)
-            .GetField("_shardCount", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static readonly FieldInfo? ChannelCapacityField = typeof(EntityFrameworkCoreShardQueryExecutor)
-            .GetField("_channelCapacity", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static readonly FieldInfo? ConcurrencyLimitField = typeof(EntityFrameworkCoreShardQueryExecutor)
-            .GetField("_configuredMaxConcurrency", BindingFlags.NonPublic | BindingFlags.Instance);
+    private EntityFrameworkCoreShardQueryExecutor? _efInner; // for unified latency emission
 
         public OrderedWrapperExecutor(IShardQueryExecutor inner, LambdaExpression keySelector, bool descending)
         {
@@ -133,15 +126,9 @@ public static class EfCoreShardQueryExecutor
         {
             var orderingActivity = ShardisQueryActivitySource.Instance.StartActivity("shardis.query.ordering", ActivityKind.Internal);
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            // Acquire metrics sink (once) via reflection from inner EF executor. Safe: readonly field.
-            if (_metrics is null && _inner is not null && QueryMetricsField is not null && _inner.GetType().Name.Contains("EntityFrameworkCoreShardQueryExecutor", StringComparison.Ordinal))
-            {
-                try
-                {
-                    _metrics = (IShardisQueryMetrics?)QueryMetricsField.GetValue(_inner);
-                }
-                catch { }
-            }
+            // If inner is EF executor, suppress its upcoming unordered emission for this query.
+            _efInner = _inner as EntityFrameworkCoreShardQueryExecutor;
+            _efInner?.SuppressNextLatencyEmission();
             try
             {
                 // Materialize underlying unordered results (already merged) then apply ordering.
@@ -169,40 +156,20 @@ public static class EfCoreShardQueryExecutor
                 orderingActivity?.AddTag("ordering.duration.ms", sw.Elapsed.TotalMilliseconds);
                 orderingActivity?.SetStatus(ActivityStatusCode.Ok);
 
-                // Emit ordered merge latency histogram entry (best-effort tag population).
-                try
+                // Unified latency emission (single histogram) using inner executor's helper.
+                if (_efInner is not null)
                 {
-                    if (_metrics is not null)
-                    {
-                        int shardCount = -1;
-                        int targetShardCount = -1;
-                        int channelCapacity = -1;
-                        int fanoutConcurrency = -1;
-                        try
-                        {
-                            if (_inner is not null)
-                            {
-                                if (ShardCountField?.GetValue(_inner) is int sc) { shardCount = sc; targetShardCount = sc; }
-                                if (ChannelCapacityField?.GetValue(_inner) is int cap) { channelCapacity = cap; }
-                                if (ConcurrencyLimitField?.GetValue(_inner) is int conc && conc > 0) { fanoutConcurrency = conc; }
-                            }
-                        }
-                        catch { }
-                        _metrics.RecordQueryMergeLatency(sw.Elapsed.TotalMilliseconds, new QueryMetricTags(
-                            dbSystem: string.Empty,
-                            provider: "efcore",
-                            shardCount: shardCount,
-                            targetShardCount: targetShardCount,
-                            mergeStrategy: "ordered",
-                            orderingBuffered: "true",
-                            fanoutConcurrency: fanoutConcurrency,
-                            channelCapacity: channelCapacity,
-                            failureMode: string.Empty,
-                            resultStatus: ct.IsCancellationRequested ? "canceled" : "ok",
-                            rootType: model.SourceType.Name));
-                    }
+                    var resultStatus = ct.IsCancellationRequested ? "canceled" : "ok"; // failures bubble before here
+                    var targetCount = model.TargetShards?.Count ?? _efInner.InternalShardCount; // internal shard count used if all targeted
+                    if (targetCount <= 0) targetCount = _efInner.InternalShardCount; // fallback
+                    _efInner!.RecordLatencyOverride(sw.Elapsed.TotalMilliseconds,
+                        model,
+                        enumeratedShardCount: targetCount,
+                        mergeStrategy: "ordered",
+                        orderingBuffered: true,
+                        resultStatus: resultStatus,
+                        effectiveFanout: targetCount);
                 }
-                catch { /* never throw from metrics */ }
 
                 orderingActivity?.Dispose();
             }

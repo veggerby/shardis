@@ -5,6 +5,7 @@ using Shardis.Factories;
 using Shardis.Model;
 using Shardis.Query.Diagnostics;
 using Shardis.Query.EntityFrameworkCore.Execution;
+using Shardis.Query.Execution;
 
 namespace Shardis.Query.Tests;
 
@@ -129,11 +130,17 @@ public sealed class QueryMergeLatencyMetricsTests
         // arrange
         var rec = new RecordingMetrics();
         IShardFactory<DbContext> factory = new Factory(0);
-        // create unordered base with metrics, then ordered wrapper via factory helper
+        // Build base unordered with metrics sink
         var unordered = new EntityFrameworkCoreShardQueryExecutor(2, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: rec);
-        // reflect internal ordered wrapper (public factory returns wrapper composing unordered executor)
-        var orderedExec = Shardis.Query.EntityFrameworkCore.EfCoreShardQueryExecutor.CreateOrdered<DbContext, Person>(2, factory, p => p.Id);
-        // We cannot inject metrics directly; ordered wrapper will harvest from inner via reflection and emit a second record.
+        // Use internal helper via reflection to wrap existing unordered so metrics sink is reused
+        var helper = typeof(Shardis.Query.EntityFrameworkCore.EfCoreShardQueryExecutor).GetMethod("CreateOrderedFromExisting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        // Build key selector extracting Person.Id from boxed object
+        var objParam = System.Linq.Expressions.Expression.Parameter(typeof(object), "o");
+        var cast = System.Linq.Expressions.Expression.Convert(objParam, typeof(Person));
+        var idProp = System.Linq.Expressions.Expression.Property(cast, nameof(Person.Id));
+        var box = System.Linq.Expressions.Expression.Convert(idProp, typeof(object));
+        var orderLambda = System.Linq.Expressions.Expression.Lambda<System.Func<object, object>>(box, objParam);
+        var orderedExec = (IShardQueryExecutor)helper!.Invoke(null, new object[] { unordered, orderLambda, false })!;
 
         var q = ShardQuery.For<Person>(orderedExec).Where(p => p.Age >= 20);
 
@@ -141,9 +148,8 @@ public sealed class QueryMergeLatencyMetricsTests
         var list = await q.ToListAsync();
 
         // assert
-        rec.Count.Should().BeGreaterThan(0); // unordered path at least; ordered adds another best-effort
-        rec.Records.Any(r => r.tags.MergeStrategy == "ordered").Should().BeTrue();
-        rec.Records.Any(r => r.tags.MergeStrategy == "unordered").Should().BeTrue();
+        rec.Count.Should().Be(1); // unified single histogram emission
+        rec.Records.Single().tags.MergeStrategy.Should().Be("ordered");
         list.Should().NotBeEmpty();
     }
 }
