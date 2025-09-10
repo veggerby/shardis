@@ -27,11 +27,11 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
 {
     private readonly IShardMapEnumerationStore<TKey> _store;
     private readonly int _segmentSize;
-    private readonly struct DiffAccumulator
+
+    private readonly struct DiffAccumulator(int moves, int examined)
     {
-        public DiffAccumulator(int moves, int examined) { Moves = moves; Examined = examined; }
-        public int Moves { get; }
-        public int Examined { get; }
+        public int Moves { get; } = moves;
+        public int Examined { get; } = examined;
     }
 
     /// <summary>
@@ -41,7 +41,11 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
     /// <param name="segmentSize">Maximum number of mappings buffered before diffing against the target snapshot.</param>
     public SegmentedEnumerationMigrationPlanner(IShardMapEnumerationStore<TKey> store, int segmentSize = 10_000)
     {
-        if (segmentSize <= 0) throw new ArgumentOutOfRangeException(nameof(segmentSize));
+        if (segmentSize <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(segmentSize));
+        }
+
         _store = store;
         _segmentSize = segmentSize;
     }
@@ -57,6 +61,7 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
         {
             ct.ThrowIfCancellationRequested();
             batch.Add(map);
+
             if (batch.Count == _segmentSize)
             {
                 Diff(batch, to, moves, ct);
@@ -89,20 +94,24 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
         var examined = 0;
         var moves = 0;
         var batchCount = 0;
+
         await foreach (var map in _store.EnumerateAsync(ct))
         {
             ct.ThrowIfCancellationRequested();
             examined++;
             batchCount++;
+
             if (to.Assignments.TryGetValue(map.ShardKey, out var newShard) && newShard != map.ShardId)
             {
                 moves++;
             }
+
             if (batchCount == _segmentSize)
             {
                 batchCount = 0; // segment boundary for potential future hooks
             }
         }
+
         return (examined, moves);
     }
 
@@ -111,6 +120,7 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
         foreach (var map in segment)
         {
             ct.ThrowIfCancellationRequested();
+
             if (to.Assignments.TryGetValue(map.ShardKey, out var newShard) && newShard != map.ShardId)
             {
                 moves.Add(new KeyMove<TKey>(map.ShardKey, map.ShardId, newShard));
@@ -123,15 +133,18 @@ public sealed class SegmentedEnumerationMigrationPlanner<TKey> : IShardMigration
         var str = key.Value?.ToString() ?? string.Empty;
         ReadOnlySpan<char> chars = str.AsSpan();
         Span<byte> utf8 = chars.Length <= 128 ? stackalloc byte[chars.Length * 4] : new byte[System.Text.Encoding.UTF8.GetMaxByteCount(chars.Length)];
+
         var count = System.Text.Encoding.UTF8.GetBytes(chars, utf8);
         const ulong offset = 14695981039346656037UL;
         const ulong prime = 1099511628211UL;
         ulong hash = offset;
+
         for (int i = 0; i < count; i++)
         {
             hash ^= utf8[i];
             hash *= prime;
         }
+
         return hash;
     }
 }
