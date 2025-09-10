@@ -31,7 +31,7 @@ namespace Shardis.Query.EntityFrameworkCore.Execution
 {
     public sealed class EntityFrameworkCoreShardQueryExecutor : Shardis.Query.Execution.IShardQueryExecutor
     {
-        public EntityFrameworkCoreShardQueryExecutor(int shardCount, Shardis.Factories.IShardFactory<Microsoft.EntityFrameworkCore.DbContext> contextFactory, System.Func<System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<object>>, System.Threading.CancellationToken, System.Collections.Generic.IAsyncEnumerable<object>> merge, Shardis.Query.Diagnostics.IQueryMetricsObserver? metrics = null, int? commandTimeoutSeconds = default, int? maxConcurrency = default, bool disposeContextPerQuery = true, Shardis.Query.Diagnostics.IShardisQueryMetrics? queryMetrics = null) { }
+        public EntityFrameworkCoreShardQueryExecutor(int shardCount, Shardis.Factories.IShardFactory<Microsoft.EntityFrameworkCore.DbContext> contextFactory, System.Func<System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<object>>, System.Threading.CancellationToken, System.Collections.Generic.IAsyncEnumerable<object>> merge, Shardis.Query.Diagnostics.IQueryMetricsObserver? metrics = null, int? commandTimeoutSeconds = default, int? maxConcurrency = default, bool disposeContextPerQuery = true, Shardis.Query.Diagnostics.IShardisQueryMetrics? queryMetrics = null, int? channelCapacity = default) { }
         public Shardis.Query.IShardQueryCapabilities Capabilities { get; }
         public System.Collections.Generic.IAsyncEnumerable<TResult> ExecuteAsync<TResult>(Shardis.Query.QueryModel model, System.Threading.CancellationToken ct = default) { }
     }

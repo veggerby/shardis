@@ -21,6 +21,7 @@ namespace Shardis.Query.EntityFrameworkCore.Execution;
 /// <param name="maxConcurrency">Optional maximum degree of parallel shard queries (null = unbounded).</param>
 /// <param name="disposeContextPerQuery">When true (default) a DbContext is created and disposed per shard query enumeration. When false contexts are cached for executor lifetime.</param>
 /// <param name="queryMetrics">Optional query latency metrics sink.</param>
+/// <param name="channelCapacity">Optional unordered merge channel capacity (for telemetry tagging only; merge delegate determines actual capacity).</param>
 public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                                                           IShardFactory<DbContext> contextFactory,
                                                           Func<IEnumerable<IAsyncEnumerable<object>>, CancellationToken, IAsyncEnumerable<object>> merge,
@@ -28,7 +29,8 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                                                           int? commandTimeoutSeconds = null,
                                                           int? maxConcurrency = null,
                                                           bool disposeContextPerQuery = true,
-                                                          Shardis.Query.Diagnostics.IShardisQueryMetrics? queryMetrics = null) : IShardQueryExecutor
+                                                          Shardis.Query.Diagnostics.IShardisQueryMetrics? queryMetrics = null,
+                                                          int? channelCapacity = null) : IShardQueryExecutor
 {
     private readonly int _shardCount = shardCount;
     private readonly IShardFactory<DbContext> _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -40,6 +42,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
     private readonly bool _disposePerQuery = disposeContextPerQuery;
     private readonly Dictionary<int, DbContext>? _retainedContexts = disposeContextPerQuery ? null : new();
     private readonly Shardis.Query.Diagnostics.IShardisQueryMetrics _queryMetrics = queryMetrics ?? Shardis.Query.Diagnostics.NoopShardisQueryMetrics.Instance;
+    private readonly int? _channelCapacity = channelCapacity;
     private DbContext? _lastContext; // last created or retained context for provider detection
 
     /// <inheritdoc />
@@ -241,6 +244,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
             root?.AddTag("shard.count", _shardCount);
             if (model.TargetShards is not null) { root?.AddTag("target.shard.count", model.TargetShards.Count); }
             root?.AddTag("query.duration.ms", sw.Elapsed.TotalMilliseconds);
+            if (_channelCapacity.HasValue) { root?.AddTag("channel.capacity", _channelCapacity.Value); }
             var status = "ok";
             if (ct.IsCancellationRequested && !completed)
             {
@@ -290,7 +294,7 @@ public sealed class EntityFrameworkCoreShardQueryExecutor(int shardCount,
                 mergeStrategy: "unordered",
                 orderingBuffered: "false",
                 fanoutConcurrency: effectiveFanout,
-                channelCapacity: -1,
+                channelCapacity: _channelCapacity ?? -1,
                 failureMode: failureMode,
                 resultStatus: status,
                 rootType: model.SourceType.Name));
