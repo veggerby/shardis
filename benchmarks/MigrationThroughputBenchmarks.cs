@@ -98,11 +98,11 @@ public class MigrationThroughputBenchmarks
     [ParamsSource(nameof(InterleaveValues))] public bool InterleaveCopyAndVerify { get; set; }
     [ParamsSource(nameof(SwapValues))] public int SwapBatchSize { get; set; }
 
-    public IEnumerable<int> KeysValues => UseFullMatrix ? KeysFull : KeysSmall;
-    public IEnumerable<int> CopyValues => UseFullMatrix ? CopyFull : CopySmall;
-    public IEnumerable<int> VerifyValues => UseFullMatrix ? VerifyFull : VerifySmall;
-    public IEnumerable<bool> InterleaveValues => UseFullMatrix ? InterleaveFull : InterleaveSmall;
-    public IEnumerable<int> SwapValues => UseFullMatrix ? SwapFull : SwapSmall;
+    public static IEnumerable<int> KeysValues => UseFullMatrix ? KeysFull : KeysSmall;
+    public static IEnumerable<int> CopyValues => UseFullMatrix ? CopyFull : CopySmall;
+    public static IEnumerable<int> VerifyValues => UseFullMatrix ? VerifyFull : VerifySmall;
+    public static IEnumerable<bool> InterleaveValues => UseFullMatrix ? InterleaveFull : InterleaveSmall;
+    public static IEnumerable<int> SwapValues => UseFullMatrix ? SwapFull : SwapSmall;
 
     private MigrationPlan<string>? _plan;
     private ShardMigrationExecutor<string>? _executor;

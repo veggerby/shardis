@@ -1,6 +1,6 @@
 # Shardis.Query.EntityFrameworkCore
 
-Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming).
+Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming, preview ordered buffering, optional failure strategy decoration).
 
 [![NuGet](https://img.shields.io/nuget/v/Shardis.Query.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Shardis.Query.EntityFrameworkCore/)
 [![Downloads](https://img.shields.io/nuget/dt/Shardis.Query.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Shardis.Query.EntityFrameworkCore/)
@@ -19,7 +19,9 @@ dotnet add package Shardis.Query.EntityFrameworkCore --version 0.1.*
 
 ## What’s included
 
-- `EntityFrameworkCoreShardQueryExecutor` — concrete executor that translates queries into EF Core operations.
+- `EntityFrameworkCoreShardQueryExecutor` — concrete executor translating queries into EF Core operations.
+- `EfCoreShardQueryExecutor.CreateUnordered` and `CreateOrdered` (buffered ordered variant; materializes then orders).
+- `EfCoreExecutionOptions` (channel capacity, per-shard command timeout, shard concurrency, context lifetime control).
 - `EntityFrameworkCoreShardFactory<TContext>` / `PooledEntityFrameworkCoreShardFactory<TContext>` for per-shard context creation.
 - Wiring examples for registering `DbContext` instances per shard.
 
@@ -61,12 +63,16 @@ var names = await query.ToListAsync();
 
 ```csharp
 var services = new ServiceCollection()
-    .AddShards<MyDbContext>(2, shard => new MyDbContext(BuildOptionsFor(shard)));
+    .AddShards<MyDbContext>(2, shard => new MyDbContext(BuildOptionsFor(shard)))
+    .AddShardisEfCoreUnordered<MyDbContext>(
+        shardCount: 2,
+        contextFactory: new EntityFrameworkCoreShardFactory<MyDbContext>(BuildOptionsFor))
+    .DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance) // optional
+    .AddShardisQueryClient();
 
 await using var provider = services.BuildServiceProvider();
-var perShardFactory = provider.GetRequiredService<IShardFactory<MyDbContext>>();
-IShardFactory<DbContext> adapter = new DelegatingShardFactory<DbContext>((sid, ct) => perShardFactory.CreateAsync(sid, ct));
-var exec = new EntityFrameworkCoreShardQueryExecutor(2, adapter, (s, ct) => UnorderedMerge.Merge(s, ct));
+var client = provider.GetRequiredService<IShardQueryClient>();
+var active = await client.Query<Person>().Where(p => p.IsActive).CountAsync();
 ```
 
 ## Samples & tests
@@ -75,13 +81,50 @@ var exec = new EntityFrameworkCoreShardQueryExecutor(2, adapter, (s, ct) => Unor
 
 ## Configuration / Options
 
-- **PageSize**: control the EF Core query page size for paged streaming (provider-specific).
-- **Shard factory**: supply an `IShardFactory<DbContext>` (e.g. `EntityFrameworkCoreShardFactory<TContext>` + adapter) for pure creation; seed separately.
+- **ChannelCapacity** (`EfCoreExecutionOptions.ChannelCapacity`): bounded backpressure for unordered merge (null = unbounded internal channel).
+- **PerShardCommandTimeout**: database command timeout per shard query (best‑effort; ignored if provider disallows).
+- **Concurrency**: maximum shard fan‑out (limits simultaneous DbContext queries). Null = unbounded.
+- **DisposeContextPerQuery**: if false, retains one `DbContext` per shard for executor lifetime (reduces allocations; ensure thread-safety per context usage pattern).
+- **Ordered factory**: `AddShardisEfCoreOrdered` / `EfCoreShardQueryExecutor.CreateOrdered` buffers all shard results before ordering; use only for bounded result sets.
+- **Failure strategy decoration**: call `DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance)` (or custom) after registering an executor.
+
+### Cancellation & Timeouts
+
+All query methods accept a `CancellationToken` (propagated to EF Core async providers). If `PerShardCommandTimeout` is set, it is applied per shard query and restored for retained contexts.
+
+```csharp
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+var exec = EfCoreShardQueryExecutor.CreateUnordered(
+    shardCount,
+    contextFactory,
+    new EfCoreExecutionOptions { PerShardCommandTimeout = TimeSpan.FromSeconds(3) });
+var names = await exec.Query<Person>().Select(p => p.Name).ToListAsync(cts.Token);
+```
+
+### Backpressure
+
+`ChannelCapacity` bounds the number of buffered items produced ahead of the consumer in unordered merges. Tune for throughput vs memory (typical range: 4–256). `null` = unbounded (fastest, more memory risk under very large fan-out).
+
+### Failure Behavior
+
+Default: fail-fast — the first shard exception terminates the merged enumeration. To aggregate errors and continue best-effort across shards:
+
+```csharp
+services.DecorateShardQueryFailureStrategy(BestEffortFailureStrategy.Instance);
+```
+
+### Metrics & Tracing
+
+The executor emits `Activity` instances via source name `Shardis.Query` with tags:
+
+- `query.source`, `query.result`, `query.where.count`, `query.has.select`, `shard.count`, `query.duration.ms`, and per-shard `shard.index` & optional `db.command_timeout.seconds`.
+Integrate with OpenTelemetry by adding an `ActivityListener` or OTEL SDK.
 
 ## Capabilities & limits
 
 - ✅ Pushes where/select operations to EF Core where supported.
-- ⚠️ Ordered streaming can add latency and requires a stable key selector across shards.
+- ⚠️ Ordered (buffered) factory materializes all results. Avoid for unbounded / very large sets.
+- ⚠️ Ordered streaming improvements (k-way merge) planned; present variant trades memory for simplicity.
 - 🧩 Requires EF Core provider matching your database version.
 
 ## Versioning & compatibility

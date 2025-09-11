@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 using Shardis.Model;
 
@@ -7,7 +8,7 @@ namespace Shardis.Persistence;
 /// <summary>
 /// Provides an in-memory implementation of the <see cref="IShardMapStore{TKey}"/> interface.
 /// </summary>
-public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
+public class InMemoryShardMapStore<TKey> : IShardMapEnumerationStore<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>
@@ -67,5 +68,20 @@ public class InMemoryShardMapStore<TKey> : IShardMapStore<TKey>
         var winner = _assignments[shardKey];
         shardMap = new ShardMap<TKey>(shardKey, winner);
         return false;
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<ShardMap<TKey>> EnumerateAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Take a moment-in-time snapshot of keys to avoid holding collection locks during async iteration.
+        // Concurrent additions after the snapshot are not reflected (acceptable for point-in-time semantics).
+        var snapshot = _assignments.ToArray();
+        foreach (var kvp in snapshot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return new ShardMap<TKey>(kvp.Key, kvp.Value);
+            // No back-pressure logic needed for in-memory enumeration; if needed, introduce pacing in future.
+            await Task.CompletedTask; // keep method 'async' without allocation per item.
+        }
     }
 }

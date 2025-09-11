@@ -4,6 +4,8 @@ using Shardis.Query;
 using Shardis.Query.InMemory.Execution;
 using Shardis.Query.Internals;
 
+namespace Shardis.Benchmarks;
+
 [MemoryDiagnoser]
 public class QueryBenchmarks
 {

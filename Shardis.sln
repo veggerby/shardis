@@ -71,6 +71,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Logging.Console", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Logging.Microsoft", "src\Shardis.Logging.Microsoft\Shardis.Logging.Microsoft.csproj", "{47E95431-CD69-4F19-BAAA-72AE179B9A66}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shardis.Migration.EntityFrameworkCore.Sample", "samples\Shardis.Migration.EntityFrameworkCore.Sample\Shardis.Migration.EntityFrameworkCore.Sample.csproj", "{ABC3638F-7A27-4CA2-BE3D-641E4C667484}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -441,6 +443,18 @@ Global
 		{47E95431-CD69-4F19-BAAA-72AE179B9A66}.Release|x64.Build.0 = Release|Any CPU
 		{47E95431-CD69-4F19-BAAA-72AE179B9A66}.Release|x86.ActiveCfg = Release|Any CPU
 		{47E95431-CD69-4F19-BAAA-72AE179B9A66}.Release|x86.Build.0 = Release|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Debug|x64.Build.0 = Debug|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Debug|x86.Build.0 = Debug|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Release|x64.ActiveCfg = Release|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Release|x64.Build.0 = Release|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Release|x86.ActiveCfg = Release|Any CPU
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -476,5 +490,6 @@ Global
 		{7C15CFC7-EBAB-412F-AAC2-87129FEC9FFC} = {87D4F378-43DD-4DCB-8109-8D91BF61043E}
 		{68998593-3F5D-44CB-80A6-2F059AD04219} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
 		{47E95431-CD69-4F19-BAAA-72AE179B9A66} = {3BE56DC5-2E84-4A93-BC1D-E975D3DF54BF}
+		{ABC3638F-7A27-4CA2-BE3D-641E4C667484} = {87D4F378-43DD-4DCB-8109-8D91BF61043E}
 	EndGlobalSection
 EndGlobal

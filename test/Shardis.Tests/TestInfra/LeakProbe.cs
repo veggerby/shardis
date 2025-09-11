@@ -4,7 +4,7 @@ public sealed class LeakProbe
 {
     private readonly List<WeakReference> _refs = new();
     public void Track(object o) => _refs.Add(new WeakReference(o));
-    public void ForceGC()
+    public static void ForceGC()
     {
         GC.Collect();
         GC.WaitForPendingFinalizers();

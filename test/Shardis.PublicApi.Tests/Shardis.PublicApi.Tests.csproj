@@ -1,29 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <IsPackable>false</IsPackable>
+    <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
     <ProjectReference Include="../../src/Shardis.Marten/Shardis.Marten.csproj" />
     <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
-  <ProjectReference Include="../../src/Shardis.Migration.Marten/Shardis.Migration.Marten.csproj" />
-  <ProjectReference Include="../../src/Shardis.Migration.Sql/Shardis.Migration.Sql.csproj" />
+    <ProjectReference Include="../../src/Shardis.Migration.Marten/Shardis.Migration.Marten.csproj" />
+    <ProjectReference Include="../../src/Shardis.Migration.Sql/Shardis.Migration.Sql.csproj" />
     <ProjectReference Include="../../src/Shardis.Query/Shardis.Query.csproj" />
     <ProjectReference Include="../../src/Shardis.Query.EntityFrameworkCore/Shardis.Query.EntityFrameworkCore.csproj" />
     <ProjectReference Include="../../src/Shardis.Query.InMemory/Shardis.Query.InMemory.csproj" />
     <ProjectReference Include="../../src/Shardis.Query.Marten/Shardis.Query.Marten.csproj" />
     <ProjectReference Include="../../src/Shardis.Redis/Shardis.Redis.csproj" />
     <ProjectReference Include="../../src/Shardis.Testing/Shardis.Testing.csproj" />
-    <ProjectReference Include="..\..\src\Shardis.DependencyInjection\Shardis.DependencyInjection.csproj" />
+    <ProjectReference Include="../../src/Shardis.DependencyInjection/Shardis.DependencyInjection.csproj" />
+    <ProjectReference Include="../../src/Shardis.Logging.Console/Shardis.Logging.Console.csproj" />
+    <ProjectReference Include="../../src/Shardis.Logging.Microsoft/Shardis.Logging.Microsoft.csproj" />
   </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="AwesomeAssertions" />
-  <PackageReference Include="PublicApiGenerator" />
+    <PackageReference Include="PublicApiGenerator" />
   </ItemGroup>
+
 </Project>

@@ -80,8 +80,8 @@ jobs:
         env:
           POSTGRES_CONNECTION: Host=localhost;Port=5432;Username=postgres;Database=shardis
         run: |
-          dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *AdaptivePagingBenchmarks* --maxIterationCount 1 --minIterationCount 1 --warmupCount 0 --job short
-          dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *AdaptivePagingAllocationsBenchmarks* --maxIterationCount 1 --minIterationCount 1 --warmupCount 0 --exporters json --job short
+          dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *AdaptivePagingBenchmarks* --iterationCount 1 --warmupCount 0 --job short
+          dotnet run -c Release --project benchmarks/Shardis.Benchmarks.csproj -- --filter *AdaptivePagingAllocationsBenchmarks* --iterationCount 1 --warmupCount 0 --exporters json --job short
       - name: Check adaptive paging allocation delta
         env:
           ADAPTIVE_ALLOC_MAX_PCT: 20

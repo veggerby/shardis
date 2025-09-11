@@ -56,7 +56,6 @@ Metrics (suggested):
 * `shardis.migration.keys_failed_total`
 * Duration histograms for copy / verify / swap
 
-
 Spans: copy, verify, swap (attributes: key hash, source, target, backend, attempt, success)
 
 ## Configuration Surface (Selected)

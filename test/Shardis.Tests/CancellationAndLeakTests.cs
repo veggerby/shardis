@@ -15,6 +15,8 @@ public class CancellationAndLeakTests
 
     private sealed class IntShard(int index, TimeSpan[][] schedules, int items, Determinism det) : IShard<int>
     {
+        private readonly Determinism _det = det;
+
         public ShardId ShardId { get; } = new($"shard-{index}");
         public int CreateSession() => index;
         public IShardQueryExecutor<int> QueryExecutor => DummyExecutor.Instance;
@@ -23,7 +25,7 @@ public class CancellationAndLeakTests
             for (int i = 0; i < items; i++)
             {
                 if (ct.IsCancellationRequested) yield break;
-                await det.DelayForShardAsync(schedules, index, i, ct).ConfigureAwait(false);
+                await Determinism.DelayForShardAsync(schedules, index, i, ct).ConfigureAwait(false);
                 yield return i;
             }
         }
@@ -70,7 +72,7 @@ public class CancellationAndLeakTests
         for (int i = 0; i < MaxCycles && !(collected = leak.AllCollected()); i++)
         {
             await Task.Delay(50);
-            leak.ForceGC();
+            LeakProbe.ForceGC();
         }
         // assert (GC)
         collected.Should().BeTrue("Broadcaster should be eligible for GC after cancellation (unordered early cancel)");
@@ -105,7 +107,7 @@ public class CancellationAndLeakTests
         for (int i = 0; i < MaxCycles && !(collected = leak.AllCollected()); i++)
         {
             await Task.Delay(50);
-            leak.ForceGC();
+            LeakProbe.ForceGC();
         }
         // assert
         collected.Should().BeTrue("Broadcaster should be eligible for GC after mid-way cancellation (ordered streaming)");

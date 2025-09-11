@@ -179,6 +179,8 @@ public class MergeEnumeratorBenchmarks
 
     private sealed class TestShard(int index, string id, int count, TimeSpan[][] schedules, Determinism det) : IShard<int>
     {
+        private readonly Determinism _det = det;
+
         public ShardId ShardId { get; } = new(id);
         public int CreateSession() => index;
         public Querying.Linq.IShardQueryExecutor<int> QueryExecutor => DummyExecutor.Instance;
@@ -189,7 +191,7 @@ public class MergeEnumeratorBenchmarks
         {
             for (int i = 0; i < count; i++)
             {
-                await det.DelayForShardAsync(schedules, index, i, cancellationToken).ConfigureAwait(false);
+                await Determinism.DelayForShardAsync(schedules, index, i, cancellationToken).ConfigureAwait(false);
                 yield return i; // strictly increasing ordering inside shard
             }
         }

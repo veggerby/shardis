@@ -19,6 +19,15 @@ namespace Shardis.Query.Diagnostics
         void OnShardStart(int shardId);
         void OnShardStop(int shardId);
     }
+    public interface IShardisQueryMetrics
+    {
+        void RecordQueryMergeLatency(double milliseconds, in Shardis.Query.Diagnostics.QueryMetricTags tags);
+    }
+    public sealed class MetricShardisQueryMetrics : Shardis.Query.Diagnostics.IShardisQueryMetrics
+    {
+        public MetricShardisQueryMetrics() { }
+        public void RecordQueryMergeLatency(double milliseconds, in Shardis.Query.Diagnostics.QueryMetricTags tags) { }
+    }
     public sealed class NoopAdaptivePagingObserver : Shardis.Query.Diagnostics.IAdaptivePagingObserver
     {
         public static readonly Shardis.Query.Diagnostics.IAdaptivePagingObserver Instance;
@@ -34,6 +43,46 @@ namespace Shardis.Query.Diagnostics
         public void OnItemsProduced(int shardId, int count) { }
         public void OnShardStart(int shardId) { }
         public void OnShardStop(int shardId) { }
+    }
+    public sealed class NoopShardisQueryMetrics : Shardis.Query.Diagnostics.IShardisQueryMetrics
+    {
+        public static readonly Shardis.Query.Diagnostics.IShardisQueryMetrics Instance;
+        public void RecordQueryMergeLatency(double milliseconds, in Shardis.Query.Diagnostics.QueryMetricTags tags) { }
+    }
+    public readonly struct QueryMetricTags
+    {
+        public readonly int ChannelCapacity;
+        public readonly string? DbSystem;
+        public readonly string? FailureMode;
+        public readonly int FanoutConcurrency;
+        public readonly int InvalidShardCount;
+        public readonly string? MergeStrategy;
+        public readonly string? OrderingBuffered;
+        public readonly string? Provider;
+        public readonly string? ResultStatus;
+        public readonly string? RootType;
+        public readonly int ShardCount;
+        public readonly int TargetShardCount;
+        public QueryMetricTags(string? dbSystem, string? provider, int shardCount, int targetShardCount, string? mergeStrategy, string? orderingBuffered, int fanoutConcurrency, int channelCapacity, string? failureMode, string? resultStatus, string? rootType, int invalidShardCount) { }
+    }
+}
+namespace Shardis.Query.Execution.FailureHandling
+{
+    public sealed class BestEffortFailureStrategy : Shardis.Query.Execution.FailureHandling.IShardQueryFailureStrategy
+    {
+        public static readonly Shardis.Query.Execution.FailureHandling.BestEffortFailureStrategy Instance;
+        public void FinalizeOrThrow(int totalShards) { }
+        public bool OnShardException(System.Exception ex, int shardIndex) { }
+        public void OnShardSuccess() { }
+    }
+    public sealed class FailFastFailureStrategy : Shardis.Query.Execution.FailureHandling.IShardQueryFailureStrategy
+    {
+        public static readonly Shardis.Query.Execution.FailureHandling.FailFastFailureStrategy Instance;
+        public bool OnShardException(System.Exception ex, int shardIndex) { }
+    }
+    public interface IShardQueryFailureStrategy
+    {
+        bool OnShardException(System.Exception ex, int shardIndex);
     }
 }
 namespace Shardis.Query.Execution
@@ -51,6 +100,11 @@ namespace Shardis.Query
         bool SupportsOrdering { get; }
         bool SupportsPagination { get; }
     }
+    public interface IShardQueryClient
+    {
+        Shardis.Query.IShardQueryable<T> Query<T>();
+        Shardis.Query.IShardQueryable<TResult> Query<T, TResult>(System.Linq.Expressions.Expression<System.Func<T, bool>>? where = null, System.Linq.Expressions.Expression<System.Func<T, TResult>>? select = null);
+    }
     public interface IShardQueryable<out T> : System.Collections.Generic.IAsyncEnumerable<T>
     {
         Shardis.Query.Execution.IShardQueryExecutor Executor { get; }
@@ -58,21 +112,51 @@ namespace Shardis.Query
     }
     public static class OrderedMergeHelper
     {
-        public static System.Collections.Generic.IAsyncEnumerable<T> Merge<T, TKey>(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Threading.CancellationToken ct = default)
-            where TKey : System.IComparable<TKey> { }
+        public static System.Collections.Generic.IAsyncEnumerable<T> Merge<T, TKey>(System.Collections.Generic.IEnumerable<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Threading.CancellationToken ct = default) { }
+        public static System.Collections.Generic.IAsyncEnumerable<T> MergeStreaming<T, TKey>(System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IAsyncEnumerable<T>> sources, System.Func<T, TKey> keySelector, System.Collections.Generic.IComparer<TKey>? comparer = null, bool descending = false, System.Threading.CancellationToken ct = default) { }
+    }
+    public static class QueryClientServiceCollectionExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddShardisQueryClient(this Microsoft.Extensions.DependencyInjection.IServiceCollection services) { }
     }
     public sealed class QueryModel
     {
         public System.Linq.Expressions.LambdaExpression? Select { get; }
         public System.Type SourceType { get; }
+        public System.Collections.Generic.IReadOnlyList<Shardis.Model.ShardId>? TargetShards { get; }
         public System.Collections.Generic.IReadOnlyList<System.Linq.Expressions.LambdaExpression> Where { get; }
         public Shardis.Query.QueryModel WithSelect(System.Linq.Expressions.LambdaExpression projector) { }
+        public Shardis.Query.QueryModel WithTargetShards(System.Collections.Generic.IReadOnlyList<Shardis.Model.ShardId>? ids) { }
         public Shardis.Query.QueryModel WithWhere(System.Linq.Expressions.LambdaExpression predicate) { }
         public static Shardis.Query.QueryModel Create(System.Type sourceType) { }
     }
     public static class ShardQuery
     {
         public static Shardis.Query.IShardQueryable<T> For<T>(Shardis.Query.Execution.IShardQueryExecutor executor) { }
+    }
+    public sealed class ShardQueryClient : Shardis.Query.IShardQueryClient
+    {
+        public ShardQueryClient(Shardis.Query.Execution.IShardQueryExecutor executor) { }
+        public Shardis.Query.IShardQueryable<T> Query<T>() { }
+        public Shardis.Query.IShardQueryable<TResult> Query<T, TResult>(System.Linq.Expressions.Expression<System.Func<T, bool>>? where = null, System.Linq.Expressions.Expression<System.Func<T, TResult>>? select = null) { }
+    }
+    public static class ShardQueryExecutorExtensions
+    {
+        public static Shardis.Query.IShardQueryable<T> Query<T>(this Shardis.Query.Execution.IShardQueryExecutor executor) { }
+        public static Shardis.Query.IShardQueryable<TResult> Query<T, TResult>(this Shardis.Query.Execution.IShardQueryExecutor executor, System.Linq.Expressions.Expression<System.Func<T, bool>>? where = null, System.Linq.Expressions.Expression<System.Func<T, TResult>>? select = null) { }
+    }
+    public static class ShardQueryExplainExtensions
+    {
+        public static Shardis.Query.ShardQueryPlan Explain<T>(this Shardis.Query.IShardQueryable<T> query, System.Threading.CancellationToken ct = default) { }
+    }
+    public readonly struct ShardQueryPlan : System.IEquatable<Shardis.Query.ShardQueryPlan>
+    {
+        public ShardQueryPlan(string Source, int PredicateCount, bool HasProjection, bool SupportsOrdering, bool SupportsPagination) { }
+        public bool HasProjection { get; init; }
+        public int PredicateCount { get; init; }
+        public string Source { get; init; }
+        public bool SupportsOrdering { get; init; }
+        public bool SupportsPagination { get; init; }
     }
     public static class ShardQueryableConsumptionExtensions
     {
@@ -93,6 +177,17 @@ namespace Shardis.Query
     public static class ShardQueryableSelectExtensions
     {
         public static Shardis.Query.IShardQueryable<TResult> Select<T, TResult>(this Shardis.Query.IShardQueryable<T> source, System.Linq.Expressions.Expression<System.Func<T, TResult>> selector) { }
+    }
+    public static class ShardQueryableTargetingExtensions
+    {
+        public static Shardis.Query.IShardQueryable<T> WhereShard<T>(this Shardis.Query.IShardQueryable<T> source, Shardis.Model.ShardId id) { }
+        public static Shardis.Query.IShardQueryable<T> WhereShard<T>(this Shardis.Query.IShardQueryable<T> source, params Shardis.Model.ShardId[] ids) { }
+    }
+    public static class ShardQueryableTerminalExtensions
+    {
+        public static System.Threading.Tasks.Task<bool> AnyAsync<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
+        public static System.Threading.Tasks.Task<long> CountAsync<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
+        public static System.Threading.Tasks.Task<T?> FirstOrDefaultAsync<T>(this Shardis.Query.IShardQueryable<T> source, System.Threading.CancellationToken ct = default) { }
     }
     public static class UnorderedMergeHelper
     {

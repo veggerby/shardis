@@ -3,13 +3,11 @@ using System.Collections.Concurrent;
 namespace Shardis.Logging;
 
 /// <summary>Simple in-memory logger (intended for tests).</summary>
-public sealed class InMemoryShardisLogger : IShardisLogger
+/// <remarks>Creates a new instance.</remarks>
+public sealed class InMemoryShardisLogger(ShardisLogLevel min = ShardisLogLevel.Trace) : IShardisLogger
 {
     private readonly ConcurrentQueue<(DateTimeOffset ts, ShardisLogLevel level, string msg)> _entries = new();
-    private readonly ShardisLogLevel _min;
-
-    /// <summary>Creates a new instance.</summary>
-    public InMemoryShardisLogger(ShardisLogLevel min = ShardisLogLevel.Trace) => _min = min;
+    private readonly ShardisLogLevel _min = min;
 
     /// <inheritdoc />
     public bool IsEnabled(ShardisLogLevel level) => level >= _min;
