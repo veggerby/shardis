@@ -813,7 +813,7 @@ Tags (dimensions) emitted (empty / `null` omitted by exporters):
 | Tag | Meaning |
 |-----|---------|
 | `db.system` | Underlying EF Core provider (best-effort heuristic), e.g. `sqlite`, `postgresql`, `sqlserver`. |
-| `db.provider` | Raw provider invariant name (e.g. `Microsoft.EntityFrameworkCore.Sqlite`). |
+| `provider` | Logical provider identifier (e.g. `efcore`, `inmemory`, `marten`). |
 | `shard.count` | Total logical shards configured for the executor. |
 | `target.shard.count` | Number of shards actually targeted (after `WhereShard` filtering & invalid id removal). |
 | `merge.strategy` | `unordered` or `ordered` (single unified instrument; future fully streaming ordered merge may introduce an additional instrument if semantics diverge). |
@@ -833,7 +833,7 @@ services.AddSingleton<IShardisQueryMetrics, MetricShardisQueryMetrics>();
 builder.Services.AddOpenTelemetry().WithMetrics(m => m.AddMeter("Shardis.Query"));
 ```
 
-Tests (`QueryMergeLatencyMetricsTests`, `QueryLatencyAdditionalOpenTelemetryTests`) assert exactly one histogram record per enumeration (success, cancellation, failure, ordered, targeted, invalid-shard scenarios) and validate tag correctness including `invalid.shard.count`.
+Tests (`QueryMergeLatencyMetricsTests`, `QueryLatencyAdditionalOpenTelemetryTests`) assert exactly one histogram record per enumeration (success, cancellation, failure, ordered, targeted, invalid-shard scenarios) and validate tag correctness including `invalid.shard.count`. Note: earlier drafts referred to a `db.provider` tag; the finalized stable schema uses `provider` for reduced cardinality and consistency with other Shardis metrics.
 
 ### Targeted Execution (WhereShard)
 

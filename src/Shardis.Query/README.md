@@ -77,7 +77,7 @@ Latency histogram:
 Tag schema (stable):
 
 - `db.system` – storage system (e.g. `postgresql`)
-- `provider` – logical provider (e.g. `efcore`)
+- `provider` – logical provider identifier (e.g. `efcore`, `inmemory`, `marten`)
 - `shard.count` – total configured shards in topology
 - `target.shard.count` – shards actually targeted (respects `WhereShard`); equals `shard.count` when not targeted
 - `merge.strategy` – `unordered` | `ordered`
