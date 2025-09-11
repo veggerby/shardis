@@ -117,6 +117,39 @@ public class TopologyValidatorTests
     }
 
     [Fact]
+    public async Task ComputeHash_Different_Assignments_Produce_Different_Hash()
+    {
+        // arrange
+        var itemsA = Enumerable.Range(0, 50).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("s" + (i % 2))));
+        var itemsB = itemsA.Select(m => new ShardMap<string>(m.ShardKey, new ShardId(m.ShardId.Value == "s0" ? "s1" : "s0"))).ToList();
+        var storeA = new FakeEnumStore(itemsA);
+        var storeB = new FakeEnumStore(itemsB);
+
+        // act
+        var hA = await TopologyValidator.ComputeHashAsync(storeA);
+        var hB = await TopologyValidator.ComputeHashAsync(storeB);
+
+        // assert
+        hA.Should().NotBe(hB);
+    }
+
+    [Fact]
+    public async Task Validate_Honors_Cancellation()
+    {
+        // arrange
+        var items = Enumerable.Range(0, 200).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("s" + (i % 3))));
+        var store = new FakeEnumStore(items);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // act
+        Func<Task> act = () => TopologyValidator.ValidateAsync(store, cts.Token);
+
+        // assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task ComputeHash_Honors_Cancellation()
     {
         // arrange

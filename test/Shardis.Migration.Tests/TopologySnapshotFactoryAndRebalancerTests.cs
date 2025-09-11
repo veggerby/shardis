@@ -70,4 +70,35 @@ public class TopologySnapshotFactoryAndRebalancerTests
         Action act = () => TopologyRebalancer.RebalanceWithHash(from, Array.Empty<ShardId>(), k => 0);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void RebalanceWithHash_OnlyChanges_Filters_Unchanged()
+    {
+        // arrange
+        var dict = Enumerable.Range(0, 50).ToDictionary(i => new ShardKey<int>(i), i => new ShardId("s" + (i % 4)));
+        var from = new TopologySnapshot<int>(dict);
+        var shards = new[] { new ShardId("s0"), new ShardId("s1"), new ShardId("s2"), new ShardId("s3") };
+        static ulong Hash(ShardKey<int> k) => (ulong)k.Value!.GetHashCode();
+
+        // act
+        var reb = TopologyRebalancer.RebalanceWithHash(from, shards, Hash, onlyChanges: true);
+
+        // assert (most keys likely unchanged, only subset emitted)
+        reb.Assignments.Count.Should().BeLessThan(from.Assignments.Count);
+    }
+
+    [Fact]
+    public void Rebalance_Mixed_OnlyChanges_SomeChanged()
+    {
+        // arrange
+        var dict = Enumerable.Range(0, 40).ToDictionary(i => new ShardKey<int>(i), i => new ShardId(i % 2 == 0 ? "A" : "B"));
+        var from = new TopologySnapshot<int>(dict);
+
+        // act
+        var reb = TopologyRebalancer.Rebalance(from, k => new ShardId("A"), onlyChanges: true);
+
+        // assert (only odd keys move)
+        reb.Assignments.Count.Should().Be(20);
+        reb.Assignments.Values.All(v => v.Value == "A").Should().BeTrue();
+    }
 }

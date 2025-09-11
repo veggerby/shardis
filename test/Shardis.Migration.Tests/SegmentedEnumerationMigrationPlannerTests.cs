@@ -76,6 +76,22 @@ public class SegmentedEnumerationMigrationPlannerTests
     }
 
     [Fact]
+    public async Task Planner_NoMoves_When_Target_Matches()
+    {
+        // arrange
+        var keys = Enumerable.Range(0, 100).Select(i => new ShardMap<string>(new ShardKey<string>("k" + i), new ShardId("s" + (i % 3)))).ToList();
+        var store = new FakeEnumStore(keys);
+        var target = new TopologySnapshot<string>(keys.ToDictionary(k => k.ShardKey, k => k.ShardId));
+        var planner = new SegmentedEnumerationMigrationPlanner<string>(store, segmentSize: 25);
+
+        // act
+        var plan = await planner.CreatePlanAsync(new TopologySnapshot<string>(new Dictionary<ShardKey<string>, ShardId>()), target, CancellationToken.None);
+
+        // assert
+        plan.Moves.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Planner_Honors_Cancellation_Between_Segments()
     {
         // arrange
