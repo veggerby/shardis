@@ -145,6 +145,29 @@ public sealed class QueryMergeLatencyMetricsTests
         rec.Records.Single().tags.MergeStrategy.Should().Be("ordered");
         list.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task Metrics_InvalidShardCount_Tagged()
+    {
+        // arrange
+        var rec = new RecordingMetrics();
+        IShardFactory<DbContext> factory = new Factory(0);
+        var exec = new EntityFrameworkCoreShardQueryExecutor(4, factory, (streams, ct) => Internals.UnorderedMerge.Merge(streams, ct), queryMetrics: rec);
+        var q = ShardQuery.For<Person>(exec)
+                          .WhereShard(new Shardis.Model.ShardId("99"), new Shardis.Model.ShardId("77")) // both invalid
+                          .Where(p => p.Age >= 20);
+
+        // act
+        var list = await q.ToListAsync();
+
+        // assert
+        list.Should().BeEmpty();
+        rec.Count.Should().Be(1);
+        var tags = rec.Records[0].tags;
+        tags.TargetShardCount.Should().Be(0);
+        tags.InvalidShardCount.Should().Be(2);
+        tags.ResultStatus.Should().Be("ok");
+    }
 }
 
 internal static class AsyncEnumExtensions

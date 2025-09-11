@@ -800,9 +800,9 @@ Exposed counters (names subject to refinement before first NuGet release):
 
 Attach these to OpenTelemetry via the .NET Metrics provider or scrape via Prometheus exporters.
 
-### Query Merge Latency Histogram (Unordered Fan-out)
+### Query Merge Latency Histogram (Unified Ordered & Unordered)
 
-The fluent query layer (packages under `Shardis.Query.*`) now records end-to-end merge latency for unordered fan-out queries via a histogram:
+The fluent query layer (packages under `Shardis.Query.*`) records end-to-end merge latency for both unordered and ordered fan-out paths via a single unified histogram (see ADR 0006 – unified single-emission model):
 
 | Instrument | Unit | Description |
 |------------|------|-------------|
@@ -816,7 +816,7 @@ Tags (dimensions) emitted (empty / `null` omitted by exporters):
 | `db.provider` | Raw provider invariant name (e.g. `Microsoft.EntityFrameworkCore.Sqlite`). |
 | `shard.count` | Total logical shards configured for the executor. |
 | `target.shard.count` | Number of shards actually targeted (after `WhereShard` filtering & invalid id removal). |
-| `merge.strategy` | Currently `unordered` (reserved for future ordered merge histogram). |
+| `merge.strategy` | `unordered` or `ordered` (single unified instrument; future fully streaming ordered merge may introduce an additional instrument if semantics diverge). |
 | `ordering.buffered` | `true` if ordered (k‑way) merge path was used; `false` for unordered (present for parity). |
 | `fanout.concurrency` | Effective parallel shard enumerations (min(configured limit, targeted shard count)). |
 | `channel.capacity` | Configured channel capacity (unordered merge only; `-1` indicates unbounded). |
@@ -833,7 +833,7 @@ services.AddSingleton<IShardisQueryMetrics, MetricShardisQueryMetrics>();
 builder.Services.AddOpenTelemetry().WithMetrics(m => m.AddMeter("Shardis.Query"));
 ```
 
-Tests (`QueryMergeLatencyMetricsTests`) assert that one histogram record is produced for success, cancellation, and failure paths.
+Tests (`QueryMergeLatencyMetricsTests`, `QueryLatencyAdditionalOpenTelemetryTests`) assert exactly one histogram record per enumeration (success, cancellation, failure, ordered, targeted, invalid-shard scenarios) and validate tag correctness including `invalid.shard.count`.
 
 ### Targeted Execution (WhereShard)
 
