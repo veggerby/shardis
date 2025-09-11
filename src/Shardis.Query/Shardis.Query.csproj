@@ -32,8 +32,13 @@
 
   <!-- Guard: fail build if forbidden provider namespaces leak into core -->
   <Target Name="EnforceProviderFreeCore" BeforeTargets="Build">
-    <Exec Command="bash -c &quot;grep -R -n Microsoft.EntityFrameworkCore src/Shardis.Query &amp;&amp; echo Provider reference detected in core &amp;&amp; exit 1 || true&quot;" />
-    <Exec Command="bash -c &quot;grep -R -n Marten src/Shardis.Query &amp;&amp; echo Provider reference detected in core &amp;&amp; exit 1 || true&quot;" />
+    <!--
+      Guard: ensure no provider-specific namespaces leak into the core query assembly.
+      We only inspect real source files (exclude obj/bin) and only flag explicit using directives.
+    -->
+    <Exec Command="bash -c &quot;if find '$(MSBuildProjectDirectory)' -type f -name '*.cs' ! -path '*/obj/*' ! -path '*/bin/*' -print0 \
+        | xargs -0 grep -n -E '^using (Microsoft\\.EntityFrameworkCore|Marten)\\b' >/dev/null; then \
+          echo 'Provider reference detected in core (Shardis.Query)'; exit 1; else exit 0; fi&quot;" />
   </Target>
 
 </Project>
