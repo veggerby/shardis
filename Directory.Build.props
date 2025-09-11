@@ -1,4 +1,5 @@
 <Project>
+
   <PropertyGroup>
     <RepositoryUrl>https://github.com/veggerby/shardis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -20,10 +21,12 @@
     <Authors>Jesper Veggerby</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
-    <PackageIcon>icon.png</PackageIcon>
+    <PackageIcon Condition="Exists('icon.png')">icon.png</PackageIcon>
   </PropertyGroup>
+
   <ItemGroup>
     <!-- SourceLink reference (version managed centrally) -->
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
   </ItemGroup>
+
 </Project>

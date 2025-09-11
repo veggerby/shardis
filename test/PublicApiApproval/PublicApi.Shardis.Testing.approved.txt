@@ -5,15 +5,15 @@ namespace Shardis.Testing
     public sealed class Determinism
     {
         public System.Random Rng { get; }
-        public System.Threading.Tasks.Task DelayForShardAsync(System.TimeSpan[][] schedules, int shardIndex, int step, System.Threading.CancellationToken ct = default) { }
-        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
-                "WaitAsync",
-                "Release"})]
-        public System.ValueTuple<System.Func<System.Threading.Tasks.Task>, System.Action> Gate() { }
         public System.Collections.Generic.IEnumerable<T> Generate<T>(System.Func<System.Random, T> factory, int count) { }
         public System.TimeSpan[][] MakeDelays(int shards, Shardis.Testing.Skew skew, System.TimeSpan baseDelay, int steps = 256, double jitter = 0) { }
         public T[] ShuffleStable<T>(T[] items) { }
         public static Shardis.Testing.Determinism Create(int seed) { }
+        public static System.Threading.Tasks.Task DelayForShardAsync(System.TimeSpan[][] schedules, int shardIndex, int step, System.Threading.CancellationToken ct = default) { }
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "WaitAsync",
+                "Release"})]
+        public static System.ValueTuple<System.Func<System.Threading.Tasks.Task>, System.Action> Gate() { }
     }
     public enum Skew
     {

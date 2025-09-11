@@ -5,8 +5,10 @@ This index links core conceptual and roadmap documents.
 ## Core Concepts
 
 - Routing & Hashing: see README sections (Deterministic Routing, Dependency Injection Options).
-- Metrics Integration: README Metrics Integration section.
+- Metrics Integration: README Metrics section + [Query Merge Latency](./query-latency.md)
 - Migration scaffolding: README Migration section.
+- Terminology Glossary: `terms.md` (canonical Shardis & domain vocabulary)
+- Migration Rationale: `migration-rationale.md` (why a formal mechanism exists)
 
 ## Detailed Design / Roadmap Docs
 
@@ -33,8 +35,9 @@ This index links core conceptual and roadmap documents.
 | Default routing | ✅ | README |
 | Consistent hashing router | ✅ | README |
 | Metrics (no-op + counters) | ✅ | README / `IShardisMetrics` |
-| Migration planning | ✅ (scaffold) | README |
+| Migration planning (in-memory + segmented) | ✅ | README / migration usage |
 | Migration execution | ✅ | README / migration usage |
+| Migration dry-run (counts) | ✅ | migration usage |
 | Fluent query API | 🚧 | `api.md`, `linq.md` |
 | Redis shard map store | ✅ | `Shardis.Redis` project |
 | Additional map stores (SQL) | 🚧 | backlog |

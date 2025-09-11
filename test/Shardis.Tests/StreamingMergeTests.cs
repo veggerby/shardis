@@ -12,6 +12,8 @@ public class StreamingMergeTests
     // Helper shard implementation for int payloads
     private sealed class IntShard(int index, TimeSpan[][] schedules, int items, Determinism det) : IShard<int>
     {
+        private readonly Determinism _det = det;
+
         public ShardId ShardId { get; } = new($"shard-{index}");
         public int CreateSession() => index;
         public IShardQueryExecutor<int> QueryExecutor => DummyExecutor.Instance;
@@ -20,7 +22,7 @@ public class StreamingMergeTests
             for (int i = 0; i < items; i++)
             {
                 if (ct.IsCancellationRequested) yield break;
-                await det.DelayForShardAsync(schedules, index, i, ct).ConfigureAwait(false);
+                await Determinism.DelayForShardAsync(schedules, index, i, ct).ConfigureAwait(false);
                 yield return i;
             }
         }

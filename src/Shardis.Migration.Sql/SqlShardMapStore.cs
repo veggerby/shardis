@@ -22,7 +22,7 @@ using Shardis.Persistence;
 ///   );
 /// </summary>
 /// <summary>Experimental SQL-backed shard map store using provided connection factory for portability.</summary>
-public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory, string mapTable = "ShardMap", string historyTable = "ShardMapHistory") : IShardMapStore<TKey>
+public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory, string mapTable = "ShardMap", string historyTable = "ShardMapHistory") : IShardMapStore<TKey>, IShardMapEnumerationStore<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
     private readonly Func<DbConnection> _connectionFactory = connectionFactory;
@@ -118,5 +118,22 @@ public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory,
         p.ParameterName = name;
         p.Value = value ?? DBNull.Value;
         cmd.Parameters.Add(p);
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<ShardMap<TKey>> EnumerateAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await using var conn = _connectionFactory();
+        await conn.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT ShardKey, ShardId FROM {_map} ORDER BY ShardKey"; // ORDER BY for deterministic iteration
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var k = reader.GetString(0);
+            var s = reader.GetString(1);
+            yield return new ShardMap<TKey>(new ShardKey<TKey>((TKey)Convert.ChangeType(k, typeof(TKey))!), new ShardId(s));
+        }
     }
 }

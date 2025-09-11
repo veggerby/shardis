@@ -66,7 +66,7 @@ public sealed class Determinism
     }
 
     /// <summary>Delays using a precomputed schedule for a shard and logical step.</summary>
-    public Task DelayForShardAsync(TimeSpan[][] schedules, int shardIndex, int step, CancellationToken ct = default)
+    public static Task DelayForShardAsync(TimeSpan[][] schedules, int shardIndex, int step, CancellationToken ct = default)
     {
         var schedule = schedules[shardIndex];
         var delay = schedule[step % schedule.Length];
@@ -95,7 +95,7 @@ public sealed class Determinism
     }
 
     /// <summary>Creates a gate for explicit interleaving control.</summary>
-    public (Func<Task> WaitAsync, Action Release) Gate()
+    public static (Func<Task> WaitAsync, Action Release) Gate()
     {
         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         return (async () => await tcs.Task.ConfigureAwait(false), () => tcs.TrySetResult());

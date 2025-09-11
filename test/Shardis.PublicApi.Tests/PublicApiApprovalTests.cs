@@ -27,7 +27,9 @@ public sealed class PublicApiApprovalTests
         (typeof(Query.Marten.AdaptiveMartenMaterializer).Assembly, "Shardis.Query.Marten"),
         (typeof(Redis.RedisShardMapStore<>).Assembly, "Shardis.Redis"),
         (typeof(Testing.Determinism).Assembly, "Shardis.Testing"),
-        (typeof(DependencyInjection.ShardFactoryUseExtensions).Assembly, "Shardis.DependencyInjection")
+        (typeof(DependencyInjection.ShardFactoryUseExtensions).Assembly, "Shardis.DependencyInjection"),
+        (typeof(Logging.Console.ConsoleShardisLogger).Assembly, "Shardis.Logging.Console"),
+        (typeof(Logging.Microsoft.MicrosoftLoggerAdapter).Assembly, "Shardis.Logging.Microsoft")
     ];
 
     private static string ApprovedDir => Path.Combine(FindRepoRoot(), "test", "PublicApiApproval");

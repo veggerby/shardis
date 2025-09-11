@@ -1,7 +1,9 @@
 <Project>
+
   <PropertyGroup>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
 </Project>

@@ -36,10 +36,9 @@ public sealed class UserProfileContext(string tableName, DbContextOptions<UserPr
     }
 }
 
-public sealed class UserProfileContextFactory : IShardDbContextFactory<UserProfileContext>
+public sealed class UserProfileContextFactory(IServiceProvider root) : IShardDbContextFactory<UserProfileContext>
 {
-    private readonly IServiceProvider _root;
-    public UserProfileContextFactory(IServiceProvider root) => _root = root;
+    private readonly IServiceProvider _root = root;
 
     public Task<UserProfileContext> CreateAsync(ShardId shard, CancellationToken ct)
     {

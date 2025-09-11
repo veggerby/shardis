@@ -800,6 +800,64 @@ Exposed counters (names subject to refinement before first NuGet release):
 
 Attach these to OpenTelemetry via the .NET Metrics provider or scrape via Prometheus exporters.
 
+### Query Merge Latency Histogram (Unified Ordered & Unordered)
+
+The fluent query layer (packages under `Shardis.Query.*`) records end-to-end merge latency for both unordered and ordered fan-out paths via a single unified histogram (see ADR 0006 – unified single-emission model):
+
+| Instrument | Unit | Description |
+|------------|------|-------------|
+| `shardis.query.merge.latency` | ms | Time from first shard enumeration start until merged sequence completion / failure / cancellation. |
+
+Tags (dimensions) emitted (empty / `null` omitted by exporters):
+
+| Tag | Meaning |
+|-----|---------|
+| `db.system` | Underlying EF Core provider (best-effort heuristic), e.g. `sqlite`, `postgresql`, `sqlserver`. |
+| `provider` | Logical provider identifier (e.g. `efcore`, `inmemory`, `marten`). |
+| `shard.count` | Total logical shards configured for the executor. |
+| `target.shard.count` | Number of shards actually targeted (after `WhereShard` filtering & invalid id removal). |
+| `merge.strategy` | `unordered` or `ordered` (single unified instrument; future fully streaming ordered merge may introduce an additional instrument if semantics diverge). |
+| `ordering.buffered` | `true` if ordered (k‑way) merge path was used; `false` for unordered (present for parity). |
+| `fanout.concurrency` | Effective parallel shard enumerations (min(configured limit, targeted shard count)). |
+| `channel.capacity` | Configured channel capacity (unordered merge only; `-1` indicates unbounded). |
+| `failure.mode` | `fail-fast` or `best-effort` (best-effort: partial shard failures suppressed). |
+| `result.status` | `ok`, `failed`, or `canceled` (`ok` for best-effort when ≥1 shard succeeded even if some failed). |
+| `root.type` | CLR type name of the root element (e.g. `Person`). |
+| `invalid.shard.count` | Number of user-requested shard ids ignored because they do not exist. |
+
+Enable by supplying an `IShardisQueryMetrics` implementation (the default is a no-op):
+
+```csharp
+services.AddSingleton<IShardisQueryMetrics, MetricShardisQueryMetrics>();
+// Ensure OpenTelemetry is configured for the Shardis meter
+builder.Services.AddOpenTelemetry().WithMetrics(m => m.AddMeter("Shardis.Query"));
+```
+
+Tests (`QueryMergeLatencyMetricsTests`, `QueryLatencyAdditionalOpenTelemetryTests`) assert exactly one histogram record per enumeration (success, cancellation, failure, ordered, targeted, invalid-shard scenarios) and validate tag correctness including `invalid.shard.count`. Note: earlier drafts referred to a `db.provider` tag; the finalized stable schema uses `provider` for reduced cardinality and consistency with other Shardis metrics.
+
+### Targeted Execution (WhereShard)
+
+Use `WhereShard` to restrict fan‑out to a known subset of shards, reducing unnecessary work and latency:
+
+```csharp
+var exec = /* IShardQueryExecutor */;
+var q = ShardQuery.For<Person>(exec)
+                  .WhereShard(new ShardId("1"), new ShardId("3"))
+                  .Where(p => p.Age >= 30);
+var people = await q.ToListAsync();
+```
+
+Behavior:
+
+- Unknown shard ids are ignored silently (telemetry tag `invalid.shard.count` captures the count).
+- `target.shard.count` reflects the number of valid shards actually enumerated.
+- Concurrency capping uses the lesser of the configured maximum and `target.shard.count` (tag: `fanout.concurrency`).
+- If no valid shards remain after filtering the query yields an empty result quickly.
+
+Rationale: many applications know a shard (or set) a priori (e.g., entity already carries a resolved `ShardId`); targeted execution avoids enumerating every shard only to filter after merge.
+
+Unit tests (`WhereShardTargetingTests`, `EfCoreExecutorConcurrencyTests`, `EntityFrameworkCoreTargetingInvalidShardTests`) cover single-target, invalid-id handling, and concurrency semantics.
+
 ---
 
 ## 📄 License

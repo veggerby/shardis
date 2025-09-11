@@ -23,6 +23,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - OpenTelemetry-style tracing spans (`shardis.migration.execute`, `copy`, `verify`, `swap_batch`) added via `ActivitySource` integration.
 - Samples: `Shardis.Migration.Sample` (end-to-end scenarios), `Shardis.Query.Samples.Marten`, enhanced EF sample (Postgres env-driven setup).
 - Public API baselines extended for new assemblies (Migration.Marten, Migration.Sql, Migration.EntityFrameworkCore) & new abstractions.
+- Optional shard map enumeration: `IShardMapEnumerationStore<TKey>` + in-memory & SQL implementations.
+- Snapshot factory helper: `TopologySnapshotFactory.ToSnapshotAsync` (cancellable, memory cap, tracing `shardis.snapshot.enumerate`).
+- EF Core migration sample updated to derive source topology from enumeration (no synthetic "from" snapshot).
+- Segmented enumeration migration planner (`SegmentedEnumerationMigrationPlanner<TKey>`) with DI opt-in `UseSegmentedEnumerationPlanner` for large keyspaces (streaming source topology, deterministic ordering maintained).
+- Dry-run diff capability (`DryRunAsync`) on segmented planner returning examined key and move counts (capacity forecasting without full move allocation).
+- Topology validation & drift utilities: `TopologyValidator.ValidateAsync` (duplicate detection) and `TopologyValidator.ComputeHashAsync` (order-independent hash) for snapshot integrity and drift detection.
+- Benchmarks: `SegmentedPlannerBenchmarks` (category `plan`) comparing in-memory vs segmented planner and dry-run allocations across key counts & segment sizes.
+- Migration usage docs updated with segmented planner section & dry-run planning guidance.
+- Query ergonomics: `IShardQueryClient` + `ShardQueryClient` (deferred, DI friendly) with `AddShardisQueryClient` registration.
+- Executor extensions: `IShardQueryExecutor.Query<T>()` and `Query<T,TResult>(...)` shorthand overloads.
+- Terminal operators: `FirstOrDefaultAsync`, `AnyAsync`, `CountAsync` in `ShardQueryableTerminalExtensions` (client-side enumeration helpers).
+- EF Core executor ordered (buffered) factory: `EfCoreShardQueryExecutor.CreateOrdered<TContext,TOrder>` exposing basic global ordering via materialization.
+- EF Core execution options: `EfCoreExecutionOptions` (Concurrency, ChannelCapacity, PerShardCommandTimeout, DisposeContextPerQuery) – currently ChannelCapacity + timeout applied; others reserved.
+- Failure handling strategies for queries: `FailFastFailureStrategy`, `BestEffortFailureStrategy` (public, singleton instances) with internal wrapper executor.
+- EF Core provider DI extensions: `AddShardisEfCoreOrdered<TContext,TOrder>` (buffered global ordering) and `DecorateShardQueryFailureStrategy(IShardQueryFailureStrategy)` for post-registration decoration.
+- Activated EF Core execution options: `Concurrency` and `DisposeContextPerQuery` now honored by `EntityFrameworkCoreShardQueryExecutor` (previously reserved placeholders).
+- Query latency OpenTelemetry histogram `shardis.query.merge.latency` (single emission per enumeration) with stable tag schema (`db.system`, `provider`, `shard.count`, `target.shard.count`, `merge.strategy`, `ordering.buffered`, `fanout.concurrency`, `channel.capacity`, `failure.mode`, `result.status`, `root.type`).
+- OpenTelemetry test suite validating single histogram point across success, canceled, failed, ordered/unordered, targeted fan-out, and failure handling strategies (fail-fast / best-effort) plus tag correctness.
+- Added `invalid.shard.count` tag to latency histogram and tracing activity; all-invalid targeting now emits a zero-result histogram with `target.shard.count=0`.
+- Best-effort failure handling now surfaces explicit `failure.mode=best-effort` in query latency histogram (previously always `fail-fast`).
+- Hardened latency metric contract: tests now enforce exactly-one histogram point per enumeration across success, cancellation, failure, ordered, and failure-handling wrappers (suppression + unified emission internally).
+- ADR 0006: Unified query latency single-emission model (documents suppression + pending context design, invariants, future work).
+- Added ordered cancellation telemetry test (ensures single emission on cancel in ordered path).
+- Added benchmark `QueryLatencyEmissionBenchmarks` measuring unordered vs ordered latency emission overhead (best-effort path shares same suppression code path; excluded to avoid duplicate measurement).
 
 ### Changed (Unreleased)
 
@@ -30,6 +54,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Core migration docs updated: metrics section now documents duration histograms (copy / verify / swap batch / total elapsed) and execution status moved from scaffold to implemented baseline.
 - `ShardMigrationOptions` expanded with dual-read/write, staleness, health window, and budgeting properties (non-breaking additive changes).
 - Executor now emits tracing activities and duration metrics without altering execution semantics.
+- EF Core unordered executor now uses configured `EfCoreExecutionOptions.Concurrency` (bounded parallel shard fan-out) and respects `DisposeContextPerQuery=false` by retaining one `DbContext` per shard.
+- Benchmarks documentation extended with segmented planner and environment variable (`SHARDIS_PLAN_KEYS`) guidance; roadmap updated to reflect partial completion of planning overhead benchmark.
+- Unified ordered vs unordered query latency emission (ordered path now reuses shared instrumentation for exactly-once metric recording).
+- Removed reflection usage for ordered EF Core executor creation; introduced `DefaultOrderedEfCoreExecutorFactory` internal abstraction (public for tests) replacing `CreateOrderedFromExisting` reflective invocation.
+- Query README metrics section updated to document `best-effort` failure mode tagging and clarified `result.status` semantics for partial shard failures.
 
 ### Fixed (Unreleased)
 

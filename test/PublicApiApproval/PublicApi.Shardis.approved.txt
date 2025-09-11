@@ -170,6 +170,11 @@ namespace Shardis.Model
 }
 namespace Shardis.Persistence
 {
+    public interface IShardMapEnumerationStore<TKey> : Shardis.Persistence.IShardMapStore<TKey>
+        where TKey :  notnull, System.IEquatable<TKey>
+    {
+        System.Collections.Generic.IAsyncEnumerable<Shardis.Model.ShardMap<TKey>> EnumerateAsync(System.Threading.CancellationToken cancellationToken = default);
+    }
     public interface IShardMapStore<TKey>
         where TKey :  notnull, System.IEquatable<TKey>
     {
@@ -178,11 +183,13 @@ namespace Shardis.Persistence
         bool TryGetOrAdd(Shardis.Model.ShardKey<TKey> shardKey, System.Func<Shardis.Model.ShardId> valueFactory, out Shardis.Model.ShardMap<TKey> shardMap);
         bool TryGetShardIdForKey(Shardis.Model.ShardKey<TKey> shardKey, out Shardis.Model.ShardId shardId);
     }
-    public class InMemoryShardMapStore<TKey> : Shardis.Persistence.IShardMapStore<TKey>
+    public class InMemoryShardMapStore<TKey> : Shardis.Persistence.IShardMapEnumerationStore<TKey>, Shardis.Persistence.IShardMapStore<TKey>
         where TKey :  notnull, System.IEquatable<TKey>
     {
         public InMemoryShardMapStore() { }
         public Shardis.Model.ShardMap<TKey> AssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId) { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Persistence.InMemoryShardMapStore<TKey>.<EnumerateAsync>d__5))]
+        public System.Collections.Generic.IAsyncEnumerable<Shardis.Model.ShardMap<TKey>> EnumerateAsync([System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default) { }
         public bool TryAssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId, out Shardis.Model.ShardMap<TKey> shardMap) { }
         public bool TryGetOrAdd(Shardis.Model.ShardKey<TKey> shardKey, System.Func<Shardis.Model.ShardId> valueFactory, out Shardis.Model.ShardMap<TKey> shardMap) { }
         public bool TryGetShardIdForKey(Shardis.Model.ShardKey<TKey> shardKey, out Shardis.Model.ShardId shardId) { }

@@ -1,7 +1,9 @@
 <Project>
+
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
   <ItemGroup>
     <!-- Core runtime deps -->
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
@@ -25,9 +27,14 @@
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="AwesomeAssertions" Version="9.1.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <!-- OpenTelemetry for metrics tests -->
+  <PackageVersion Include="OpenTelemetry" Version="1.8.1" />
+  <PackageVersion Include="OpenTelemetry.Api" Version="1.8.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.8.1" />
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.2" />
-  <!-- Public API approval -->
-  <PackageVersion Include="PublicApiGenerator" Version="11.4.6" />
+    <!-- Public API approval -->
+    <PackageVersion Include="PublicApiGenerator" Version="11.4.6" />
   </ItemGroup>
+
 </Project>

@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,14 +10,18 @@
     <PackageTags>shardis;sharding;marten;migration;data-mover;document</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Marten" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Shardis.Migration/Shardis.Migration.csproj" />
   </ItemGroup>
+
 </Project>
