@@ -31,7 +31,7 @@ public class TopologySnapshotFactoryAndRebalancerTests
     {
         var items = Enumerable.Range(0, 3).Select(i => new ShardMap<int>(new ShardKey<int>(i), new ShardId("0")));
         var store = new EnumStore(items);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => store.ToSnapshotAsync(maxKeys: 2));
+        await Assert.ThrowsAsync<ShardTopologyException>(() => store.ToSnapshotAsync(maxKeys: 2));
     }
 
     [Fact]
