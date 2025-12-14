@@ -1,3 +1,4 @@
+using Shardis;
 using Shardis.Model;
 
 namespace Shardis.Query.Health;
