@@ -147,6 +147,7 @@ await Task.Delay(TimeSpan.FromMilliseconds(500));
 await DisplayHealthStatus(healthPolicy, shardIds);
 
 // Best-effort query will only target healthy shards (0 and 2)
+// The executor checks health status and filters the query model
 var bestEffortExecutor = new HealthAwareQueryExecutor(
     baseExecutor,
     healthPolicy,
@@ -154,30 +155,16 @@ var bestEffortExecutor = new HealthAwareQueryExecutor(
     metrics
 );
 
-// Note: The health-aware executor filters at query planning time
-// It creates a query model targeting only healthy shards before execution
-Console.WriteLine("Best-effort executor will only query shards 0 and 2 (skipping unhealthy shard 1)");
-var bestEffortQueryModel = QueryModel.Create(typeof(Product));
-Console.WriteLine($"  Original target: all {shardCount} shards");
-Console.WriteLine($"  Filtered target: 2 healthy shards (0, 2)");
+Console.WriteLine("The health-aware executor filters shards before execution.");
+Console.WriteLine("Only healthy shards (0 and 2) will be queried.");
 Console.WriteLine();
 
-// To demonstrate, we temporarily mark shard 1 as healthy for querying
-// In a real scenario, the unhealthy shard would simply be excluded from the query
+// Temporarily mark shard 1 as healthy so the query doesn't throw
+// The health-aware executor already filtered it out based on health status
 shardFailures[new ShardId("1")] = false;
 
-var filteredProducts = new List<Product>();
-await foreach (var product in bestEffortExecutor.Query<Product>().Where(p => p.ShardId != 1)) // Manually filter to simulate
-{
-    filteredProducts.Add(product);
-}
-
-Console.WriteLine("Results from healthy shards only:");
-foreach (var product in filteredProducts.OrderBy(p => p.Id))
-{
-    Console.WriteLine($"  - {product.Name} (${product.Price}) [Shard {product.ShardId}]");
-}
-Console.WriteLine($"  → Query succeeded with 2 of 3 shards (shard 1 was skipped)");
+await QueryAllProducts(bestEffortExecutor, "Best-effort query (continues with healthy shards)");
+Console.WriteLine($"  → Query succeeded with 2 of 3 shards (shard 1 was skipped due to health status)");
 Console.WriteLine();
 
 // Scenario 3: Strict mode with unhealthy shard
@@ -239,17 +226,29 @@ try
     // Query will be filtered to only healthy shards (0 and 2)
     await foreach (var product in customExecutor.ExecuteAsync<Product>(customQueryModel))
     {
-        if (product.ShardId != 1) // Simulate health filter
+        results.Add(product);
+    }
+    
+    // Validate that all products come from healthy shards (0 and 2)
+    var healthyShardIds = new HashSet<int> { 0, 2 };
+    var unhealthyProducts = results.Where(p => !healthyShardIds.Contains(p.ShardId)).ToList();
+    if (unhealthyProducts.Any())
+    {
+        Console.WriteLine($"  ✗ ERROR: Products from unhealthy shards were returned:");
+        foreach (var product in unhealthyProducts)
         {
-            results.Add(product);
+            Console.WriteLine($"    - {product.Name} (${product.Price}) [Shard {product.ShardId}]");
         }
     }
-    Console.WriteLine($"  ✓ Query succeeded:");
-    foreach (var product in results.OrderBy(p => p.Id))
+    else
     {
-        Console.WriteLine($"    - {product.Name} (${product.Price}) [Shard {product.ShardId}]");
+        Console.WriteLine($"  ✓ Query succeeded:");
+        foreach (var product in results.OrderBy(p => p.Id))
+        {
+            Console.WriteLine($"    - {product.Name} (${product.Price}) [Shard {product.ShardId}]");
+        }
+        Console.WriteLine($"  → Requirement met: 2 >= 2 healthy shards available");
     }
-    Console.WriteLine($"  → Requirement met: 2 >= 2 healthy shards available");
 }
 catch (InsufficientHealthyShardsException ex)
 {

@@ -32,7 +32,6 @@ public sealed class NoOpShardHealthPolicy : IShardHealthPolicy
     /// <inheritdoc />
     public async IAsyncEnumerable<ShardHealthReport> GetAllHealthAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
-        await Task.CompletedTask;
         yield break;
     }
 

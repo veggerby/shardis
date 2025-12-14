@@ -58,7 +58,6 @@ public sealed class HealthAwareQueryExecutorTests
                     Timestamp = DateTimeOffset.UtcNow
                 };
             }
-            await Task.CompletedTask;
         }
 
         public ValueTask RecordSuccessAsync(ShardId shardId, CancellationToken ct = default)
@@ -198,10 +197,9 @@ public sealed class HealthAwareQueryExecutorTests
         // act/assert
         var exception = await Assert.ThrowsAsync<InsufficientHealthyShardsException>(async () =>
         {
-            var results = new List<int>();
-            await foreach (var item in executor.ExecuteAsync<int>(queryModel))
+            await foreach (var _ in executor.ExecuteAsync<int>(queryModel))
             {
-                results.Add(item);
+                // Intentionally left blank: just enumerate to trigger exception
             }
         });
 

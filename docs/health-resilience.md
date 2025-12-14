@@ -20,7 +20,7 @@ Four-state enum representing shard health:
 
 | Status | Meaning | Query Behavior |
 |--------|---------|----------------|
-| `Unknown` | Initial state, not yet probed | Treated as healthy by default |
+| `Unknown` | Initial state, not yet probed | Treated as healthy (optimistic default) |
 | `Healthy` | Shard is available and responding | Included in queries |
 | `Degraded` | Shard is responding but with issues | Included (future: may support degraded filtering) |
 | `Unhealthy` | Shard is unavailable or failing | Excluded based on policy |

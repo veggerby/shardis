@@ -63,7 +63,8 @@ public sealed class HealthAwareQueryExecutor : IShardQueryExecutor
         foreach (var shardId in targetShardIds)
         {
             var health = await _healthPolicy.GetHealthAsync(shardId, ct).ConfigureAwait(false);
-            if (health.Status == ShardHealthStatus.Healthy)
+            // Treat Unknown as healthy (shards are healthy until proven otherwise)
+            if (health.Status == ShardHealthStatus.Healthy || health.Status == ShardHealthStatus.Unknown)
             {
                 healthyShardIds.Add(shardId);
             }

@@ -81,7 +81,6 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
             ct.ThrowIfCancellationRequested();
             yield return kvp.Value.GetReport();
         }
-        await Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -153,10 +152,10 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
             return;
         }
         
-        _disposed = true;
         _timer?.Dispose();
         _disposalCts.Cancel();
         _disposalCts.Dispose();
+        _disposed = true;
     }
 
     private void PeriodicProbeCallback(object? state)
@@ -184,9 +183,23 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
                 }
                 catch (OperationCanceledException)
                 {
+                    // Expected during disposal
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // Record probe failure for observability
+                    _recordProbeLatency?.Invoke(0, shardId.Value, "failed");
+                    
+                    // Update state to reflect failure
+                    try
+                    {
+                        var state = _states.GetOrAdd(shardId, id => new ShardHealthState(id));
+                        state.RecordProbeFailure(ex, _options);
+                    }
+                    catch
+                    {
+                        // Swallow state update failures to prevent timer callback crashes
+                    }
                 }
             }, _disposalCts.Token);
         }

@@ -21,7 +21,8 @@ public enum UnhealthyShardBehavior
     Quarantine = 2,
 
     /// <summary>
-    /// Degrade query by marking partial results when unhealthy shards are skipped.
+    /// Reserved for future use. Not currently implemented.
+    /// Intended to degrade query by marking partial results when unhealthy shards are skipped.
     /// </summary>
     Degrade = 3
 }
