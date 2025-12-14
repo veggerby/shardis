@@ -8,4 +8,12 @@ public sealed class NoopShardisQueryMetrics : IShardisQueryMetrics
     private NoopShardisQueryMetrics() { }
     /// <inheritdoc />
     public void RecordQueryMergeLatency(double milliseconds, in QueryMetricTags tags) { }
+    /// <inheritdoc />
+    public void RecordHealthProbeLatency(double milliseconds, string shardId, string status) { }
+    /// <inheritdoc />
+    public void RecordUnhealthyShardCount(int count) { }
+    /// <inheritdoc />
+    public void RecordShardSkipped(string shardId, string reason) { }
+    /// <inheritdoc />
+    public void RecordShardRecovered(string shardId) { }
 }

@@ -56,6 +56,8 @@ Built for domain-driven systems, event sourcing architectures, and multi-tenant 
   Core migration package plus EF Core (rowversion / checksum) and Marten (checksum) providers with per-key copy → verify → swap pipeline, checkpointing, deterministic retries, and duration instrumentation (copy / verify / swap batch / total elapsed).
 - 🔒 **Deterministic Canonicalization & Checksums**
   Stable JSON canonicalization + pluggable hashing (`Fnv1a64Hasher` by default) powering verification strategies (see `docs/canonicalization.md`).
+- 🏥 **Shard Health & Resilience**
+  Detect, route around, and recover from unhealthy shards without custom scaffolding. Configurable health probes, failure thresholds, and query execution strategies (best-effort, strict, require N-of-M shards).
 
 ---
 

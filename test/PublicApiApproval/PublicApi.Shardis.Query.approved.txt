@@ -21,12 +21,20 @@ namespace Shardis.Query.Diagnostics
     }
     public interface IShardisQueryMetrics
     {
+        void RecordHealthProbeLatency(double milliseconds, string shardId, string status);
         void RecordQueryMergeLatency(double milliseconds, in Shardis.Query.Diagnostics.QueryMetricTags tags);
+        void RecordShardRecovered(string shardId);
+        void RecordShardSkipped(string shardId, string reason);
+        void RecordUnhealthyShardCount(int count);
     }
     public sealed class MetricShardisQueryMetrics : Shardis.Query.Diagnostics.IShardisQueryMetrics
     {
         public MetricShardisQueryMetrics() { }
+        public void RecordHealthProbeLatency(double milliseconds, string shardId, string status) { }
         public void RecordQueryMergeLatency(double milliseconds, in Shardis.Query.Diagnostics.QueryMetricTags tags) { }
+        public void RecordShardRecovered(string shardId) { }
+        public void RecordShardSkipped(string shardId, string reason) { }
+        public void RecordUnhealthyShardCount(int count) { }
     }
     public sealed class NoopAdaptivePagingObserver : Shardis.Query.Diagnostics.IAdaptivePagingObserver
     {
@@ -47,7 +55,11 @@ namespace Shardis.Query.Diagnostics
     public sealed class NoopShardisQueryMetrics : Shardis.Query.Diagnostics.IShardisQueryMetrics
     {
         public static readonly Shardis.Query.Diagnostics.IShardisQueryMetrics Instance;
+        public void RecordHealthProbeLatency(double milliseconds, string shardId, string status) { }
         public void RecordQueryMergeLatency(double milliseconds, in Shardis.Query.Diagnostics.QueryMetricTags tags) { }
+        public void RecordShardRecovered(string shardId) { }
+        public void RecordShardSkipped(string shardId, string reason) { }
+        public void RecordUnhealthyShardCount(int count) { }
     }
     public readonly struct QueryMetricTags
     {
@@ -91,6 +103,53 @@ namespace Shardis.Query.Execution
     {
         Shardis.Query.IShardQueryCapabilities Capabilities { get; }
         System.Collections.Generic.IAsyncEnumerable<TResult> ExecuteAsync<TResult>(Shardis.Query.QueryModel model, System.Threading.CancellationToken ct = default);
+    }
+}
+namespace Shardis.Query.Health
+{
+    public sealed class HealthAwareQueryExecutor : Shardis.Query.Execution.IShardQueryExecutor
+    {
+        public HealthAwareQueryExecutor(Shardis.Query.Execution.IShardQueryExecutor inner, Shardis.Health.IShardHealthPolicy healthPolicy, Shardis.Query.Health.HealthAwareQueryOptions options, Shardis.Query.Diagnostics.IShardisQueryMetrics? metrics = null) { }
+        public Shardis.Query.IShardQueryCapabilities Capabilities { get; }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Query.Health.HealthAwareQueryExecutor.<ExecuteAsync>d__7<TResult>))]
+        public System.Collections.Generic.IAsyncEnumerable<TResult> ExecuteAsync<TResult>(Shardis.Query.QueryModel model, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken ct = default) { }
+    }
+    public sealed class HealthAwareQueryOptions : System.IEquatable<Shardis.Query.Health.HealthAwareQueryOptions>
+    {
+        public static readonly Shardis.Query.Health.HealthAwareQueryOptions BestEffort;
+        public static readonly Shardis.Query.Health.HealthAwareQueryOptions Default;
+        public static readonly Shardis.Query.Health.HealthAwareQueryOptions Strict;
+        public HealthAwareQueryOptions() { }
+        public Shardis.Query.Health.ShardAvailabilityRequirement AvailabilityRequirement { get; init; }
+        public Shardis.Query.Health.UnhealthyShardBehavior Behavior { get; init; }
+        public static Shardis.Query.Health.HealthAwareQueryOptions RequireMinimum(int minHealthyShards) { }
+        public static Shardis.Query.Health.HealthAwareQueryOptions RequirePercentage(double minPercentage) { }
+    }
+    public sealed class InsufficientHealthyShardsException : Shardis.ShardisException
+    {
+        public InsufficientHealthyShardsException(int totalShards, int healthyShards, System.Collections.Generic.IReadOnlyList<Shardis.Model.ShardId> unhealthyShardIds, string message) { }
+        public InsufficientHealthyShardsException(int totalShards, int healthyShards, System.Collections.Generic.IReadOnlyList<Shardis.Model.ShardId> unhealthyShardIds, string message, System.Exception innerException) { }
+        public int HealthyShards { get; }
+        public int TotalShards { get; }
+        public System.Collections.Generic.IReadOnlyList<Shardis.Model.ShardId> UnhealthyShardIds { get; }
+    }
+    public sealed class ShardAvailabilityRequirement : System.IEquatable<Shardis.Query.Health.ShardAvailabilityRequirement>
+    {
+        public static readonly Shardis.Query.Health.ShardAvailabilityRequirement AllShards;
+        public static readonly Shardis.Query.Health.ShardAvailabilityRequirement BestEffort;
+        public ShardAvailabilityRequirement() { }
+        public double? MinimumHealthyPercentage { get; init; }
+        public int MinimumHealthyShards { get; init; }
+        public bool RequireAllHealthy { get; init; }
+        public static Shardis.Query.Health.ShardAvailabilityRequirement AtLeast(int count) { }
+        public static Shardis.Query.Health.ShardAvailabilityRequirement AtLeastPercentage(double percentage) { }
+    }
+    public enum UnhealthyShardBehavior
+    {
+        Include = 0,
+        Skip = 1,
+        Quarantine = 2,
+        Degrade = 3,
     }
 }
 namespace Shardis.Query
