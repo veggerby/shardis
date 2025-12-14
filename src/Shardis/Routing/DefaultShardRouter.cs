@@ -39,7 +39,8 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
     /// <param name="shardKeyHasher">Optional custom key hasher; defaults to <see cref="DefaultShardKeyHasher{TKey}"/>.</param>
     /// <param name="metrics">Optional metrics sink; defaults to no-op.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardMapStore"/> or <paramref name="availableShards"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when <paramref name="availableShards"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="availableShards"/> is empty.</exception>
+    /// <exception cref="ShardRoutingException">Thrown when duplicate shard IDs are detected.</exception>
     public DefaultShardRouter(
         IShardMapStore<TKey> shardMapStore,
         IEnumerable<IShard<TSession>> availableShards,
@@ -58,7 +59,13 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
         {
             if (_shardById.ContainsKey(shard.ShardId))
             {
-                throw new InvalidOperationException($"Duplicate shard ID detected: {shard.ShardId.Value}");
+                throw new ShardRoutingException(
+                    $"Duplicate shard ID detected: {shard.ShardId.Value}",
+                    null,
+                    shard.ShardId,
+                    null,
+                    null,
+                    null);
             }
             _shardById[shard.ShardId] = shard;
         }

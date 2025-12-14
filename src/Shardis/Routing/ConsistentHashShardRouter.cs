@@ -39,8 +39,8 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     /// <param name="ringHasher">Optional ring hasher; defaults to <see cref="DefaultShardRingHasher"/>.</param>
     /// <param name="metrics">Optional metrics sink; defaults to no-op.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardMapStore"/> or <paramref name="availableShards"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="replicationFactor"/> is less than or equal to zero.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when <paramref name="availableShards"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="replicationFactor"/> is less than or equal to zero or <paramref name="availableShards"/> is empty.</exception>
+    /// <exception cref="ShardRoutingException">Thrown when <paramref name="replicationFactor"/> exceeds 10,000 or duplicate shard IDs are detected.</exception>
     public ConsistentHashShardRouter(
         IShardMapStore<TKey> shardMapStore,
         IEnumerable<TShard> availableShards,
@@ -59,7 +59,13 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
 
         if (replicationFactor > 10_000)
         {
-            throw new ShardisException("ReplicationFactor greater than 10,000 is not supported (pathological ring size).");
+            throw new ShardRoutingException(
+                "ReplicationFactor greater than 10,000 is not supported (pathological ring size).",
+                null,
+                null,
+                null,
+                null,
+                new Dictionary<string, object?> { ["ReplicationFactor"] = replicationFactor });
         }
 
         _replicationFactor = replicationFactor;
@@ -75,7 +81,13 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
         {
             if (!seen.Add(shard.ShardId))
             {
-                throw new InvalidOperationException($"Duplicate shard ID detected: {shard.ShardId.Value}");
+                throw new ShardRoutingException(
+                    $"Duplicate shard ID detected: {shard.ShardId.Value}",
+                    null,
+                    shard.ShardId,
+                    null,
+                    null,
+                    null);
             }
 
             AddShardToRingInternal(shard);
@@ -87,6 +99,8 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     /// <summary>
     /// Dynamically adds a shard to the ring and atomically swaps the key snapshot. Thread-safe.
     /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="shard"/> is null.</exception>
+    /// <exception cref="ShardRoutingException">Thrown when the shard ID already exists in the ring.</exception>
     public void AddShard(TShard shard)
     {
         ArgumentNullException.ThrowIfNull(shard);
@@ -94,7 +108,13 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
         {
             if (_shardById.ContainsKey(shard.ShardId))
             {
-                throw new InvalidOperationException($"Shard with id {shard.ShardId.Value} already exists.");
+                throw new ShardRoutingException(
+                    $"Shard with id {shard.ShardId.Value} already exists.",
+                    null,
+                    shard.ShardId,
+                    null,
+                    _shardById.Count,
+                    null);
             }
 
             AddShardToRingInternal(shard);
@@ -210,7 +230,13 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
 
                 if (keys.Length == 0)
                 {
-                    throw new InvalidOperationException("Consistent hash ring is empty.");
+                    throw new ShardRoutingException(
+                        "Consistent hash ring is empty.",
+                        null,
+                        null,
+                        keyHash,
+                        0,
+                        null);
                 }
 
                 int idx = Array.BinarySearch(keys, keyHash);
