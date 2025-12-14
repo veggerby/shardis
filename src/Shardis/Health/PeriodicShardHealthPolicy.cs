@@ -8,9 +8,17 @@ namespace Shardis.Health;
 /// Default implementation of <see cref="IShardHealthPolicy"/> with periodic probing and threshold-based status transitions.
 /// </summary>
 /// <remarks>
+/// <para>
 /// This policy periodically probes shards using the configured <see cref="IShardHealthProbe"/>.
 /// It tracks consecutive failures and successes to determine health status transitions based on thresholds.
 /// Reactive tracking (recording operation results) is optionally supported.
+/// </para>
+/// <para>
+/// Note: The internal state dictionary grows as new shards are discovered. In typical deployments
+/// where the shard count is fixed and relatively small (tens to hundreds), this is acceptable.
+/// For scenarios with dynamic or very large shard sets, consider providing the full shard list
+/// upfront via the constructor or implementing a custom policy with eviction logic.
+/// </para>
 /// </remarks>
 public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
 {
@@ -21,6 +29,8 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
     private readonly ConcurrentDictionary<ShardId, ShardHealthState> _states = new();
     private readonly Timer? _timer;
     private readonly object _lock = new();
+    private readonly CancellationTokenSource _disposalCts = new();
+    private volatile bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PeriodicShardHealthPolicy"/> class.
@@ -138,11 +148,24 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+        
+        _disposed = true;
         _timer?.Dispose();
+        _disposalCts.Cancel();
+        _disposalCts.Dispose();
     }
 
     private void PeriodicProbeCallback(object? state)
     {
+        if (_disposed || _disposalCts.IsCancellationRequested)
+        {
+            return;
+        }
+
         foreach (var kvp in _states)
         {
             var shardId = kvp.Key;
@@ -157,12 +180,15 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
             {
                 try
                 {
-                    await ProbeAsync(shardId, CancellationToken.None).ConfigureAwait(false);
+                    await ProbeAsync(shardId, _disposalCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
                 }
                 catch
                 {
                 }
-            });
+            }, _disposalCts.Token);
         }
     }
 

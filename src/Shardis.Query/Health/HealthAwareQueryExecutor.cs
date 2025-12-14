@@ -12,13 +12,20 @@ namespace Shardis.Query.Health;
 /// This executor consults the configured <see cref="IShardHealthPolicy"/> to determine which shards
 /// should be included in query execution. Behavior is controlled by <see cref="HealthAwareQueryOptions"/>.
 /// </remarks>
-internal sealed class HealthAwareQueryExecutor : IShardQueryExecutor
+public sealed class HealthAwareQueryExecutor : IShardQueryExecutor
 {
     private readonly IShardQueryExecutor _inner;
     private readonly IShardHealthPolicy _healthPolicy;
     private readonly HealthAwareQueryOptions _options;
     private readonly IShardisQueryMetrics? _metrics;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="HealthAwareQueryExecutor"/> class.
+    /// </summary>
+    /// <param name="inner">The inner query executor to delegate to.</param>
+    /// <param name="healthPolicy">The health policy to consult for shard health status.</param>
+    /// <param name="options">Configuration options for health-aware execution.</param>
+    /// <param name="metrics">Optional metrics sink for recording health events.</param>
     public HealthAwareQueryExecutor(
         IShardQueryExecutor inner,
         IShardHealthPolicy healthPolicy,
@@ -31,8 +38,10 @@ internal sealed class HealthAwareQueryExecutor : IShardQueryExecutor
         _metrics = metrics;
     }
 
+    /// <inheritdoc />
     public IShardQueryCapabilities Capabilities => _inner.Capabilities;
 
+    /// <inheritdoc />
     public async IAsyncEnumerable<TResult> ExecuteAsync<TResult>(
         QueryModel model,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)

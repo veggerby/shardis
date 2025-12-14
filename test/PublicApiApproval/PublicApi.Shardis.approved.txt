@@ -70,6 +70,69 @@ namespace Shardis.Hashing
         public static uint HashString(string key) { }
     }
 }
+namespace Shardis.Health
+{
+    public interface IShardHealthPolicy
+    {
+        System.Collections.Generic.IAsyncEnumerable<Shardis.Health.ShardHealthReport> GetAllHealthAsync(System.Threading.CancellationToken ct = default);
+        System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> GetHealthAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default);
+        System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> ProbeAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default);
+        System.Threading.Tasks.ValueTask RecordFailureAsync(Shardis.Model.ShardId shardId, System.Exception exception, System.Threading.CancellationToken ct = default);
+        System.Threading.Tasks.ValueTask RecordSuccessAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default);
+    }
+    public interface IShardHealthProbe
+    {
+        System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> ExecuteAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default);
+    }
+    public sealed class NoOpShardHealthPolicy : Shardis.Health.IShardHealthPolicy
+    {
+        public static readonly Shardis.Health.NoOpShardHealthPolicy Instance;
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Health.NoOpShardHealthPolicy.<GetAllHealthAsync>d__3))]
+        public System.Collections.Generic.IAsyncEnumerable<Shardis.Health.ShardHealthReport> GetAllHealthAsync([System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> GetHealthAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> ProbeAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask RecordFailureAsync(Shardis.Model.ShardId shardId, System.Exception exception, System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask RecordSuccessAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default) { }
+    }
+    public sealed class PeriodicShardHealthPolicy : Shardis.Health.IShardHealthPolicy, System.IDisposable
+    {
+        public PeriodicShardHealthPolicy(Shardis.Health.IShardHealthProbe probe, Shardis.Health.ShardHealthPolicyOptions? options = null, System.Collections.Generic.IEnumerable<Shardis.Model.ShardId>? shardIds = null, System.Action<double, string, string>? recordProbeLatency = null, System.Action<string>? recordRecovery = null) { }
+        public void Dispose() { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Health.PeriodicShardHealthPolicy.<GetAllHealthAsync>d__11))]
+        public System.Collections.Generic.IAsyncEnumerable<Shardis.Health.ShardHealthReport> GetAllHealthAsync([System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> GetHealthAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> ProbeAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask RecordFailureAsync(Shardis.Model.ShardId shardId, System.Exception exception, System.Threading.CancellationToken ct = default) { }
+        public System.Threading.Tasks.ValueTask RecordSuccessAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default) { }
+    }
+    public sealed class ShardHealthPolicyOptions : System.IEquatable<Shardis.Health.ShardHealthPolicyOptions>
+    {
+        public ShardHealthPolicyOptions() { }
+        public System.TimeSpan CooldownPeriod { get; init; }
+        public int HealthyThreshold { get; init; }
+        public System.TimeSpan ProbeInterval { get; init; }
+        public System.TimeSpan ProbeTimeout { get; init; }
+        public bool ReactiveTrackingEnabled { get; init; }
+        public int UnhealthyThreshold { get; init; }
+    }
+    public sealed class ShardHealthReport : System.IEquatable<Shardis.Health.ShardHealthReport>
+    {
+        public ShardHealthReport() { }
+        public string? Description { get; init; }
+        public System.Exception? Exception { get; init; }
+        public double? ProbeDurationMs { get; init; }
+        public required Shardis.Model.ShardId ShardId { get; init; }
+        public required Shardis.Health.ShardHealthStatus Status { get; init; }
+        public required System.DateTimeOffset Timestamp { get; init; }
+    }
+    public enum ShardHealthStatus
+    {
+        Unknown = 0,
+        Healthy = 1,
+        Degraded = 2,
+        Unhealthy = 3,
+    }
+}
 namespace Shardis.Instrumentation
 {
     public interface IShardisMetrics

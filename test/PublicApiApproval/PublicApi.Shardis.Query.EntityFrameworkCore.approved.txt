@@ -58,3 +58,12 @@ namespace Shardis.Query.EntityFrameworkCore.Factories
         public System.Threading.Tasks.ValueTask<TContext> CreateAsync(Shardis.Model.ShardId shard, System.Threading.CancellationToken ct = default) { }
     }
 }
+namespace Shardis.Query.EntityFrameworkCore.Health
+{
+    public sealed class EfCoreShardHealthProbe<TContext> : Shardis.Health.IShardHealthProbe
+        where TContext : Microsoft.EntityFrameworkCore.DbContext
+    {
+        public EfCoreShardHealthProbe(Shardis.Factories.IShardFactory<TContext> factory) { }
+        public System.Threading.Tasks.ValueTask<Shardis.Health.ShardHealthReport> ExecuteAsync(Shardis.Model.ShardId shardId, System.Threading.CancellationToken ct = default) { }
+    }
+}
