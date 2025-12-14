@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added (Unreleased)
 
+- **Shard Health & Resilience Runtime**: Production-grade health monitoring that detects, routes around, and recovers from unhealthy shards.
+  - `IShardHealthPolicy` interface for monitoring shard health with configurable probe cadence, failure thresholds, cooldown periods, and recovery logic.
+  - `PeriodicShardHealthPolicy` default implementation with periodic background probing, reactive health tracking from operation results, and threshold-based state transitions.
+  - `IShardHealthProbe` provider-specific health check abstraction.
+  - `NoOpShardHealthPolicy` default no-op implementation (all shards always healthy).
+  - `ShardHealthStatus` enum (Unknown, Healthy, Degraded, Unhealthy) and `ShardHealthReport` immutable health report record.
+  - `HealthAwareQueryExecutor` public executor wrapper that filters shards by health status before query execution.
+  - `UnhealthyShardBehavior` enum (Include, Skip, Quarantine, Degrade) for controlling query behavior with unhealthy shards.
+  - `ShardAvailabilityRequirement` with predefined and custom availability policies (best-effort, strict, minimum N, minimum percentage).
+  - `HealthAwareQueryOptions` with presets (`Default`, `BestEffort`, `Strict`) plus custom factory methods.
+  - `InsufficientHealthyShardsException` thrown when availability requirements not met, with detailed diagnostic payload.
+  - Extended `IShardisQueryMetrics` with 4 new health metrics methods: `RecordHealthProbeLatency`, `RecordUnhealthyShardCount`, `RecordShardSkipped`, `RecordShardRecovered`.
+  - `EfCoreShardHealthProbe<TContext>` Entity Framework Core health probe using `DbContext.Database.CanConnectAsync()` with timing and error handling.
+  - Health & Resilience Sample (`Shardis.Health.Sample`): demonstrates best-effort mode, strict mode, custom requirements, shard failure/recovery scenarios with metrics.
 - Marten migration provider (`Shardis.Migration.Marten`): copy-only `MartenDataMover<TKey>`, canonical checksum verification strategy (`DocumentChecksumVerificationStrategy<TKey>`), DI extension `AddMartenMigrationSupport<TKey>()`.
 - Entity Framework Core migration provider (`Shardis.Migration.EntityFrameworkCore`): data mover (`EntityFrameworkCoreDataMover`), rowversion verification (`RowVersionVerificationStrategy`), checksum verification (`ChecksumVerificationStrategy`), DI extension `AddEntityFrameworkCoreMigrationSupport<TKey,TContext,TEntity>()` + checksum registration helper.
 - Marten executor integration tests: happy path, resume from copied checkpoint, swap retry (optimistic conflict), mismatch then re-copy.
