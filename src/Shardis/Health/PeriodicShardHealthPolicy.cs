@@ -16,6 +16,8 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
 {
     private readonly IShardHealthProbe _probe;
     private readonly ShardHealthPolicyOptions _options;
+    private readonly Action<double, string, string>? _recordProbeLatency;
+    private readonly Action<string>? _recordRecovery;
     private readonly ConcurrentDictionary<ShardId, ShardHealthState> _states = new();
     private readonly Timer? _timer;
     private readonly object _lock = new();
@@ -26,13 +28,19 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
     /// <param name="probe">The health probe to use for shard checks.</param>
     /// <param name="options">Configuration options.</param>
     /// <param name="shardIds">Optional collection of shard IDs to monitor. If null, shards are discovered reactively.</param>
+    /// <param name="recordProbeLatency">Optional callback to record probe latency metrics (ms, shardId, status).</param>
+    /// <param name="recordRecovery">Optional callback to record shard recovery events.</param>
     public PeriodicShardHealthPolicy(
         IShardHealthProbe probe,
         ShardHealthPolicyOptions? options = null,
-        IEnumerable<ShardId>? shardIds = null)
+        IEnumerable<ShardId>? shardIds = null,
+        Action<double, string, string>? recordProbeLatency = null,
+        Action<string>? recordRecovery = null)
     {
         _probe = probe ?? throw new ArgumentNullException(nameof(probe));
         _options = options ?? new ShardHealthPolicyOptions();
+        _recordProbeLatency = recordProbeLatency;
+        _recordRecovery = recordRecovery;
 
         if (shardIds is not null)
         {
@@ -100,14 +108,28 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(_options.ProbeTimeout);
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             var report = await _probe.ExecuteAsync(shardId, cts.Token).ConfigureAwait(false);
+            sw.Stop();
+            _recordProbeLatency?.Invoke(sw.Elapsed.TotalMilliseconds, shardId.Value, report.Status.ToString());
+            
+            var previousStatus = state.GetReport().Status;
             state.UpdateFromProbe(report, _options);
-            return state.GetReport();
+            var newReport = state.GetReport();
+            
+            if (previousStatus == ShardHealthStatus.Unhealthy && newReport.Status == ShardHealthStatus.Healthy)
+            {
+                _recordRecovery?.Invoke(shardId.Value);
+            }
+            
+            return newReport;
         }
         catch (Exception ex)
         {
+            sw.Stop();
+            _recordProbeLatency?.Invoke(sw.Elapsed.TotalMilliseconds, shardId.Value, "failed");
             state.RecordProbeFailure(ex, _options);
             return state.GetReport();
         }

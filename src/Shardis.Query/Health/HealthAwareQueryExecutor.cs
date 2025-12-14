@@ -1,5 +1,6 @@
 using Shardis.Health;
 using Shardis.Model;
+using Shardis.Query.Diagnostics;
 using Shardis.Query.Execution;
 
 namespace Shardis.Query.Health;
@@ -16,15 +17,18 @@ internal sealed class HealthAwareQueryExecutor : IShardQueryExecutor
     private readonly IShardQueryExecutor _inner;
     private readonly IShardHealthPolicy _healthPolicy;
     private readonly HealthAwareQueryOptions _options;
+    private readonly IShardisQueryMetrics? _metrics;
 
     public HealthAwareQueryExecutor(
         IShardQueryExecutor inner,
         IShardHealthPolicy healthPolicy,
-        HealthAwareQueryOptions options)
+        HealthAwareQueryOptions options,
+        IShardisQueryMetrics? metrics = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _healthPolicy = healthPolicy ?? throw new ArgumentNullException(nameof(healthPolicy));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _metrics = metrics;
     }
 
     public IShardQueryCapabilities Capabilities => _inner.Capabilities;
@@ -57,6 +61,7 @@ internal sealed class HealthAwareQueryExecutor : IShardQueryExecutor
             else
             {
                 unhealthyShardIds.Add(shardId);
+                _metrics?.RecordShardSkipped(shardId.Value, health.Status.ToString());
             }
         }
 
