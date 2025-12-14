@@ -1,6 +1,7 @@
 ﻿using Shardis.Model;
 using Shardis.Persistence;
 using Shardis.Routing;
+using SampleApp;
 
 Console.WriteLine("=== Welcome to Shardis Sample App ===\n");
 
@@ -40,7 +41,7 @@ foreach (var userId in userIds)
     Console.WriteLine($"- {userId} routed to {shard.ShardId}");
 }
 
-Console.WriteLine("Simulating queries on routed shards:\n");
+Console.WriteLine("\nSimulating queries on routed shards:\n");
 
 foreach (var userId in userIds)
 {
@@ -51,6 +52,11 @@ foreach (var userId in userIds)
     var session = shard.CreateSession();
     Console.WriteLine($"- Querying data for {userId} on shard {shard.ShardId} using session: {session}");
 }
+
+Console.WriteLine("\n" + new string('=', 60) + "\n");
+
+// Run exception handling examples
+ExceptionHandlingExamples.Run();
 
 Console.WriteLine("\n=== Done. Press any key to exit. ===");
 Console.ReadKey();
