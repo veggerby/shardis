@@ -1,10 +1,22 @@
 namespace Shardis.Query.Diagnostics;
 
-/// <summary>Optional metrics sink for query merge latency histogram.</summary>
+/// <summary>Optional metrics sink for query merge latency histogram and health metrics.</summary>
 public interface IShardisQueryMetrics
 {
     /// <summary>Record end-to-end merged enumeration latency (milliseconds) along with stable tag set.</summary>
     void RecordQueryMergeLatency(double milliseconds, in QueryMetricTags tags);
+
+    /// <summary>Record health probe latency (milliseconds) for a specific shard.</summary>
+    void RecordHealthProbeLatency(double milliseconds, string shardId, string status);
+
+    /// <summary>Increment counter for unhealthy shard count.</summary>
+    void RecordUnhealthyShardCount(int count);
+
+    /// <summary>Record shard skip event during query execution.</summary>
+    void RecordShardSkipped(string shardId, string reason);
+
+    /// <summary>Record shard recovery event.</summary>
+    void RecordShardRecovered(string shardId);
 }
 
 /// <summary>Stable tag set for query latency metrics.</summary>

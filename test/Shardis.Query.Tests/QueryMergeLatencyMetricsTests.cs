@@ -19,6 +19,10 @@ public sealed class QueryMergeLatencyMetricsTests
             Count++;
             Records.Add((milliseconds, tags));
         }
+        public void RecordHealthProbeLatency(double milliseconds, string shardId, string status) { }
+        public void RecordUnhealthyShardCount(int count) { }
+        public void RecordShardSkipped(string shardId, string reason) { }
+        public void RecordShardRecovered(string shardId) { }
     }
 
     private sealed class Person { public int Id { get; set; } public int Age { get; set; } }

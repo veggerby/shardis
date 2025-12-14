@@ -1,0 +1,295 @@
+using System.Collections.Concurrent;
+
+using Shardis.Model;
+
+namespace Shardis.Health;
+
+/// <summary>
+/// Default implementation of <see cref="IShardHealthPolicy"/> with periodic probing and threshold-based status transitions.
+/// </summary>
+/// <remarks>
+/// This policy periodically probes shards using the configured <see cref="IShardHealthProbe"/>.
+/// It tracks consecutive failures and successes to determine health status transitions based on thresholds.
+/// Reactive tracking (recording operation results) is optionally supported.
+/// </remarks>
+public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
+{
+    private readonly IShardHealthProbe _probe;
+    private readonly ShardHealthPolicyOptions _options;
+    private readonly ConcurrentDictionary<ShardId, ShardHealthState> _states = new();
+    private readonly Timer? _timer;
+    private readonly object _lock = new();
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PeriodicShardHealthPolicy"/> class.
+    /// </summary>
+    /// <param name="probe">The health probe to use for shard checks.</param>
+    /// <param name="options">Configuration options.</param>
+    /// <param name="shardIds">Optional collection of shard IDs to monitor. If null, shards are discovered reactively.</param>
+    public PeriodicShardHealthPolicy(
+        IShardHealthProbe probe,
+        ShardHealthPolicyOptions? options = null,
+        IEnumerable<ShardId>? shardIds = null)
+    {
+        _probe = probe ?? throw new ArgumentNullException(nameof(probe));
+        _options = options ?? new ShardHealthPolicyOptions();
+
+        if (shardIds is not null)
+        {
+            foreach (var id in shardIds)
+            {
+                _states.TryAdd(id, new ShardHealthState(id));
+            }
+        }
+
+        if (_options.ProbeInterval > TimeSpan.Zero)
+        {
+            _timer = new Timer(PeriodicProbeCallback, null, _options.ProbeInterval, _options.ProbeInterval);
+        }
+    }
+
+    /// <inheritdoc />
+    public ValueTask<ShardHealthReport> GetHealthAsync(ShardId shardId, CancellationToken ct = default)
+    {
+        var state = _states.GetOrAdd(shardId, id => new ShardHealthState(id));
+        return ValueTask.FromResult(state.GetReport());
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<ShardHealthReport> GetAllHealthAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    {
+        foreach (var kvp in _states)
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return kvp.Value.GetReport();
+        }
+        await Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask RecordSuccessAsync(ShardId shardId, CancellationToken ct = default)
+    {
+        if (!_options.ReactiveTrackingEnabled)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var state = _states.GetOrAdd(shardId, id => new ShardHealthState(id));
+        state.RecordSuccess(_options);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask RecordFailureAsync(ShardId shardId, Exception exception, CancellationToken ct = default)
+    {
+        if (!_options.ReactiveTrackingEnabled)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var state = _states.GetOrAdd(shardId, id => new ShardHealthState(id));
+        state.RecordFailure(exception, _options);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<ShardHealthReport> ProbeAsync(ShardId shardId, CancellationToken ct = default)
+    {
+        var state = _states.GetOrAdd(shardId, id => new ShardHealthState(id));
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(_options.ProbeTimeout);
+
+        try
+        {
+            var report = await _probe.ExecuteAsync(shardId, cts.Token).ConfigureAwait(false);
+            state.UpdateFromProbe(report, _options);
+            return state.GetReport();
+        }
+        catch (Exception ex)
+        {
+            state.RecordProbeFailure(ex, _options);
+            return state.GetReport();
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+
+    private void PeriodicProbeCallback(object? state)
+    {
+        foreach (var kvp in _states)
+        {
+            var shardId = kvp.Key;
+            var shardState = kvp.Value;
+
+            if (!shardState.ShouldProbe(_options))
+            {
+                continue;
+            }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await ProbeAsync(shardId, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch
+                {
+                }
+            });
+        }
+    }
+
+    private sealed class ShardHealthState
+    {
+        private readonly ShardId _shardId;
+        private ShardHealthStatus _status = ShardHealthStatus.Unknown;
+        private int _consecutiveFailures;
+        private int _consecutiveSuccesses;
+        private DateTimeOffset _lastProbe = DateTimeOffset.MinValue;
+        private DateTimeOffset _lastTransition = DateTimeOffset.UtcNow;
+        private string? _description;
+        private Exception? _exception;
+        private double? _lastProbeDurationMs;
+        private readonly object _lock = new();
+
+        public ShardHealthState(ShardId shardId)
+        {
+            _shardId = shardId;
+        }
+
+        public bool ShouldProbe(ShardHealthPolicyOptions options)
+        {
+            lock (_lock)
+            {
+                var now = DateTimeOffset.UtcNow;
+
+                if (_status == ShardHealthStatus.Unhealthy)
+                {
+                    var timeSinceTransition = now - _lastTransition;
+                    if (timeSinceTransition < options.CooldownPeriod)
+                    {
+                        return false;
+                    }
+                }
+
+                var timeSinceLastProbe = now - _lastProbe;
+                return timeSinceLastProbe >= options.ProbeInterval;
+            }
+        }
+
+        public void RecordSuccess(ShardHealthPolicyOptions options)
+        {
+            lock (_lock)
+            {
+                _consecutiveFailures = 0;
+                _consecutiveSuccesses++;
+                _exception = null;
+
+                if (_status == ShardHealthStatus.Unhealthy && _consecutiveSuccesses >= options.HealthyThreshold)
+                {
+                    TransitionTo(ShardHealthStatus.Healthy, "Recovered after consecutive successes");
+                }
+                else if (_status == ShardHealthStatus.Unknown)
+                {
+                    TransitionTo(ShardHealthStatus.Healthy, "First successful operation");
+                }
+            }
+        }
+
+        public void RecordFailure(Exception exception, ShardHealthPolicyOptions options)
+        {
+            lock (_lock)
+            {
+                _consecutiveSuccesses = 0;
+                _consecutiveFailures++;
+                _exception = exception;
+
+                if (_status != ShardHealthStatus.Unhealthy && _consecutiveFailures >= options.UnhealthyThreshold)
+                {
+                    TransitionTo(ShardHealthStatus.Unhealthy, $"Exceeded failure threshold ({_consecutiveFailures} consecutive failures)");
+                }
+            }
+        }
+
+        public void UpdateFromProbe(ShardHealthReport report, ShardHealthPolicyOptions options)
+        {
+            lock (_lock)
+            {
+                _lastProbe = DateTimeOffset.UtcNow;
+                _lastProbeDurationMs = report.ProbeDurationMs;
+
+                if (report.Status == ShardHealthStatus.Healthy)
+                {
+                    _consecutiveFailures = 0;
+                    _consecutiveSuccesses++;
+                    _exception = null;
+
+                    if (_status == ShardHealthStatus.Unhealthy && _consecutiveSuccesses >= options.HealthyThreshold)
+                    {
+                        TransitionTo(ShardHealthStatus.Healthy, "Probe successful after recovery");
+                    }
+                    else if (_status != ShardHealthStatus.Healthy)
+                    {
+                        TransitionTo(ShardHealthStatus.Healthy, "Probe successful");
+                    }
+                }
+                else
+                {
+                    _consecutiveSuccesses = 0;
+                    _consecutiveFailures++;
+                    _exception = report.Exception;
+                    _description = report.Description;
+
+                    if (_status != ShardHealthStatus.Unhealthy && _consecutiveFailures >= options.UnhealthyThreshold)
+                    {
+                        TransitionTo(ShardHealthStatus.Unhealthy, report.Description ?? "Probe failed");
+                    }
+                }
+            }
+        }
+
+        public void RecordProbeFailure(Exception exception, ShardHealthPolicyOptions options)
+        {
+            lock (_lock)
+            {
+                _lastProbe = DateTimeOffset.UtcNow;
+                _consecutiveSuccesses = 0;
+                _consecutiveFailures++;
+                _exception = exception;
+
+                if (_status != ShardHealthStatus.Unhealthy && _consecutiveFailures >= options.UnhealthyThreshold)
+                {
+                    TransitionTo(ShardHealthStatus.Unhealthy, $"Probe failed: {exception.Message}");
+                }
+            }
+        }
+
+        public ShardHealthReport GetReport()
+        {
+            lock (_lock)
+            {
+                return new ShardHealthReport
+                {
+                    ShardId = _shardId,
+                    Status = _status,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Description = _description,
+                    Exception = _exception,
+                    ProbeDurationMs = _lastProbeDurationMs
+                };
+            }
+        }
+
+        private void TransitionTo(ShardHealthStatus newStatus, string? description)
+        {
+            _status = newStatus;
+            _description = description;
+            _lastTransition = DateTimeOffset.UtcNow;
+        }
+    }
+}
