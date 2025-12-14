@@ -7,6 +7,7 @@ This index links core conceptual and roadmap documents.
 - Routing & Hashing: see README sections (Deterministic Routing, Dependency Injection Options).
 - Metrics Integration: README Metrics section + [Query Merge Latency](./query-latency.md)
 - Migration scaffolding: README Migration section.
+- Health & Resilience: [Health & Resilience Runtime](./health-resilience.md) (health monitoring, query routing, failure strategies)
 - Terminology Glossary: `terms.md` (canonical Shardis & domain vocabulary)
 - Migration Rationale: `migration-rationale.md` (why a formal mechanism exists)
 
@@ -35,6 +36,7 @@ This index links core conceptual and roadmap documents.
 | Default routing | ✅ | README |
 | Consistent hashing router | ✅ | README |
 | Metrics (no-op + counters) | ✅ | README / `IShardisMetrics` |
+| Health & resilience runtime | ✅ | `health-resilience.md` |
 | Migration planning (in-memory + segmented) | ✅ | README / migration usage |
 | Migration execution | ✅ | README / migration usage |
 | Migration dry-run (counts) | ✅ | migration usage |
