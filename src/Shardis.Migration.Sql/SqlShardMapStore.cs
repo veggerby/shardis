@@ -22,7 +22,7 @@ using Shardis.Persistence;
 ///   );
 /// </summary>
 /// <summary>Experimental SQL-backed shard map store using provided connection factory for portability.</summary>
-public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory, string mapTable = "ShardMap", string historyTable = "ShardMapHistory") : IShardMapStore<TKey>, IShardMapEnumerationStore<TKey>
+public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory, string mapTable = "ShardMap", string historyTable = "ShardMapHistory") : IShardMapStoreAsync<TKey>, IShardMapEnumerationStore<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
     private readonly Func<DbConnection> _connectionFactory = connectionFactory;
@@ -35,81 +35,116 @@ public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory,
     /// </summary>
     public event Action<ShardKey<TKey>, ShardId?, ShardId>? AssignmentChanged;
 
-    /// <summary>Attempts to assign shard to key (insertion only). Returns true if inserted.</summary>
-    public async Task<bool> TryAssignShardToKey(ShardKey<TKey> key, ShardId shardId)
+    /// <inheritdoc />
+    public async ValueTask<ShardId?> TryGetShardIdForKeyAsync(ShardKey<TKey> shardKey, CancellationToken cancellationToken = default)
     {
         await using var conn = _connectionFactory();
-        await conn.OpenAsync();
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"INSERT INTO {_map}(ShardKey, ShardId) VALUES(@k,@s)";
-        AddParam(cmd, "@k", key.Value!.ToString()!);
-        AddParam(cmd, "@s", shardId.Value);
-        try
-        {
-            var rows = await cmd.ExecuteNonQueryAsync();
-            if (rows > 0 && key.Value is not null)
-            {
-                await InsertHistory(conn, key.Value.ToString()!, null, shardId.Value);
-                AssignmentChanged?.Invoke(key, null, shardId);
-                return true;
-            }
-        }
-        catch { return false; }
-        return false;
-    }
-
-    private async Task<ShardId?> TryGetShardForKeyInternal(ShardKey<TKey> key)
-    {
-        await using var conn = _connectionFactory();
-        await conn.OpenAsync();
+        await conn.OpenAsync(cancellationToken);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT ShardId FROM {_map} WHERE ShardKey=@k";
-        AddParam(cmd, "@k", key.Value!.ToString()!);
-        var result = await cmd.ExecuteScalarAsync();
+        AddParam(cmd, "@k", shardKey.Value!.ToString()!);
+        var result = await cmd.ExecuteScalarAsync(cancellationToken);
         return result is string s ? new ShardId(s) : null;
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<ShardMap<TKey>> AssignShardToKeyAsync(ShardKey<TKey> shardKey, ShardId shardId, CancellationToken cancellationToken = default)
+    {
+        await using var conn = _connectionFactory();
+        await conn.OpenAsync(cancellationToken);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"INSERT INTO {_map}(ShardKey, ShardId) VALUES(@k,@s)";
+        AddParam(cmd, "@k", shardKey.Value!.ToString()!);
+        AddParam(cmd, "@s", shardId.Value);
+        
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+        if (shardKey.Value is not null)
+        {
+            await InsertHistory(conn, shardKey.Value.ToString()!, null, shardId.Value, cancellationToken);
+            AssignmentChanged?.Invoke(shardKey, null, shardId);
+        }
+        
+        return new ShardMap<TKey>(shardKey, shardId);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryAssignShardToKeyAsync(ShardKey<TKey> shardKey, ShardId shardId, CancellationToken cancellationToken = default)
+    {
+        await using var conn = _connectionFactory();
+        await conn.OpenAsync(cancellationToken);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"INSERT INTO {_map}(ShardKey, ShardId) VALUES(@k,@s)";
+        AddParam(cmd, "@k", shardKey.Value!.ToString()!);
+        AddParam(cmd, "@s", shardId.Value);
+        
+        try
+        {
+            var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
+            if (rows > 0 && shardKey.Value is not null)
+            {
+                await InsertHistory(conn, shardKey.Value.ToString()!, null, shardId.Value, cancellationToken);
+                AssignmentChanged?.Invoke(shardKey, null, shardId);
+                return (true, new ShardMap<TKey>(shardKey, shardId));
+            }
+        }
+        catch
+        {
+            // Insert failed - key already exists, fetch existing value
+            var existing = await TryGetShardIdForKeyAsync(shardKey, cancellationToken);
+            if (existing is not null)
+            {
+                return (false, new ShardMap<TKey>(shardKey, existing.Value));
+            }
+        }
+        
+        return (false, new ShardMap<TKey>(shardKey, shardId));
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryGetOrAddAsync(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, CancellationToken cancellationToken = default)
+    {
+        var existing = await TryGetShardIdForKeyAsync(shardKey, cancellationToken);
+        if (existing is not null)
+        {
+            return (false, new ShardMap<TKey>(shardKey, existing.Value));
+        }
+
+        var newShardId = valueFactory();
+        return await TryAssignShardToKeyAsync(shardKey, newShardId, cancellationToken);
     }
 
     /// <inheritdoc />
     public bool TryGetShardIdForKey(ShardKey<TKey> shardKey, out ShardId shardId)
     {
-        var existing = TryGetShardForKeyInternal(shardKey).GetAwaiter().GetResult();
-        if (existing is not null) { shardId = existing.Value; return true; }
-        shardId = default!; return false;
+        throw new NotSupportedException("SqlShardMapStore requires async operations. Use TryGetShardIdForKeyAsync instead.");
     }
 
     /// <inheritdoc />
     public ShardMap<TKey> AssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId)
     {
-        // Non-atomic assign w/out race handling (preview). Prefer TryAssignShardToKey path.
-        TryAssignShardToKey(shardKey, shardId).GetAwaiter().GetResult();
-        return new ShardMap<TKey>(shardKey, shardId);
+        throw new NotSupportedException("SqlShardMapStore requires async operations. Use AssignShardToKeyAsync instead.");
     }
 
     /// <inheritdoc />
     public bool TryAssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId, out ShardMap<TKey> shardMap)
     {
-        var created = TryAssignShardToKey(shardKey, shardId).GetAwaiter().GetResult();
-        shardMap = new ShardMap<TKey>(shardKey, shardId);
-        return created;
+        throw new NotSupportedException("SqlShardMapStore requires async operations. Use TryAssignShardToKeyAsync instead.");
     }
 
     /// <inheritdoc />
     public bool TryGetOrAdd(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, out ShardMap<TKey> shardMap)
     {
-        if (TryGetShardIdForKey(shardKey, out var existing)) { shardMap = new ShardMap<TKey>(shardKey, existing); return false; }
-        var created = valueFactory();
-        TryAssignShardToKey(shardKey, created, out shardMap);
-        return true;
+        throw new NotSupportedException("SqlShardMapStore requires async operations. Use TryGetOrAddAsync instead.");
     }
 
-    private static async Task InsertHistory(DbConnection conn, string key, string? oldId, string newId)
+    private static async Task InsertHistory(DbConnection conn, string key, string? oldId, string newId, CancellationToken cancellationToken = default)
     {
         await using var history = conn.CreateCommand();
         history.CommandText = "INSERT INTO ShardMapHistory(ShardKey,OldShardId,NewShardId) VALUES(@k,@o,@n)";
         AddParam(history, "@k", key);
         AddParam(history, "@o", (object?)oldId ?? DBNull.Value);
         AddParam(history, "@n", newId);
-        await history.ExecuteNonQueryAsync();
+        await history.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static void AddParam(DbCommand cmd, string name, object value)

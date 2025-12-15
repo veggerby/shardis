@@ -9,17 +9,26 @@ namespace Shardis.Migration.Sql
         public System.Threading.Tasks.Task<Shardis.Migration.Model.MigrationCheckpoint<TKey>?> LoadAsync(System.Guid planId, System.Threading.CancellationToken ct) { }
         public System.Threading.Tasks.Task PersistAsync(Shardis.Migration.Model.MigrationCheckpoint<TKey> checkpoint, System.Threading.CancellationToken ct) { }
     }
-    public sealed class SqlShardMapStore<TKey> : Shardis.Persistence.IShardMapEnumerationStore<TKey>, Shardis.Persistence.IShardMapStore<TKey>
+    public sealed class SqlShardMapStore<TKey> : Shardis.Persistence.IShardMapEnumerationStore<TKey>, Shardis.Persistence.IShardMapStoreAsync<TKey>, Shardis.Persistence.IShardMapStore<TKey>
         where TKey :  notnull, System.IEquatable<TKey>
     {
         public SqlShardMapStore(System.Func<System.Data.Common.DbConnection> connectionFactory, string mapTable = "ShardMap", string historyTable = "ShardMapHistory") { }
         public event System.Action<Shardis.Model.ShardKey<TKey>, Shardis.Model.ShardId?, Shardis.Model.ShardId>? AssignmentChanged;
         public Shardis.Model.ShardMap<TKey> AssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId) { }
-        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Migration.Sql.SqlShardMapStore<TKey>.<EnumerateAsync>d__15))]
+        public System.Threading.Tasks.ValueTask<Shardis.Model.ShardMap<TKey>> AssignShardToKeyAsync(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId, System.Threading.CancellationToken cancellationToken = default) { }
+        [System.Runtime.CompilerServices.AsyncIteratorStateMachine(typeof(Shardis.Migration.Sql.SqlShardMapStore<TKey>.<EnumerateAsync>d__17))]
         public System.Collections.Generic.IAsyncEnumerable<Shardis.Model.ShardMap<TKey>> EnumerateAsync([System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default) { }
-        public System.Threading.Tasks.Task<bool> TryAssignShardToKey(Shardis.Model.ShardKey<TKey> key, Shardis.Model.ShardId shardId) { }
         public bool TryAssignShardToKey(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId, out Shardis.Model.ShardMap<TKey> shardMap) { }
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "Created",
+                "ShardMap"})]
+        public System.Threading.Tasks.ValueTask<System.ValueTuple<bool, Shardis.Model.ShardMap<TKey>>> TryAssignShardToKeyAsync(Shardis.Model.ShardKey<TKey> shardKey, Shardis.Model.ShardId shardId, System.Threading.CancellationToken cancellationToken = default) { }
         public bool TryGetOrAdd(Shardis.Model.ShardKey<TKey> shardKey, System.Func<Shardis.Model.ShardId> valueFactory, out Shardis.Model.ShardMap<TKey> shardMap) { }
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "Created",
+                "ShardMap"})]
+        public System.Threading.Tasks.ValueTask<System.ValueTuple<bool, Shardis.Model.ShardMap<TKey>>> TryGetOrAddAsync(Shardis.Model.ShardKey<TKey> shardKey, System.Func<Shardis.Model.ShardId> valueFactory, System.Threading.CancellationToken cancellationToken = default) { }
         public bool TryGetShardIdForKey(Shardis.Model.ShardKey<TKey> shardKey, out Shardis.Model.ShardId shardId) { }
+        public System.Threading.Tasks.ValueTask<Shardis.Model.ShardId?> TryGetShardIdForKeyAsync(Shardis.Model.ShardKey<TKey> shardKey, System.Threading.CancellationToken cancellationToken = default) { }
     }
 }

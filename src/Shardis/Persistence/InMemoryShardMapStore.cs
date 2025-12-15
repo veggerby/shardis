@@ -8,7 +8,7 @@ namespace Shardis.Persistence;
 /// <summary>
 /// Provides an in-memory implementation of the <see cref="IShardMapStore{TKey}"/> interface.
 /// </summary>
-public class InMemoryShardMapStore<TKey> : IShardMapEnumerationStore<TKey>
+public class InMemoryShardMapStore<TKey> : IShardMapStoreAsync<TKey>, IShardMapEnumerationStore<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>
@@ -24,6 +24,14 @@ public class InMemoryShardMapStore<TKey> : IShardMapEnumerationStore<TKey>
     /// <returns><c>true</c> if the shard ID was found; otherwise, <c>false</c>.</returns>
     public bool TryGetShardIdForKey(ShardKey<TKey> shardKey, out ShardId shardId) => _assignments.TryGetValue(shardKey, out shardId);
 
+    /// <inheritdoc />
+    public ValueTask<ShardId?> TryGetShardIdForKeyAsync(ShardKey<TKey> shardKey, CancellationToken cancellationToken = default)
+    {
+        return _assignments.TryGetValue(shardKey, out var shardId)
+            ? ValueTask.FromResult<ShardId?>(shardId)
+            : ValueTask.FromResult<ShardId?>(null);
+    }
+
     /// <summary>
     /// Assigns a shard ID to a given shard key.
     /// </summary>
@@ -37,12 +45,28 @@ public class InMemoryShardMapStore<TKey> : IShardMapEnumerationStore<TKey>
     }
 
     /// <inheritdoc />
+    public ValueTask<ShardMap<TKey>> AssignShardToKeyAsync(ShardKey<TKey> shardKey, ShardId shardId, CancellationToken cancellationToken = default)
+    {
+        _assignments[shardKey] = shardId;
+        return ValueTask.FromResult(new ShardMap<TKey>(shardKey, shardId));
+    }
+
+    /// <inheritdoc />
     public bool TryAssignShardToKey(ShardKey<TKey> shardKey, ShardId shardId, out ShardMap<TKey> shardMap)
     {
         var added = _assignments.TryAdd(shardKey, shardId);
         var effective = _assignments[shardKey];
         shardMap = new ShardMap<TKey>(shardKey, effective);
         return added;
+    }
+
+    /// <inheritdoc />
+    public ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryAssignShardToKeyAsync(ShardKey<TKey> shardKey, ShardId shardId, CancellationToken cancellationToken = default)
+    {
+        var added = _assignments.TryAdd(shardKey, shardId);
+        var effective = _assignments[shardKey];
+        var shardMap = new ShardMap<TKey>(shardKey, effective);
+        return ValueTask.FromResult((added, shardMap));
     }
 
     /// <inheritdoc />
@@ -68,6 +92,28 @@ public class InMemoryShardMapStore<TKey> : IShardMapEnumerationStore<TKey>
         var winner = _assignments[shardKey];
         shardMap = new ShardMap<TKey>(shardKey, winner);
         return false;
+    }
+
+    /// <inheritdoc />
+    public ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryGetOrAddAsync(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(valueFactory, nameof(valueFactory));
+
+        if (_assignments.TryGetValue(shardKey, out var existing))
+        {
+            return ValueTask.FromResult((false, new ShardMap<TKey>(shardKey, existing)));
+        }
+
+        // Compute candidate id outside add for deterministic hashing cost per contender.
+        var candidate = valueFactory();
+        if (_assignments.TryAdd(shardKey, candidate))
+        {
+            return ValueTask.FromResult((true, new ShardMap<TKey>(shardKey, candidate)));
+        }
+
+        // Lost race: fetch existing (must succeed)
+        var winner = _assignments[shardKey];
+        return ValueTask.FromResult((false, new ShardMap<TKey>(shardKey, winner)));
     }
 
     /// <inheritdoc />
