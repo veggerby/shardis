@@ -1,58 +1,219 @@
 services:
-  app:
-    image: mcr.microsoft.com/devcontainers/base:bookworm
-    depends_on:
-      - db
-      - pgadmin
-    environment:
-      GH_TOKEN: ${GH_TOKEN:-}
-      NPM_AUTH_TOKEN: ${GH_TOKEN:-}
-      # Helps the dotnet cli not throwing exceptions on arm based macs
-      DOTNET_EnableWriteXorExecute: '0'
-      POSTGRES_CONNECTION: "Host=db;Port=5432;Username=postgres;Database=shardis"
-    volumes:
-      # Forwards the local Docker socket to the container.
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Update this to wherever you want VS Code to mount the folder of your project
-      - ../..:/workspaces:cached
-    # Keep container alive
-    command: sleep infinity
+    # Main development container
+    devcontainer:
+        image: mcr.microsoft.com/devcontainers/base:bookworm
+        volumes:
+            # Forwards the local Docker socket to the container.
+            - /var/run/docker.sock:/var/run/docker.sock
+            # Update this to wherever you want VS Code to mount the folder of your project
+            - ../..:/workspaces:cached
+        networks:
+            - shardis-dev
+        environment:
+            # Application environment
+            DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Development}
+            LOG_LEVEL: ${LOG_LEVEL:-Debug}
 
-  db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_HOST_AUTH_METHOD: trust
-      POSTGRES_DB: shardis
-    ports:
-      - "${PG_PORT:-5432}:5432"
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+            # Helps the dotnet cli not throwing exceptions on arm based macs
+            DOTNET_EnableWriteXorExecute: '0'
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    restart: 'no'
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-postgres}
-      PGADMIN_LISTEN_PORT: 80
-      PGADMIN_LISTEN_ADDRESS: '0.0.0.0'
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    volumes:
-      - pgadmin:/var/lib/pgadmin
-    ports:
-      - "${PGADMIN_PORT:-15432}:80"
+            # GitHub tokens
+            GH_TOKEN: ${GITHUB_TOKEN:-}
+            NPM_AUTH_TOKEN: ${GITHUB_TOKEN:-}
 
-volumes:
-  pgdata:
-  pgadmin:
+            # PostgreSQL connection
+            POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+            POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+            POSTGRES_DB: ${POSTGRES_DB:-shardis}
+            POSTGRES_USER: ${POSTGRES_USER:-shardis}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shardis_dev_password}
+
+            # Connection string for samples/tests
+            POSTGRES_CONNECTION: "Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-shardis};Username=${POSTGRES_USER:-shardis};Password=${POSTGRES_PASSWORD:-shardis_dev_password}"
+
+            # OpenTelemetry Configuration
+            # Master switch - enable observability stack
+            OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-true}
+
+            # OTel Collector endpoint (use service name for docker networking)
+            OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+
+            # Service identification
+            OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-shardis-dev}
+            OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.0}
+
+            # Deployment environment
+            OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-development}
+
+            # Sampling configuration (1.0 = 100% for dev)
+            OTEL_TRACES_SAMPLER_ARG: ${OTEL_TRACES_SAMPLER_ARG:-1.0}
+
+            # Per-signal enable flags (all enabled by default)
+            OTEL_TRACES_ENABLED: ${OTEL_TRACES_ENABLED:-true}
+            OTEL_METRICS_ENABLED: ${OTEL_METRICS_ENABLED:-true}
+            OTEL_LOGS_ENABLED: ${OTEL_LOGS_ENABLED:-true}
+
+            # Export interval for metrics (5s for dev, faster feedback)
+            OTEL_METRICS_EXPORT_INTERVAL: ${OTEL_METRICS_EXPORT_INTERVAL:-5000}
+        # Keep container alive
+        command: sleep infinity
+        depends_on:
+            - postgres
+
+    # PostgreSQL for sharding tests and samples
+    postgres:
+        image: postgres:16
+        ports:
+            - "5432:5432"
+        networks:
+            - shardis-dev
+        environment:
+            POSTGRES_DB: ${POSTGRES_DB:-shardis}
+            POSTGRES_USER: ${POSTGRES_USER:-shardis}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shardis_dev_password}
+            POSTGRES_INITDB_ARGS: ${POSTGRES_INITDB_ARGS:--E UTF8 --locale=C}
+            TZ: ${TZ:-UTC}
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
+        restart: unless-stopped
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "pg_isready -U ${POSTGRES_USER:-shardis} -d ${POSTGRES_DB:-shardis}",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+
+    # pgAdmin for database management
+    pgadmin:
+        image: dpage/pgadmin4:latest
+        ports:
+            - "5050:80"
+        networks:
+            - shardis-dev
+        environment:
+            PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@shardis.dev}
+            PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+            PGADMIN_CONFIG_SERVER_MODE: ${PGADMIN_CONFIG_SERVER_MODE:-False}
+            PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: ${PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED:-False}
+            PGADMIN_LISTEN_PORT: ${PGADMIN_LISTEN_PORT:-80}
+        volumes:
+            - pgadmin-data:/var/lib/pgadmin
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+    # Optional: Prometheus for metrics testing
+    prometheus:
+        image: prom/prometheus:latest
+        ports:
+            - "9090:9090"
+        networks:
+            - shardis-dev
+        volumes:
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - prometheus-data:/prometheus
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+            - "--web.console.templates=/usr/share/prometheus/consoles"
+            - "--web.enable-remote-write-receiver"
+        restart: unless-stopped
+        profiles:
+            - observability
+            - full
+        depends_on:
+            - devcontainer
+            - otel-collector
+
+    # Optional: Grafana for metrics visualization
+    grafana:
+        image: grafana/grafana:latest
+        ports:
+            - "3100:3000"
+        networks:
+            - shardis-dev
+        volumes:
+            - grafana-data:/var/lib/grafana
+            - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+        environment:
+            GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+            GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+            GF_USERS_ALLOW_SIGN_UP: ${GRAFANA_ALLOW_SIGNUP:-false}
+            GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3100}
+        restart: unless-stopped
+        profiles:
+            - observability
+            - full
+        depends_on:
+            - prometheus
+            - loki
+            - jaeger
+
+    # OpenTelemetry Collector for trace/metrics/logs aggregation
+    otel-collector:
+        image: otel/opentelemetry-collector-contrib:latest
+        ports:
+            - "4317:4317" # OTLP gRPC receiver
+            - "4318:4318" # OTLP HTTP receiver
+            - "8888:8888" # Prometheus metrics exposed by the collector
+            - "8889:8889" # Prometheus exporter metrics
+        networks:
+            - shardis-dev
+        volumes:
+            - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+        command: ["--config=/etc/otelcol-contrib/config.yaml"]
+        restart: unless-stopped
+        profiles:
+            - observability
+            - full
+        depends_on:
+            - jaeger
+            - loki
+
+    # Optional: Jaeger for distributed tracing
+    jaeger:
+        image: jaegertracing/all-in-one:latest
+        ports:
+            - "16686:16686" # Jaeger UI
+            - "14250:14250" # Jaeger gRPC receiver
+        networks:
+            - shardis-dev
+        environment:
+            COLLECTOR_OTLP_ENABLED: "true"
+        restart: unless-stopped
+        profiles:
+            - observability
+            - full
+
+    # Optional: Loki for log aggregation
+    loki:
+        image: grafana/loki:latest
+        ports:
+            - "3101:3100"
+        networks:
+            - shardis-dev
+        volumes:
+            - loki-data:/loki
+            - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+        command: -config.file=/etc/loki/local-config.yaml
+        restart: unless-stopped
+        profiles:
+            - observability
+            - full
 
 networks:
-  default:
-    enable_ipv6: false
+    shardis-dev:
+        driver: bridge
+
+volumes:
+    postgres-data:
+    pgadmin-data:
+    prometheus-data:
+    grafana-data:
+    loki-data:
