@@ -85,6 +85,20 @@ namespace Shardis.Migration.Abstractions
         public int? TargetSchemaVersion { get; init; }
     }
 }
+namespace Shardis.Migration.Exceptions
+{
+    public sealed class ShardMigrationException : Shardis.ShardisException
+    {
+        public ShardMigrationException(string message) { }
+        public ShardMigrationException(string message, System.Exception? innerException) { }
+        public ShardMigrationException(string message, System.Exception? innerException, string? phase, Shardis.Model.ShardId? sourceShardId, Shardis.Model.ShardId? targetShardId, int? attemptCount, string? planId, System.Collections.Generic.IDictionary<string, object?>? additionalContext) { }
+        public int? AttemptCount { get; }
+        public string? Phase { get; }
+        public string? PlanId { get; }
+        public Shardis.Model.ShardId? SourceShardId { get; }
+        public Shardis.Model.ShardId? TargetShardId { get; }
+    }
+}
 namespace Shardis.Migration.Execution
 {
     public sealed class MigrationProgressEvent : System.IEquatable<Shardis.Migration.Execution.MigrationProgressEvent>

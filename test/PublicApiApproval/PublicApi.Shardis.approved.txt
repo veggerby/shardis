@@ -451,11 +451,49 @@ namespace Shardis
         public Shardis.Model.IShard<TSession> Shard { get; }
         public bool WasExistingAssignment { get; }
     }
+    public sealed class ShardQueryException : Shardis.ShardisException
+    {
+        public ShardQueryException(string message) { }
+        public ShardQueryException(string message, System.Exception? innerException) { }
+        public ShardQueryException(string message, System.Exception? innerException, string? phase, Shardis.Model.ShardId? shardId, int? targetedShardCount, System.Collections.Generic.IDictionary<string, object?>? additionalContext) { }
+        public string? Phase { get; }
+        public Shardis.Model.ShardId? ShardId { get; }
+        public int? TargetedShardCount { get; }
+    }
+    public sealed class ShardRoutingException : Shardis.ShardisException
+    {
+        public ShardRoutingException(string message) { }
+        public ShardRoutingException(string message, System.Exception? innerException) { }
+        public ShardRoutingException(string message, System.Exception? innerException, Shardis.Model.ShardId? shardId, uint? keyHash, int? shardCount, System.Collections.Generic.IDictionary<string, object?>? additionalContext) { }
+        public uint? KeyHash { get; }
+        public int? ShardCount { get; }
+        public Shardis.Model.ShardId? ShardId { get; }
+    }
+    public sealed class ShardStoreException : Shardis.ShardisException
+    {
+        public ShardStoreException(string message) { }
+        public ShardStoreException(string message, System.Exception? innerException) { }
+        public ShardStoreException(string message, System.Exception? innerException, string? operation, Shardis.Model.ShardId? shardId, int? attemptCount, System.Collections.Generic.IDictionary<string, object?>? additionalContext) { }
+        public int? AttemptCount { get; }
+        public string? Operation { get; }
+        public Shardis.Model.ShardId? ShardId { get; }
+    }
+    public sealed class ShardTopologyException : Shardis.ShardisException
+    {
+        public ShardTopologyException(string message) { }
+        public ShardTopologyException(string message, System.Exception? innerException) { }
+        public ShardTopologyException(string message, System.Exception? innerException, long? topologyVersion, int? keyCount, int? maxKeyCount, System.Collections.Generic.IDictionary<string, object?>? additionalContext) { }
+        public int? KeyCount { get; }
+        public int? MaxKeyCount { get; }
+        public long? TopologyVersion { get; }
+    }
     public class ShardisException : System.Exception
     {
         public ShardisException() { }
-        public ShardisException(string message) { }
-        public ShardisException(string message, System.Exception innerException) { }
+        public ShardisException(string? message) { }
+        public ShardisException(string? message, System.Exception? innerException) { }
+        public ShardisException(string? message, System.Exception? innerException, System.Collections.Generic.IDictionary<string, object?>? diagnosticContext) { }
+        public System.Collections.Generic.IReadOnlyDictionary<string, object?> DiagnosticContext { get; }
     }
     public class ShardisOptions<TShard, TKey, TSession>
         where TShard : Shardis.Model.IShard<TSession>
