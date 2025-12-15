@@ -1,12 +1,17 @@
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace Shardis.Tests;
 
 /// <summary>
 /// Tests to ensure no sync-over-async patterns exist in the codebase.
+/// Note: These tests use simple regex patterns for detection. For production-grade enforcement,
+/// consider using Roslyn analyzers for AST-based analysis.
 /// </summary>
 public class SyncOverAsyncTests
 {
+    private static readonly Regex ResultPropertyAccessRegex = new(@"\)\s*\.Result\b|\w+\.Result\b", RegexOptions.Compiled);
+    private static readonly Regex WaitCallRegex = new(@"\.Wait\s*\(", RegexOptions.Compiled);
     [Fact]
     public void No_GetAwaiter_GetResult_In_Source_Code()
     {
@@ -78,8 +83,7 @@ public class SyncOverAsyncTests
                 }
                 
                 // Check for other .Result patterns
-                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"\)\s*\.Result\b") || 
-                    System.Text.RegularExpressions.Regex.IsMatch(line, @"\w+\.Result\b"))
+                if (ResultPropertyAccessRegex.IsMatch(line))
                 {
                     // Skip if it's a property definition or not a Task result
                     if (!trimmed.Contains("{ get") && !trimmed.Contains("=>") && !trimmed.StartsWith("public") && !trimmed.StartsWith("private"))
@@ -115,7 +119,7 @@ public class SyncOverAsyncTests
                 if (trimmed.StartsWith("//")) continue;
                 
                 // Check for .Wait(
-                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"\.Wait\s*\("))
+                if (WaitCallRegex.IsMatch(line))
                 {
                     violations.Add($"{file}:{i + 1} - {line.Trim()}");
                 }
