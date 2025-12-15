@@ -25,6 +25,10 @@ public class RedisShardMapStore<TKey> : IShardMapStoreAsync<TKey>, IShardMapStor
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Note: StackExchange.Redis does not support CancellationToken in its async operations.
+    /// The cancellationToken parameter is accepted for interface compatibility but not used.
+    /// </remarks>
     public async ValueTask<ShardId?> TryGetShardIdForKeyAsync(ShardKey<TKey> shardKey, CancellationToken cancellationToken = default)
     {
         var redisKey = ShardMapKeyPrefix + shardKey.Value;

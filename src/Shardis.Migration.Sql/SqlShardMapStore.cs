@@ -25,9 +25,9 @@ using Shardis.Persistence;
 public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory, string mapTable = "ShardMap", string historyTable = "ShardMapHistory") : IShardMapStoreAsync<TKey>, IShardMapEnumerationStore<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
-    private readonly Func<DbConnection> _connectionFactory = connectionFactory;
-    private readonly string _map = mapTable;
-    private readonly string _history = historyTable;
+    private readonly Func<DbConnection> _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+    private readonly string _map = ValidateTableName(mapTable);
+    private readonly string _history = ValidateTableName(historyTable);
 
     /// <summary>
     /// Raised after a new shard assignment is created (optimistic insert path). Old shard id will be <c>null</c> for current implementation
@@ -170,5 +170,22 @@ public sealed class SqlShardMapStore<TKey>(Func<DbConnection> connectionFactory,
             var s = reader.GetString(1);
             yield return new ShardMap<TKey>(new ShardKey<TKey>((TKey)Convert.ChangeType(k, typeof(TKey))!), new ShardId(s));
         }
+    }
+
+    /// <summary>
+    /// Validates a table name to prevent SQL injection.
+    /// Only allows alphanumeric characters, underscores, and dots (for schema-qualified names).
+    /// </summary>
+    private static string ValidateTableName(string tableName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName, nameof(tableName));
+        
+        // Allow only safe characters: letters, digits, underscores, and dots (for schema.table)
+        if (!System.Text.RegularExpressions.Regex.IsMatch(tableName, @"^[a-zA-Z0-9_\.]+$"))
+        {
+            throw new ArgumentException($"Invalid table name '{tableName}'. Only alphanumeric characters, underscores, and dots are allowed.", nameof(tableName));
+        }
+        
+        return tableName;
     }
 }
