@@ -1,6 +1,9 @@
 {
     "name": "Shardis Development",
-    "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
+    "dockerComposeFile": [
+        "docker-compose.yml",
+        "docker-compose.override.yml"
+    ],
     "service": "devcontainer",
     "runServices": [
         "devcontainer",
@@ -8,7 +11,6 @@
         "pgadmin"
     ],
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-
     "customizations": {
         "vscode": {
             "extensions": [
@@ -43,12 +45,10 @@
             }
         }
     },
-
     "remoteEnv": {
         "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
         "PATH": "${containerEnv:PATH}:/home/vscode/.dotnet/tools/:/usr/local/py-utils/bin/"
     },
-
     "features": {
         "ghcr.io/devcontainers/features/common-utils:2": {
             "installZsh": true,
@@ -63,8 +63,8 @@
             "version": "os-provided"
         },
         "ghcr.io/devcontainers/features/dotnet:2": {
-            "version": "9.0",
-            "additionalVersions": "8.0"
+            "version": "10.0",
+            "additionalVersions": "8.0,9.0"
         },
         "ghcr.io/devcontainers/features/node:1": {
             "version": "lts"
@@ -88,17 +88,13 @@
         },
         "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": {}
     },
-
     "initializeCommand": {
         "compose-override-file-exists": "if [ ! -f \".devcontainer/docker-compose.override.yml\" ]; then echo \"services: {}\" > .devcontainer/docker-compose.override.yml; fi"
     },
-
     "postCreateCommand": ".devcontainer/scripts/post_create",
-
     "postStartCommand": {
         "enable-git-safe-directory": "git config --global --add safe.directory ${containerWorkspaceFolder}"
     },
-
     "forwardPorts": [
         5432, // PostgreSQL
         5050, // pgAdmin
@@ -107,7 +103,6 @@
         16686, // Jaeger UI (distributed tracing)
         3101 // Loki (log aggregation)
     ],
-
     "portsAttributes": {
         "5432": {
             "label": "PostgreSQL",
@@ -134,11 +129,9 @@
             "onAutoForward": "silent"
         }
     },
-
     "mounts": [
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached,readOnly=true",
         "source=${localWorkspaceFolder}/.shardis-dev,target=/home/vscode/.shardis,type=bind,consistency=cached"
     ],
-
     "overrideCommand": false
 }
