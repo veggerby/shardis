@@ -6,20 +6,20 @@
 
   <ItemGroup>
     <!-- Core runtime deps -->
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageVersion Include="StackExchange.Redis" Version="2.9.11" />
     <PackageVersion Include="Marten" Version="8.8.2" />
     <PackageVersion Include="Weasel.Postgresql" Version="8.1.1" />
     <PackageVersion Include="Npgsql" Version="9.0.2" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.8" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
     <!-- Tooling / infra -->
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="9.0.0" />
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
@@ -28,9 +28,9 @@
     <PackageVersion Include="AwesomeAssertions" Version="9.1.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <!-- OpenTelemetry for metrics tests -->
-  <PackageVersion Include="OpenTelemetry" Version="1.8.1" />
-  <PackageVersion Include="OpenTelemetry.Api" Version="1.8.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.8.1" />
+    <PackageVersion Include="OpenTelemetry" Version="1.10.0" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.10.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.10.0" />
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.2" />
     <!-- Public API approval -->
