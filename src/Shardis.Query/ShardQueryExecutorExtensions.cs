@@ -40,6 +40,16 @@ public static class ShardQueryExecutorExtensions
             return (IShardQueryable<TResult>)root;
         }
 
-        throw new InvalidOperationException("Projection (select) must be supplied when the result type differs.");
+        throw new ShardQueryException(
+            "Projection (select) must be supplied when the result type differs.",
+            null,
+            "Projection",
+            null,
+            null,
+            new Dictionary<string, object?>
+            {
+                ["SourceType"] = typeof(T).Name,
+                ["ResultType"] = typeof(TResult).Name
+            });
     }
 }

@@ -1,49 +1,76 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/dotnet
 {
-	"name": "Shardis",
-	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-	// Use docker-compose for Postgres plus a dev container service
-	"dockerComposeFile": [ "docker-compose.yml" ],
-	"service": "app",
-	"runServices": [ "db", "app" ],
+    "name": "Shardis Development",
+    "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
+    "service": "devcontainer",
+    "runServices": [
+        "devcontainer",
+        "postgres",
+        "pgadmin"
+    ],
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
-	"forwardPorts": [ 5432, 15432 ],
-
-	"portsAttributes": {
-		"5432": {
-            "label": "postgres",
-            "requireLocalPort": true
-        },
-        "15432": {
-            "label": "pgAdmin",
-            "protocol": "http",
-            "requireLocalPort": true
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-dotnettools.csdevkit",
+                "heaths.vscode-guid",
+                "DavidAnson.vscode-markdownlint",
+                "yzhang.markdown-all-in-one",
+                "EditorConfig.EditorConfig",
+                "streetsidesoftware.code-spell-checker",
+                "nuke.support",
+                "dbaeumer.vscode-eslint",
+                "github.copilot",
+                "github.copilot-chat",
+                "redhat.vscode-yaml",
+                "github.vscode-github-actions",
+                "bierner.markdown-mermaid",
+                "humao.rest-client",
+                "GitHub.vscode-pull-request-github",
+                "ms-azuretools.vscode-docker",
+                "eamodio.gitlens"
+            ],
+            "settings": {
+                "editor.formatOnSave": true,
+                "files.exclude": {
+                    "**/bin": true,
+                    "**/obj": true
+                },
+                "search.exclude": {
+                    "**/bin": true,
+                    "**/obj": true
+                }
+            }
         }
-	},
+    },
 
-	"features": {
-		"ghcr.io/devcontainers/features/common-utils:2": {
-			"installZsh": true,
-			"installOhMyZsh": true,
-			"upgradePackages": true,
-			"username": "automatic",
-			"userUid": "automatic",
-			"userGid": "automatic"
-		},
-		"ghcr.io/devcontainers/features/git:1": {
-			"ppa": true,
-			"version": "os-provided"
-		},
+    "remoteEnv": {
+        "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
+        "PATH": "${containerEnv:PATH}:/home/vscode/.dotnet/tools/:/usr/local/py-utils/bin/"
+    },
+
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "installOhMyZsh": true,
+            "upgradePackages": true,
+            "username": "automatic",
+            "userUid": "automatic",
+            "userGid": "automatic"
+        },
+        "ghcr.io/devcontainers/features/git:1": {
+            "ppa": true,
+            "version": "os-provided"
+        },
         "ghcr.io/devcontainers/features/dotnet:2": {
             "version": "9.0",
             "additionalVersions": "8.0"
         },
-		"ghcr.io/devcontainers/features/node:1": {
+        "ghcr.io/devcontainers/features/node:1": {
             "version": "lts"
         },
         "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-            "packages": "bash-completion xdg-utils pass sshpass"
+            "packages": "bash-completion xdg-utils pass sshpass build-essential"
         },
         "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {
             "jq": "latest",
@@ -51,40 +78,67 @@
         },
         "ghcr.io/devcontainers/features/github-cli:1": {},
         "ghcr.io/devcontainers/features/python:1": {},
-		"ghcr.io/devcontainers-extra/features/mkdocs:2": {
-			"plugins": "mkdocs-include-markdown-plugin mkdocs-macros-plugin mkdocs-material"
-		}
-	},
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "version": "latest",
+            "moby": true,
+            "dockerDashComposeVersion": "v2"
+        },
+        "ghcr.io/devcontainers-extra/features/mkdocs:2": {
+            "plugins": "mkdocs-include-markdown-plugin mkdocs-macros-plugin mkdocs-material"
+        },
+        "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": {}
+    },
 
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"ms-dotnettools.csdevkit",
-				"heaths.vscode-guid",
-				"DavidAnson.vscode-markdownlint",
-				"EditorConfig.EditorConfig",
-				"streetsidesoftware.code-spell-checker",
-				"nuke.support",
-				"dbaeumer.vscode-eslint",
-				"GitHub.copilot",
-				"GitHub.copilot-chat",
-				"redhat.vscode-yaml",
-				"github.vscode-github-actions",
-				"bierner.markdown-mermaid",
-				"humao.rest-client",
-				"GitHub.vscode-pull-request-github"
-			]
-		}
-	},
+    "initializeCommand": {
+        "compose-override-file-exists": "if [ ! -f \".devcontainer/docker-compose.override.yml\" ]; then echo \"services: {}\" > .devcontainer/docker-compose.override.yml; fi"
+    },
 
-    "mounts": [
-        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached,readOnly=true"
+    "postCreateCommand": ".devcontainer/scripts/post_create",
+
+    "postStartCommand": {
+        "enable-git-safe-directory": "git config --global --add safe.directory ${containerWorkspaceFolder}"
+    },
+
+    "forwardPorts": [
+        5432, // PostgreSQL
+        5050, // pgAdmin
+        9090, // Prometheus metrics
+        3100, // Grafana
+        16686, // Jaeger UI (distributed tracing)
+        3101 // Loki (log aggregation)
     ],
 
-	"remoteEnv": {
-		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
-		"PATH": "${containerEnv:PATH}:/home/vscode/.dotnet/tools/:/usr/local/py-utils/bin/",
-	},
+    "portsAttributes": {
+        "5432": {
+            "label": "PostgreSQL",
+            "onAutoForward": "silent"
+        },
+        "5050": {
+            "label": "pgAdmin",
+            "onAutoForward": "silent"
+        },
+        "9090": {
+            "label": "Prometheus",
+            "onAutoForward": "silent"
+        },
+        "3100": {
+            "label": "Grafana",
+            "onAutoForward": "silent"
+        },
+        "16686": {
+            "label": "Jaeger UI",
+            "onAutoForward": "silent"
+        },
+        "3101": {
+            "label": "Loki",
+            "onAutoForward": "silent"
+        }
+    },
 
-	"postCreateCommand": ".devcontainer/scripts/post_create"
+    "mounts": [
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached,readOnly=true",
+        "source=${localWorkspaceFolder}/.shardis-dev,target=/home/vscode/.shardis,type=bind,consistency=cached"
+    ],
+
+    "overrideCommand": false
 }

@@ -136,7 +136,13 @@ internal sealed class ShardQuery<TSession, T>(IShardStreamBroadcaster<TSession> 
             return item.Item;
         }
 
-        throw new InvalidOperationException("Sequence contains no elements.");
+        throw new ShardQueryException(
+            "Sequence contains no elements.",
+            null,
+            "Execution",
+            null,
+            null,
+            null);
     }
 
     private CancellationToken MergeToken(CancellationToken external)

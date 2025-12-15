@@ -63,7 +63,7 @@ public class ShardMapEnumerationTests
         Func<Task> act = () => store.ToSnapshotAsync(maxKeys: 10);
 
         // assert
-        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        var ex = await act.Should().ThrowAsync<ShardTopologyException>();
         ex.Which.Message.Should().Contain("Snapshot key cap");
     }
 }

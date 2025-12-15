@@ -95,7 +95,7 @@ public class TopologyValidatorTests
         Func<Task> act = () => TopologyValidator.ValidateAsync(store);
 
         // assert
-        await act.Should().ThrowAsync<InvalidOperationException>().Where(e => e.Message.Contains("Duplicate key"));
+        await act.Should().ThrowAsync<ShardTopologyException>().Where(e => e.Message.Contains("Duplicate key"));
     }
 
     [Fact]

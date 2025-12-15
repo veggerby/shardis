@@ -291,3 +291,7 @@ sketch
 
 BenchmarkDotNet.Artifacts/
 *.received.txt
+
+# devcontainer local overrides and data
+.devcontainer/docker-compose.override.yml
+.shardis-dev/

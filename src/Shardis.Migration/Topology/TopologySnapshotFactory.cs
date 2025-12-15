@@ -19,7 +19,9 @@ public static class TopologySnapshotFactory
     /// <param name="maxKeys">Hard cap to guard memory. Throws if exceeded. Default 1,000,000.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <typeparam name="TKey">Shard key type.</typeparam>
-    /// <exception cref="InvalidOperationException">Thrown when the number of enumerated keys exceeds <paramref name="maxKeys"/>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="store"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxKeys"/> is less than or equal to zero.</exception>
+    /// <exception cref="ShardTopologyException">Thrown when the number of enumerated keys exceeds <paramref name="maxKeys"/>.</exception>
     public static async Task<TopologySnapshot<TKey>> ToSnapshotAsync<TKey>(
         this IShardMapEnumerationStore<TKey> store,
         int maxKeys = 1_000_000,
@@ -43,7 +45,13 @@ public static class TopologySnapshotFactory
             if (count > maxKeys)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, "max_keys_exceeded");
-                throw new InvalidOperationException($"Snapshot key cap {maxKeys} exceeded (observed {count}). Configure a higher limit if intentional.");
+                throw new ShardTopologyException(
+                    $"Snapshot key cap {maxKeys} exceeded (observed {count}). Configure a higher limit if intentional.",
+                    null,
+                    null,
+                    (int)count,
+                    maxKeys,
+                    null);
             }
         }
 

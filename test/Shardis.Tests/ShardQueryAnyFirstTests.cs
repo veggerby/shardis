@@ -46,6 +46,6 @@ public class ShardQueryAnyFirstTests
         Func<Task> act = async () => await queryable.FirstAsync();
 
         // assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<ShardQueryException>();
     }
 }
