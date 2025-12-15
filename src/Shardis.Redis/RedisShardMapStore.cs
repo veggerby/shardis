@@ -8,7 +8,7 @@ namespace Shardis.Redis;
 /// <summary>
 /// Provides a Redis-backed implementation of the <see cref="IShardMapStore{TKey}"/> interface.
 /// </summary>
-public class RedisShardMapStore<TKey> : IShardMapStore<TKey>
+public class RedisShardMapStore<TKey> : IShardMapStoreAsync<TKey>, IShardMapStore<TKey>
     where TKey : notnull, IEquatable<TKey>
 {
     private readonly IDatabase _database;
@@ -22,6 +22,75 @@ public class RedisShardMapStore<TKey> : IShardMapStore<TKey>
     {
         var connection = ConnectionMultiplexer.Connect(connectionString);
         _database = connection.GetDatabase();
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Note: StackExchange.Redis does not support CancellationToken in its async operations.
+    /// The cancellationToken parameter is accepted for interface compatibility but not used.
+    /// </remarks>
+    public async ValueTask<ShardId?> TryGetShardIdForKeyAsync(ShardKey<TKey> shardKey, CancellationToken cancellationToken = default)
+    {
+        var redisKey = ShardMapKeyPrefix + shardKey.Value;
+        var shardIdValue = await _database.StringGetAsync(redisKey);
+
+        if (shardIdValue.HasValue)
+        {
+            return new ShardId(shardIdValue!);
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask<ShardMap<TKey>> AssignShardToKeyAsync(ShardKey<TKey> shardKey, ShardId shardId, CancellationToken cancellationToken = default)
+    {
+        var redisKey = ShardMapKeyPrefix + shardKey.Value;
+        await _database.StringSetAsync(redisKey, shardId.Value);
+        return new ShardMap<TKey>(shardKey, shardId);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryAssignShardToKeyAsync(ShardKey<TKey> shardKey, ShardId shardId, CancellationToken cancellationToken = default)
+    {
+        var redisKey = ShardMapKeyPrefix + shardKey.Value;
+        // SET key value NX for compare-and-set semantics
+        var created = await _database.StringSetAsync(redisKey, shardId.Value, when: When.NotExists);
+
+        if (!created)
+        {
+            // Read existing
+            var existing = await _database.StringGetAsync(redisKey);
+            return (false, new ShardMap<TKey>(shardKey, new ShardId(existing!)));
+        }
+
+        return (true, new ShardMap<TKey>(shardKey, shardId));
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryGetOrAddAsync(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(valueFactory);
+
+        var existing = await TryGetShardIdForKeyAsync(shardKey, cancellationToken);
+        if (existing is not null)
+        {
+            return (false, new ShardMap<TKey>(shardKey, existing.Value));
+        }
+
+        var id = valueFactory();
+
+        // attempt NX set; if lost race, fetch existing
+        var redisKey = ShardMapKeyPrefix + shardKey.Value;
+        var created = await _database.StringSetAsync(redisKey, id.Value, when: When.NotExists);
+
+        if (!created)
+        {
+            var current = await _database.StringGetAsync(redisKey);
+            return (false, new ShardMap<TKey>(shardKey, new ShardId(current!)));
+        }
+
+        return (true, new ShardMap<TKey>(shardKey, id));
     }
 
     /// <inheritdoc/>
