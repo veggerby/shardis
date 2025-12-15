@@ -40,7 +40,7 @@ public static class ExceptionHandlingExamples
                 new SimpleShard(new ShardId("shard-001"), "conn-3") // Duplicate!
             };
 
-            var router = new DefaultShardRouter<string, string>(
+            _ = new DefaultShardRouter<string, string>(
                 new InMemoryShardMapStore<string>(),
                 shards);
         }
@@ -74,7 +74,7 @@ public static class ExceptionHandlingExamples
                 new SimpleShard(new ShardId("shard-001"), "conn-1")
             };
 
-            var router = new ConsistentHashShardRouter<ISimpleShard, string, string>(
+            _ = new ConsistentHashShardRouter<ISimpleShard, string, string>(
                 new InMemoryShardMapStore<string>(),
                 shards,
                 Shardis.Hashing.DefaultShardKeyHasher<string>.Instance,
@@ -118,7 +118,7 @@ public static class ExceptionHandlingExamples
             router.RemoveShard(new ShardId("shard-001"));
 
             // Try to route - will fail with empty ring
-            var shard = router.RouteToShard(new ShardKey<string>("test-key"));
+            _ = router.RouteToShard(new ShardKey<string>("test-key"));
         }
         catch (ShardRoutingException ex)
         {
@@ -153,7 +153,7 @@ public static class ExceptionHandlingExamples
                 new SimpleShard(new ShardId("shard-001"), "conn-2") // Duplicate
             };
 
-            var router = new DefaultShardRouter<string, string>(
+            _ = new DefaultShardRouter<string, string>(
                 new InMemoryShardMapStore<string>(),
                 shards);
         }
