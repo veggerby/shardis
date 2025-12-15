@@ -5,6 +5,7 @@ This index links core conceptual and roadmap documents.
 ## Core Concepts
 
 - Routing & Hashing: see README sections (Deterministic Routing, Dependency Injection Options).
+- **Async Patterns**: [Async-First Store & Pipeline Guide](./async-patterns.md) (async vs sync interfaces, best practices, migration guide)
 - Metrics Integration: README Metrics section + [Query Merge Latency](./query-latency.md)
 - Migration scaffolding: README Migration section.
 - Health & Resilience: [Health & Resilience Runtime](./health-resilience.md) (health monitoring, query routing, failure strategies)
