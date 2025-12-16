@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Shardis.All</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Meta-package that references all Shardis packages compatible with .NET 8 and .NET 9 (excludes Entity Framework Core packages which require .NET 10+). Install this for a complete Shardis experience with Marten, Redis, DI, and logging support.</Description>
+    <PackageTags>shardis;sharding;meta-package;complete;marten;redis</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <!-- Core packages -->
+  <ItemGroup>
+    <ProjectReference Include="../Shardis/Shardis.csproj" />
+    <ProjectReference Include="../Shardis.DependencyInjection/Shardis.DependencyInjection.csproj" />
+  </ItemGroup>
+
+  <!-- Query packages (net8/9 compatible) -->
+  <ItemGroup>
+    <ProjectReference Include="../Shardis.Query/Shardis.Query.csproj" />
+    <ProjectReference Include="../Shardis.Query.InMemory/Shardis.Query.InMemory.csproj" />
+    <ProjectReference Include="../Shardis.Query.Marten/Shardis.Query.Marten.csproj" />
+  </ItemGroup>
+
+  <!-- Migration packages (net8/9 compatible) -->
+  <ItemGroup>
+    <ProjectReference Include="../Shardis.Migration/Shardis.Migration.csproj" />
+    <ProjectReference Include="../Shardis.Migration.Marten/Shardis.Migration.Marten.csproj" />
+    <ProjectReference Include="../Shardis.Migration.Sql/Shardis.Migration.Sql.csproj" />
+  </ItemGroup>
+
+  <!-- Storage & integration -->
+  <ItemGroup>
+    <ProjectReference Include="../Shardis.Redis/Shardis.Redis.csproj" />
+    <ProjectReference Include="../Shardis.Marten/Shardis.Marten.csproj" />
+  </ItemGroup>
+
+  <!-- Logging -->
+  <ItemGroup>
+    <ProjectReference Include="../Shardis.Logging.Console/Shardis.Logging.Console.csproj" />
+    <ProjectReference Include="../Shardis.Logging.Microsoft/Shardis.Logging.Microsoft.csproj" />
+  </ItemGroup>
+
+</Project>
