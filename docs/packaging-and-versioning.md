@@ -38,6 +38,7 @@ The following packages target **only .NET 10** due to dependencies on Entity Fra
 
 | Package | .NET 8 | .NET 9 | .NET 10 | Notes |
 |---------|--------|--------|---------|-------|
+| **Shardis.All** | ✅ | ✅ | ✅ | **Meta-package (recommended)** |
 | Shardis (core) | ✅ | ✅ | ✅ | Recommended for all |
 | Shardis.Migration | ✅ | ✅ | ✅ | Core migration abstractions |
 | Shardis.Migration.Marten | ✅ | ✅ | ✅ | Marten-based migration |
@@ -51,6 +52,18 @@ The following packages target **only .NET 10** due to dependencies on Entity Fra
 | Shardis.Logging.* | ✅ | ✅ | ✅ | Logging adapters |
 
 ## Package Selection Guide
+
+### Meta-Package (Recommended)
+
+For most users, the easiest option is:
+
+```bash
+dotnet add package Shardis.All
+```
+
+This meta-package includes all Shardis packages compatible with .NET 8 and .NET 9:
+- Core, Query (Marten, InMemory), Migration (Marten, SQL), Redis, DI, Logging
+- **Excludes**: Entity Framework Core packages (require .NET 10+)
 
 ### For .NET 8 or .NET 9 Applications
 

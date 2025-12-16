@@ -100,6 +100,10 @@ The DI package centralizes per-shard provisioning logic and feeds query executor
 Install the core package and provider(s) you need:
 
 ```bash
+# Option 1: Install everything (recommended for most users)
+dotnet add package Shardis.All  # Includes all packages except EF Core (net8/9 compatible)
+
+# Option 2: Install individual packages
 # Core routing and sharding primitives
 dotnet add package Shardis
 
@@ -122,7 +126,10 @@ dotnet add package Shardis.DependencyInjection
 
 ### Package Selection Guide
 
+**For most users**: Install `Shardis.All` for a complete experience (excludes EF Core packages).
+
 **For .NET 8 or .NET 9 applications**:
+- ✅ Use `Shardis.All` or individual packages
 - ✅ Use `Shardis.Query.Marten` or `Shardis.Query.InMemory`
 - ✅ Use `Shardis.Migration.Marten`
 - ❌ EF Core packages require .NET 10+

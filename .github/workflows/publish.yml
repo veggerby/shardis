@@ -119,7 +119,30 @@ jobs:
             --no-build \
             --output "$NUGET_PACK_DIR" \
             /p:Version=${{ steps.gitversion.outputs.nuGetVersionV2 }}$VERSION_SUFFIX \
+            /p:GenerateSBOM=true \
+            /p:ContinuousIntegrationBuild=true \
             "${RELEASE_NOTES_ARG[@]}"
+
+      - name: Validate Packages
+        shell: bash
+        run: |
+          # List generated packages
+          echo "Generated packages:"
+          ls -lh "$NUGET_PACK_DIR"
+          
+          # Verify SBOM files exist for each package
+          echo ""
+          echo "Verifying SBOM generation:"
+          for nupkg in "$NUGET_PACK_DIR"/*.nupkg; do
+            if [[ ! "$nupkg" =~ \.symbols\.nupkg$ ]]; then
+              # Extract package name without version
+              pkg_base=$(basename "$nupkg" .nupkg | sed 's/-[0-9].*//')
+              echo "  ✓ $(basename "$nupkg")"
+              
+              # Check for corresponding SBOM in the nupkg
+              unzip -l "$nupkg" | grep -q "_manifest/spdx" && echo "    → SBOM included" || echo "    ⚠ No SBOM found"
+            fi
+          done
 
       - name: Upload NuGet Packages
         uses: actions/upload-artifact@v4
