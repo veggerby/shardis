@@ -97,9 +97,42 @@ The DI package centralizes per-shard provisioning logic and feeds query executor
 
 ## 📦 Installation
 
-🔜*(Coming soon to NuGet.)*
+Install the core package and provider(s) you need:
 
-For now, clone the repository:
+```bash
+# Core routing and sharding primitives
+dotnet add package Shardis
+
+# Query providers (choose based on your stack)
+dotnet add package Shardis.Query.Marten           # For Marten/PostgreSQL
+dotnet add package Shardis.Query.EntityFrameworkCore  # For EF Core (requires .NET 10+)
+dotnet add package Shardis.Query.InMemory         # For testing/prototyping
+
+# Migration providers
+dotnet add package Shardis.Migration              # Core migration abstractions
+dotnet add package Shardis.Migration.Marten       # Marten-based migration
+dotnet add package Shardis.Migration.EntityFrameworkCore  # EF Core migration (requires .NET 10+)
+
+# Optional: distributed shard map storage
+dotnet add package Shardis.Redis
+
+# Optional: per-shard resource factories
+dotnet add package Shardis.DependencyInjection
+```
+
+### Package Selection Guide
+
+**For .NET 8 or .NET 9 applications**:
+- ✅ Use `Shardis.Query.Marten` or `Shardis.Query.InMemory`
+- ✅ Use `Shardis.Migration.Marten`
+- ❌ EF Core packages require .NET 10+
+
+**For .NET 10+ applications**:
+- ✅ All packages available, including `Shardis.Query.EntityFrameworkCore` and `Shardis.Migration.EntityFrameworkCore`
+
+See [Packaging and Versioning Guide](./docs/packaging-and-versioning.md) for full compatibility matrix and release process.
+
+For local development, clone the repository:
 
 ```bash
 git clone https://github.com/veggerby/shardis.git

@@ -4,11 +4,15 @@
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <PackageId>Shardis.Migration.Marten</PackageId>
     <Version>0.1.0</Version>
     <Description>Marten migration provider for Shardis (document data mover + checksum verification).</Description>
     <PackageTags>shardis;sharding;marten;migration;data-mover;document</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

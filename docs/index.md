@@ -9,6 +9,7 @@ This index links core conceptual and roadmap documents.
 - Metrics Integration: README Metrics section + [Query Merge Latency](./query-latency.md)
 - Migration scaffolding: README Migration section.
 - Health & Resilience: [Health & Resilience Runtime](./health-resilience.md) (health monitoring, query routing, failure strategies)
+- **Packaging & Versioning**: [Packaging and Versioning Strategy](./packaging-and-versioning.md) (multi-targeting, compatibility matrix, release process)
 - Terminology Glossary: `terms.md` (canonical Shardis & domain vocabulary)
 - Migration Rationale: `migration-rationale.md` (why a formal mechanism exists)
 

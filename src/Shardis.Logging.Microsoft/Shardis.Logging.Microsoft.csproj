@@ -4,12 +4,15 @@
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Shardis.Logging.Microsoft</PackageId>
+    <Version>0.1.0</Version>
     <Description>Adapter bridging the Shardis logging abstraction to Microsoft.Extensions.Logging infrastructure.</Description>
     <PackageTags>shardis;sharding;logging;adapter;Microsoft.Extensions.Logging</PackageTags>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

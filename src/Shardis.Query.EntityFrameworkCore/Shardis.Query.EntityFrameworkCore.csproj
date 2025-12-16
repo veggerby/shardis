@@ -9,10 +9,10 @@
   <PropertyGroup>
     <PackageId>Shardis.Query.EntityFrameworkCore</PackageId>
     <Version>0.1.0</Version>
-    <Description>Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming).</Description>
-    <PackageTags>shardis;sharding;EntityFrameworkCore;query;linq</PackageTags>
+    <Description>Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming). Requires .NET 10+ for Entity Framework Core 10.x compatibility.</Description>
+    <PackageTags>shardis;sharding;EntityFrameworkCore;query;linq;net10</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
+    <PackageReleaseNotes>Initial release. Requires .NET 10+. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

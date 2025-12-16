@@ -4,10 +4,15 @@
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Shardis.Migration.Sql</PackageId>
+    <Version>0.1.0</Version>
     <Description>Durable SQL-backed components (checkpoint store, shard map + history) for Shardis migration.</Description>
     <PackageTags>shardis;sharding;migration;checkpoint;sql</PackageTags>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
