@@ -10,6 +10,7 @@ This index links core conceptual and roadmap documents.
 - Migration scaffolding: README Migration section.
 - Health & Resilience: [Health & Resilience Runtime](./health-resilience.md) (health monitoring, query routing, failure strategies)
 - **Packaging & Versioning**: [Packaging and Versioning Strategy](./packaging-and-versioning.md) (multi-targeting, compatibility matrix, release process)
+- **Release Process**: [First Release Checklist](./RELEASE.md) (step-by-step guide for publishing to NuGet)
 - Terminology Glossary: `terms.md` (canonical Shardis & domain vocabulary)
 - Migration Rationale: `migration-rationale.md` (why a formal mechanism exists)
 
