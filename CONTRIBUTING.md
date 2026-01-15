@@ -30,6 +30,10 @@ Please follow these basic guidelines to keep everything smooth:
 
 3. **Write Tests**
    If you're fixing a bug or adding a new feature, please include or update tests to cover it.
+   - **Unit tests**: Fast, no external dependencies (run with `dotnet test --filter "Category!=Integration"`)
+   - **Integration tests**: Require Docker, use Testcontainers (run with `dotnet test --filter "Category=Integration"`)
+   - Tag integration tests with `[Trait("Category", "Integration")]` at the class level
+   - See [`docs/testing/integration-tests.md`](docs/testing/integration-tests.md) for integration testing guide
 
 4. **Match the Code Style**
    Keep code clean and consistent.
@@ -45,13 +49,24 @@ Please follow these basic guidelines to keep everything smooth:
 ## 🛠 Local Setup
 
 - Clone the repository.
-- Build the solution (`Shardis.sln`) using .NET 8 or later.
-- Run the tests (`Shardis.Tests`) to make sure everything passes before you push.
+- Build the solution (`Shardis.sln`) using .NET 9 or later.
+- Run the tests to make sure everything passes before you push.
 
 ```bash
+# Build solution
 dotnet build
+
+# Run all tests
 dotnet test
+
+# Run only unit tests (fast)
+dotnet test --filter "Category!=Integration"
+
+# Run only integration tests (requires Docker)
+dotnet test --filter "Category=Integration"
 ```
+
+**For integration tests**: Docker must be installed and running. Testcontainers will automatically manage containerized dependencies (Redis, PostgreSQL).
 
 ---
 

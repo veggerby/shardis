@@ -417,13 +417,37 @@ xUnit tests live in `test/Shardis.Tests/` covering:
 - Migration planning scaffolding
 - Ordered merge enumerator
 
-Run:
+Run all tests:
 
 ```bash
 dotnet test
 ```
 
+Run only unit tests (fast, no external dependencies):
+
+```bash
+dotnet test --filter "Category!=Integration"
+```
+
+Run only integration tests (requires Docker):
+
+```bash
+dotnet test --filter "Category=Integration"
+```
+
 Assertion policy: the test suite relies on the `AwesomeAssertions` NuGet package for fluent, deterministic assertions.
+
+### Integration Tests with Testcontainers
+
+Integration tests use [Testcontainers for .NET](https://dotnet.testcontainers.org/) to automatically manage containerized dependencies (Redis, PostgreSQL). **No manual container setup required** — Testcontainers handles the entire lifecycle:
+
+- **Redis tests**: `RedisShardMapStore<TKey>` persistence and CAS operations
+- **Marten tests**: Query execution, adaptive paging, metrics, cancellation
+- **Migration tests**: Copy-verify-swap flows with multi-shard scenarios
+
+**Prerequisites**: Docker must be installed and running.
+
+**See**: [`docs/testing/integration-tests.md`](docs/testing/integration-tests.md) for detailed integration testing guide.
 
 Additional invariants covered:
 
