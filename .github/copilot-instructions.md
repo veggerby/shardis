@@ -11,12 +11,142 @@ These rules are binding for any AI-generated contribution.
 Shardis is a production-focused .NET sharding framework. All AI assistance must produce code that is correct, deterministic, maintainable, and aligned with existing architectural principles. Humor or playful tone from other templates is not appropriate here.
 
 ---
+## Project Overview
+
+**Shardis** is a production-grade .NET sharding framework providing deterministic key-based routing across multiple database shards. Built for event sourcing, CQRS, and multi-tenant architectures, it maintains strict determinism over cleverness and clarity over abstraction.
+
+### Key Technologies
+
+- **.NET 8.0/9.0**: Multi-targeting for compatibility
+- **C# 12+**: File-scoped namespaces, primary constructors, record types
+- **xUnit**: Testing framework
+- **NSubstitute**: Mocking library (never Moq)
+- **AwesomeAssertions**: Fluent assertions (never FluentAssertions)
+- **BenchmarkDotNet**: Performance benchmarking
+- **PostgreSQL**: Primary database (via Marten, Entity Framework Core)
+- **Redis**: Distributed shard map storage
+- **OpenTelemetry**: Metrics and observability
+
+### Architecture
+
+15 NuGet packages organized by concern:
+- **Core**: `Shardis` (routing, models, abstractions)
+- **Migration**: `Shardis.Migration` + provider packages (EF Core, Marten, SQL)
+- **Query**: `Shardis.Query` + provider packages (EF Core, Marten, InMemory)
+- **Infrastructure**: Redis, DI, Logging, Testing packages
+
+---
+## Setup Commands
+
+```bash
+# Clone and navigate
+git clone https://github.com/veggerby/shardis.git
+cd shardis
+
+# Restore dependencies
+dotnet restore
+
+# Build entire solution
+dotnet build
+
+# Build specific project
+dotnet build src/Shardis/Shardis.csproj
+
+# Build in Release mode
+dotnet build --configuration Release
+```
+
+---
+## Development Workflow
+
+### Quick Start
+
+```bash
+# Build and run all tests
+dotnet build && dotnet test
+
+# Run specific sample
+dotnet run --project samples/SampleApp
+
+# Run migration sample
+dotnet run --project samples/Shardis.Migration.Sample
+```
+
+### Watch Mode
+
+```bash
+# Watch and rebuild on changes (from project directory)
+cd src/Shardis
+dotnet watch build
+
+# Watch and run tests
+cd test/Shardis.Tests
+dotnet watch test
+```
+
+### Working with Specific Packages
+
+Navigate directly to package directories:
+```bash
+# Core routing
+cd src/Shardis
+
+# Migration
+cd src/Shardis.Migration
+
+# Query execution
+cd src/Shardis.Query
+
+# Provider-specific
+cd src/Shardis.Query.EntityFrameworkCore
+cd src/Shardis.Migration.Marten
+```
+
+---
 ## 1. Non‑Negotiable Principles
 1. Determinism over cleverness.
 2. Clarity over abstraction bloat (but keep extensibility points explicit).
 3. Safety: thread-safe routing & persistence components.
 4. No leakage of sharding concerns into domain models.
 5. Public surface must be documented and stable.
+
+### Key Abstractions
+
+- `IShardRouter<TKey, TSession>`: Core routing interface
+- `IShardMapStore<TKey>`: Persistence abstraction for mappings
+- `IShardKeyHasher<TKey>`: Key hashing strategy
+- `IShardRingHasher`: Ring hashing for consistent hash router
+- `IShardQueryExecutor`: Query execution pipeline
+- `IShardMigrationExecutor<TKey>`: Migration orchestration
+
+### Common Patterns
+
+**Routing (Single-Miss Guarantee):**
+```csharp
+// Router ensures key assigned exactly once
+var shard = await router.RouteToShardAsync(key);
+// Subsequent calls return same shard (deterministic)
+```
+
+**Query (Streaming-First):**
+```csharp
+// Prefer streaming over materialization
+await foreach (var item in client.Query<Order>().AsAsyncEnumerable())
+{
+    // Process without buffering
+}
+```
+
+**Migration (Checkpoint-Based):**
+```csharp
+// Migrations are resumable via checkpoints
+var result = await executor.ExecuteAsync(plan, progress, ct);
+if (!result.IsSuccess)
+{
+    // Resume from last checkpoint
+    await executor.ResumeAsync(result.CheckpointId);
+}
+```
 
 ---
 ## 2. Style & Formatting
@@ -56,6 +186,9 @@ Rules:
 
 ---
 ## 4. Testing Requirements
+
+### Unit Testing
+
 Every new core component (routing, hashing, map store, migrator, enumerator, metrics adapter) must include unit tests under `test/Shardis.Tests/` using xUnit.
 
 All generated tests **must**:
@@ -67,11 +200,94 @@ All generated tests **must**:
 - Cover: happy path, edge case (empty shards, single shard), error/exception path, concurrency or idempotency where relevant.
 - Use fakes or in-memory implementations (e.g. `InMemoryShardMapStore`) over real external services in unit tests.
 
+### Running Tests
+
+```bash
+# Full test suite
+dotnet test
+
+# With detailed output
+dotnet test --logger "console;verbosity=detailed"
+
+# With code coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Run specific test projects
+dotnet test test/Shardis.Tests/Shardis.Tests.csproj
+dotnet test test/Shardis.Migration.Tests/Shardis.Migration.Tests.csproj
+dotnet test test/Shardis.Query.Tests/Shardis.Query.Tests.csproj
+
+# Run specific test by name pattern
+dotnet test --filter "FullyQualifiedName~DefaultShardRouter"
+
+# Run tests in specific namespace
+dotnet test --filter "FullyQualifiedName~Shardis.Tests.Routing"
+```
+
+### Test Organization
+
+- **Unit tests**: `test/Shardis.Tests/` - Core routing, hashing, models
+- **Migration tests**: `test/Shardis.Migration.Tests/` - Planner, executor, checkpoints
+- **Query tests**: `test/Shardis.Query.Tests/` - Broadcasters, merge enumerators, executors
+- **Integration tests**: `test/Shardis.Marten.Tests/`, `test/Shardis.Migration.EntityFrameworkCore.Tests/`
+- **Public API tests**: `test/Shardis.PublicApi.Tests/` - API surface validation
+
+### Integration Tests
+
+**PostgreSQL Tests (Marten)**:
+```bash
+# Start PostgreSQL (Docker)
+docker run --name postgres-test -e POSTGRES_PASSWORD=test -p 5432:5432 -d postgres:15
+
+# Run Marten tests
+dotnet test test/Shardis.Marten.Tests/Shardis.Marten.Tests.csproj
+```
+
+**Redis Tests**:
+```bash
+# Start Redis (Docker)
+docker run --name redis-test -p 6379:6379 -d redis:7-alpine
+
+# Tests automatically detect and use Redis
+dotnet test test/Shardis.Tests/Shardis.Tests.csproj
+```
+
 ---
 ## 5. Performance & Benchmarks
+
 Benchmarks live in `benchmarks/` using BenchmarkDotNet.
 - Add benchmarks when optimizing hashing, routing, or merge enumerators.
 - Do not regress allocations in hot paths without justification & note in PR.
+
+### Running Benchmarks
+
+```bash
+# Run all benchmarks
+dotnet run --project benchmarks/Shardis.Benchmarks.csproj --configuration Release
+
+# Run specific benchmark
+dotnet run --project benchmarks/Shardis.Benchmarks.csproj --configuration Release --filter *RouterBenchmarks*
+
+# Export results
+dotnet run --project benchmarks/Shardis.Benchmarks.csproj --configuration Release --exporters json
+```
+
+### Benchmark Categories
+
+- **RouterBenchmarks**: Shard routing performance
+- **HasherBenchmarks**: Hash function comparisons
+- **MergeEnumeratorBenchmarks**: K-way merge performance
+- **QueryBenchmarks**: Query execution latency
+- **MigrationThroughputBenchmarks**: Migration executor throughput
+- **OrderedMergeBenchmarks**: Ordered streaming merge
+- **BroadcasterStreamBenchmarks**: Channel broadcasting
+
+### Performance Standards
+
+- Routing hot path: Minimal allocations (< 100 bytes)
+- Query merge latency: Single emission (no buffering)
+- Migration throughput: Measured and baselined
+- Benchmark results archived in `benchmarks/results/`
 
 ---
 ## 6. Documentation
@@ -119,6 +335,57 @@ Before submitting, validate:
 - [ ] Thread-safety maintained or documented.
 - [ ] README / docs updated if user-facing change.
 
+### Build and Deployment
+
+**Build Commands**:
+```bash
+# Debug build (default)
+dotnet build
+
+# Release build
+dotnet build --configuration Release
+
+# Build specific package
+dotnet build src/Shardis/Shardis.csproj --configuration Release
+
+# Clean before build
+dotnet clean && dotnet build
+```
+
+**Package Creation**:
+```bash
+# Create NuGet packages
+dotnet pack --configuration Release
+
+# Pack specific project
+dotnet pack src/Shardis/Shardis.csproj --configuration Release
+
+# Pack with specific version
+dotnet pack --configuration Release /p:Version=1.0.0-preview.1
+```
+
+**Versioning**:
+- Version controlled via `GitVersion.yml`
+- Semantic versioning enforced
+- Preview packages tagged: `1.0.0-preview.1`
+- Continuous integration builds set version automatically
+
+### Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+[optional footer]
+```
+
+Examples:
+- `feat(routing): add ConsistentHashShardRouter`
+- `fix(migration): checkpoint recovery on transient failure`
+- `docs(query): update LINQ supported operations`
+- `perf(merge): reduce allocations in k-way merge`
+- `test(routing): add concurrent routing tests`
+
 ---
 ## 12. Example Acceptable Prompt Targets
 Suitable tasks for Copilot:
@@ -143,8 +410,81 @@ If information is missing:
 - Validate external inputs to public extension methods.
 
 ---
-## 15. Final Reminder
+## 15. Troubleshooting
+
+### Common Issues
+
+**Build Warnings:**
+- Cause: `TreatWarningsAsErrors=true` enforced globally
+- Fix: Address all warnings before proceeding
+
+**Test Failures:**
+- Missing dependencies: `dotnet restore`
+- Integration tests: Check PostgreSQL/Redis containers running
+- Public API changes: Update approval files in `test/PublicApiApproval/`
+
+**Benchmark Errors:**
+- Must run in Release: `--configuration Release`
+- Ensure no debugger attached
+- Close resource-intensive applications
+
+**Package Restore Issues:**
+- Clear package cache: `dotnet nuget locals all --clear`
+- Restore: `dotnet restore --force`
+
+---
+## 16. Quick Reference
+
+### Most Common Commands
+
+```bash
+# Full build and test
+dotnet build && dotnet test
+
+# Release build with packages
+dotnet build -c Release && dotnet pack -c Release
+
+# Run benchmarks
+dotnet run --project benchmarks/Shardis.Benchmarks.csproj -c Release
+
+# Run specific sample
+dotnet run --project samples/SampleApp
+
+# Integration tests (requires containers)
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=test postgres:15
+docker run -d -p 6379:6379 redis:7-alpine
+dotnet test test/Shardis.Marten.Tests
+```
+
+### File Navigation
+
+```bash
+# Core routing
+src/Shardis/Routing/
+
+# Migration execution
+src/Shardis.Migration/Execution/
+
+# Query orchestration
+src/Shardis.Query/
+
+# Tests mirror src structure
+test/Shardis.Tests/
+test/Shardis.Migration.Tests/
+test/Shardis.Query.Tests/
+```
+
+---
+## 17. Final Reminder
 If an AI suggestion increases complexity without measurable benefit (performance, clarity, extensibility), **reject it**. Shardis prioritizes stable, predictable infrastructure primitives over novelty.
+
+---
+## 18. Additional Resources
+
+- **GitHub**: https://github.com/veggerby/shardis
+- **Issues**: https://github.com/veggerby/shardis/issues
+- **Discussions**: https://github.com/veggerby/shardis/discussions
+- **License**: MIT (see LICENSE file)
 
 ---
 
