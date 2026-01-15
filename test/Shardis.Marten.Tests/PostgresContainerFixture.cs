@@ -1,36 +1,46 @@
 using Marten;
 
+using Testcontainers.PostgreSql;
+
 using Xunit;
 
 namespace Shardis.Marten.Tests;
 
 /// <summary>
-/// Spins up (or reuses) a local Postgres instance for Marten integration tests.
-/// Relies on externally provided docker container to keep test deterministic & fast.
-/// If POSTGRES_CONNECTION not set, tests using this fixture will be skipped.
+/// xUnit fixture that manages a PostgreSQL container lifecycle for Marten integration tests.
+/// Uses Testcontainers to automatically spin up and tear down a PostgreSQL instance.
 /// </summary>
 public sealed class PostgresContainerFixture : IAsyncLifetime
 {
-    public string? ConnectionString { get; private set; }
+    private readonly PostgreSqlContainer _container;
+
+    public PostgresContainerFixture()
+    {
+        _container = new PostgreSqlBuilder()
+            .WithImage("postgres:15-alpine")
+            .WithDatabase("shardis_test")
+            .WithUsername("test")
+            .WithPassword("test")
+            .WithCleanUp(true)
+            .Build();
+    }
+
+    public string ConnectionString => _container.GetConnectionString();
     public DocumentStore? Store { get; private set; }
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
-        ConnectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-        if (string.IsNullOrWhiteSpace(ConnectionString))
-        {
-            return Task.CompletedTask; // will cause skip
-        }
+        await _container.StartAsync();
+        
         Store = DocumentStore.For(opts =>
         {
             opts.Connection(ConnectionString);
         });
-        return Task.CompletedTask;
     }
 
     public async Task DisposeAsync()
     {
         Store?.Dispose();
-        await Task.CompletedTask;
+        await _container.DisposeAsync();
     }
 }

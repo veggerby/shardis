@@ -5,22 +5,27 @@ using Marten;
 using Shardis.Model;
 using Shardis.Querying.Linq;
 
+using Xunit;
+
 namespace Shardis.Marten.Tests;
 
-public sealed class MartenQueryExecutorTests
+[Trait("Category", "Integration")]
+public sealed class MartenQueryExecutorTests : IClassFixture<PostgresContainerFixture>
 {
+    private readonly PostgresContainerFixture _fixture;
+
+    public MartenQueryExecutorTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [PostgresFact]
     public async Task Marten_WhereSelect_Stream()
     {
         // arrange
-        var conn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-        if (string.IsNullOrWhiteSpace(conn))
-        {
-            return; // skipped via PostgresFact (ensures env var) but guard defensively
-        }
         using var store = DocumentStore.For(opts =>
         {
-            opts.Connection(conn);
+            opts.Connection(_fixture.ConnectionString);
         });
         var shard = new MartenShard(new ShardId("0"), store);
         var uniquePrefix = $"T_{Guid.NewGuid():N}";
