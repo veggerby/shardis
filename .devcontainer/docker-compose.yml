@@ -55,6 +55,10 @@ services:
 
             # Export interval for metrics (5s for dev, faster feedback)
             OTEL_METRICS_EXPORT_INTERVAL: ${OTEL_METRICS_EXPORT_INTERVAL:-5000}
+
+            # Testcontainers configuration to connect to host services
+            TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
+            
         # Keep container alive
         command: sleep infinity
         depends_on:
