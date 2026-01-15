@@ -15,6 +15,8 @@
     <PackageReference Include="NSubstitute" PrivateAssets="All" />
     <PackageReference Include="xunit" PrivateAssets="All" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="All" />
+    <PackageReference Include="Testcontainers" PrivateAssets="All" />
+    <PackageReference Include="Testcontainers.Redis" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +29,7 @@
     <ProjectReference Include="../../src/Shardis/Shardis.csproj" />
     <ProjectReference Include="../../src/Shardis.Migration/Shardis.Migration.csproj" />
     <ProjectReference Include="..\..\src\Shardis.Testing\Shardis.Testing.csproj" />
+    <ProjectReference Include="..\..\src\Shardis.Redis\Shardis.Redis.csproj" />
   </ItemGroup>
 
 </Project>
