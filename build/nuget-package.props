@@ -37,7 +37,6 @@
         <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
         <Company>Shardis Project</Company>
         <PackageIcon Condition="Exists('$(DocsFolder)\icon.png')">icon.png</PackageIcon>
-        <PackageReadmeFile Condition="Exists('README.md')">README.md</PackageReadmeFile>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <IncludeSymbols>true</IncludeSymbols>
         <EnablePackageValidation>true</EnablePackageValidation>
@@ -46,7 +45,6 @@
     <!-- Additional Files -->
     <ItemGroup>
         <None Include="$(DocsFolder)\icon.png" Pack="true" PackagePath="/" Condition="Exists('$(DocsFolder)\icon.png')" />
-        <None Include="README.md" Pack="true" PackagePath="/" Condition="Exists('README.md')" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,7 +1,5 @@
 <Project>
 
-  <Import Project="$(BuildFolder)\nuget-package.props" />
-
   <PropertyGroup>
     <PackageReleaseNotesFile Condition="'$(PackageReleaseNotesFile)' == ''">RELEASE_NOTES.md</PackageReleaseNotesFile>
   </PropertyGroup>

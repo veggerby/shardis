@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- Import parent Directory.Build.props (from repo root) -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Import NuGet packaging configuration -->
+  <Import Project="$(BuildFolder)nuget-package.props" />
+
+</Project>
