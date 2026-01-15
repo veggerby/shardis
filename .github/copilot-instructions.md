@@ -222,6 +222,12 @@ dotnet test --filter "FullyQualifiedName~DefaultShardRouter"
 
 # Run tests in specific namespace
 dotnet test --filter "FullyQualifiedName~Shardis.Tests.Routing"
+
+# Unit tests only (fast, no Docker required)
+dotnet test --filter "Category!=Integration"
+
+# Integration tests only (requires Docker)
+dotnet test --filter "Category=Integration"
 ```
 
 ### Test Organization
@@ -232,25 +238,21 @@ dotnet test --filter "FullyQualifiedName~Shardis.Tests.Routing"
 - **Integration tests**: `test/Shardis.Marten.Tests/`, `test/Shardis.Migration.EntityFrameworkCore.Tests/`
 - **Public API tests**: `test/Shardis.PublicApi.Tests/` - API surface validation
 
-### Integration Tests
+### Integration Tests with Testcontainers
 
-**PostgreSQL Tests (Marten)**:
-```bash
-# Start PostgreSQL (Docker)
-docker run --name postgres-test -e POSTGRES_PASSWORD=test -p 5432:5432 -d postgres:15
+For components with external dependencies (Redis, PostgreSQL), write integration tests using Testcontainers:
 
-# Run Marten tests
-dotnet test test/Shardis.Marten.Tests/Shardis.Marten.Tests.csproj
-```
+- **No manual setup required**: Testcontainers automatically manages Docker containers
+- **Tag with category**: Add `[Trait("Category", "Integration")]` at the class level
+- **Use fixtures**: Integration tests must use `IClassFixture<FixtureName>` for container lifecycle management
+- **Available fixtures**:
+  - `RedisContainerFixture` — for Redis integration tests (in `test/Shardis.Tests`)
+  - `PostgresContainerFixture` — for PostgreSQL/Marten integration tests (in `test/Shardis.Marten.Tests` and `test/Shardis.Migration.Marten.Tests`)
+- **Connection strings**: Always use `_fixture.ConnectionString` from the fixture, never hardcode
+- **Docker requirement**: Integration tests require Docker to be installed and running
 
-**Redis Tests**:
-```bash
-# Start Redis (Docker)
-docker run --name redis-test -p 6379:6379 -d redis:7-alpine
+**See**: `docs/testing/integration-tests.md` for detailed integration testing guide.
 
-# Tests automatically detect and use Redis
-dotnet test test/Shardis.Tests/Shardis.Tests.csproj
-```
 
 ---
 ## 5. Performance & Benchmarks

@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Shardis.Marten.Tests;
 
+[Trait("Category", "Integration")]
 public sealed class MartenMetricsAndCancellationTests(PostgresContainerFixture fx) : IClassFixture<PostgresContainerFixture>
 {
     private readonly PostgresContainerFixture _fx = fx;

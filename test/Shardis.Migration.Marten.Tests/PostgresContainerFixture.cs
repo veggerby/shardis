@@ -1,10 +1,12 @@
+using System.Threading.Tasks;
+
 using Marten;
 
 using Testcontainers.PostgreSql;
 
 using Xunit;
 
-namespace Shardis.Marten.Tests;
+namespace Shardis.Migration.Marten.Tests;
 
 /// <summary>
 /// xUnit fixture that manages a PostgreSQL container lifecycle for Marten integration tests.

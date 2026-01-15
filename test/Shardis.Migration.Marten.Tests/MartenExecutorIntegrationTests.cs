@@ -1,5 +1,3 @@
-namespace Shardis.Migration.Marten.Tests;
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -22,9 +20,17 @@ using Shardis.Model;
 
 using Xunit;
 
-public class MartenExecutorIntegrationTests
+namespace Shardis.Migration.Marten.Tests;
+
+[Trait("Category", "Integration")]
+public class MartenExecutorIntegrationTests : IClassFixture<PostgresContainerFixture>
 {
-    private const string EnvVar = "SHARDIS_TEST_PG"; // connection string to test Postgres
+    private readonly PostgresContainerFixture _fixture;
+
+    public MartenExecutorIntegrationTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
 
     private sealed record TestDoc(string Id, string Name, int Value);
 
@@ -131,8 +137,6 @@ public class MartenExecutorIntegrationTests
         public ValueTask<IDocumentSession> CreateDocumentSessionAsync(ShardId shardId, CancellationToken cancellationToken = default) => new(Get(shardId).LightweightSession());
     }
 
-    private static string? Pg() => Environment.GetEnvironmentVariable(EnvVar);
-
     private static async Task SeedAsync(IMartenSessionFactory factory, ShardId shard, TestDoc doc)
     {
         await using var s = await factory.CreateDocumentSessionAsync(shard);
@@ -185,7 +189,7 @@ public class MartenExecutorIntegrationTests
     [Fact]
     public async Task HappyPath_Copy_Verify_Swap()
     {
-        var conn = Pg(); if (string.IsNullOrWhiteSpace(conn)) { return; }
+        var conn = _fixture.ConnectionString;
         var factory = new TestMartenSessionFactory(conn); var ckpt = new JsonCheckpointStore<string>();
         var map = new VersionedMapStore<string>(); var batches = new List<IReadOnlyList<KeyMove<string>>>();
         var swapper = new VersionedSwapper<string>(map, batches);
@@ -207,7 +211,7 @@ public class MartenExecutorIntegrationTests
     [Fact]
     public async Task Resume_FromCopyCheckpoint_CompletesVerifyAndSwap()
     {
-        var conn = Pg(); if (string.IsNullOrWhiteSpace(conn)) { return; }
+        var conn = _fixture.ConnectionString;
         var factory = new TestMartenSessionFactory(conn); var ckpt = new JsonCheckpointStore<string>();
         var map = new VersionedMapStore<string>(); var batches = new List<IReadOnlyList<KeyMove<string>>>();
         var swapper = new VersionedSwapper<string>(map, batches);
@@ -233,7 +237,7 @@ public class MartenExecutorIntegrationTests
     [Fact]
     public async Task Swap_Retry_OnVersionConflict()
     {
-        var conn = Pg(); if (string.IsNullOrWhiteSpace(conn)) { return; }
+        var conn = _fixture.ConnectionString;
         var factory = new TestMartenSessionFactory(conn); var ckpt = new JsonCheckpointStore<string>();
         var map = new VersionedMapStore<string>(); var batches = new List<IReadOnlyList<KeyMove<string>>>();
         var swapper = new VersionedSwapper<string>(map, batches, injectConflict: true);
@@ -252,7 +256,7 @@ public class MartenExecutorIntegrationTests
     [Fact]
     public async Task Mismatch_ReCopy_Then_Verify_Swap()
     {
-        var conn = Pg(); if (string.IsNullOrWhiteSpace(conn)) { return; }
+        var conn = _fixture.ConnectionString;
         var factory = new TestMartenSessionFactory(conn); var ckpt = new JsonCheckpointStore<string>();
         var map = new VersionedMapStore<string>(); var batches = new List<IReadOnlyList<KeyMove<string>>>();
         var swapper = new VersionedSwapper<string>(map, batches);
