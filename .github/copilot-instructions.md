@@ -17,7 +17,7 @@ Shardis is a production-focused .NET sharding framework. All AI assistance must 
 
 ### Key Technologies
 
-- **.NET 8.0/9.0**: Multi-targeting for compatibility
+- **.NET 8.0/9.0/10.0**: Multi-targeting for compatibility
 - **C# 12+**: File-scoped namespaces, primary constructors, record types
 - **xUnit**: Testing framework
 - **NSubstitute**: Mocking library (never Moq)
@@ -600,7 +600,7 @@ services.AddShardis(/* ... */)
 
 ## Versioning & compatibility
 
-* Target frameworks: `net8.0`, `net9.0`
+* Target frameworks: `net8.0`, `net9.0`, `net10.0`
 * Semantic versioning: **Minor** may add features; **Major** may break.
 * See CHANGELOG for details.
 

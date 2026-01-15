@@ -6,7 +6,7 @@
 
 ### Key Technologies
 
-- **.NET 8.0/9.0**: Multi-targeting for compatibility
+- **.NET 8.0/9.0/10.0**: Multi-targeting for compatibility
 - **C# 12+**: File-scoped namespaces, primary constructors, record types
 - **xUnit**: Testing framework
 - **NSubstitute**: Mocking library (never Moq)
