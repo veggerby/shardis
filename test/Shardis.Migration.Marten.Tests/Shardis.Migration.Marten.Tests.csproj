@@ -13,6 +13,8 @@
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Marten" />
     <PackageReference Include="Weasel.Postgresql" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
 
   <ItemGroup>
