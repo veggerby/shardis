@@ -1,32 +1,11 @@
 <Project>
 
-  <PropertyGroup>
-    <RepositoryUrl>https://github.com/veggerby/shardis</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <Deterministic>true</Deterministic>
-    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <IncludeSymbols>true</IncludeSymbols>
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <AnalysisLevel>latest</AnalysisLevel>
-    <EnablePackageValidation>true</EnablePackageValidation>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NeutralLanguage>en</NeutralLanguage>
-    <AssemblyInformationalVersion>$(Version)</AssemblyInformationalVersion>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Company>Shardis Project</Company>
-    <Authors>Jesper Veggerby</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/veggerby/shardis</PackageProjectUrl>
-    <PackageIcon Condition="Exists('icon.png')">icon.png</PackageIcon>
-  </PropertyGroup>
+    <PropertyGroup>
+        <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))</RepoRoot>
+        <SolutionRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), 'Shardis.sln'))</SolutionRoot>
+        <DocsFolder>$(RepoRoot)\docs</DocsFolder>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <!-- SourceLink reference (version managed centrally) -->
-    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
-  </ItemGroup>
+    <Import Project="$(RepoRoot)\build\global.props" />
 
 </Project>

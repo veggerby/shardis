@@ -248,9 +248,6 @@ _Pvt_Extensions
 /.next/
 /out/
 
-# production
-/build
-
 # misc
 .DS_Store
 *.pem

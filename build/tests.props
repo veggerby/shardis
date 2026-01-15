@@ -1,0 +1,16 @@
+<Project>
+
+    <!-- Framework and Language settings -->
+    <PropertyGroup>
+        <!-- Central targeting for all test projects (may override if needed) -->
+        <TargetFramework Condition="'$(TargetFramework)' == ''">net10.0</TargetFramework>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <!-- Tests do not need to generate XML docs or enforce missing documentation warnings -->
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591;1573;1574;1712</NoWarn>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+</Project>

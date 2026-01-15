@@ -1,0 +1,27 @@
+<Project>
+
+    <PropertyGroup>
+        <BuildFolder>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))</BuildFolder>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <!-- Use latest C# language features -->
+        <LangVersion>latest</LangVersion>
+        <!-- Enforce nullable reference types across libraries -->
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <!-- FastBuild toggle: when FastBuild=true analyzers are skipped for quicker local iterations -->
+        <RunAnalyzersDuringBuild Condition="'$(FastBuild)' == 'true'">false</RunAnalyzersDuringBuild>
+        <RunAnalyzersDuringCompilation Condition="'$(FastBuild)' == 'true'">false</RunAnalyzersDuringCompilation>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Using Include="System" />
+    </ItemGroup>
+
+    <!-- Analyzer references provided via central package management (Directory.Packages.props). -->
+
+</Project>

@@ -13,7 +13,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "9.0.x"
 
       - name: Restore
         run: dotnet restore Shardis.sln
@@ -75,7 +75,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Restore
         run: dotnet restore Shardis.sln
@@ -88,5 +88,5 @@ jobs:
           set -e
           f=$(ls artifact/Shardis.Query*.nupkg)
           mkdir extract && cd extract
-          unzip -q ../$f
+          unzip -o -q ../$f
           if grep -E 'EntityFramework|Marten' -r ./*.nuspec; then echo "Found forbidden provider dependency in Shardis.Query"; exit 1; fi
