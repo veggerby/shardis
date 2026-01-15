@@ -1,5 +1,9 @@
+using AwesomeAssertions;
+
 using Shardis.Model;
 using Shardis.Redis;
+
+using Xunit;
 
 namespace Shardis.Tests;
 
@@ -21,7 +25,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-123");
+        var key = new ShardKey<string>($"user-{Guid.NewGuid()}");
         var shard = new ShardId("shard-1");
 
         // act
@@ -40,7 +44,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-456");
+        var key = new ShardKey<string>($"user-{Guid.NewGuid()}");
         var shard = new ShardId("shard-2");
 
         // act
@@ -57,7 +61,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-789");
+        var key = new ShardKey<string>($"user-{Guid.NewGuid()}");
         var shard1 = new ShardId("shard-1");
         var shard2 = new ShardId("shard-2");
 
@@ -76,7 +80,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-new");
+        var key = new ShardKey<string>($"user-{Guid.NewGuid()}");
         var shard = new ShardId("shard-3");
 
         // act
@@ -93,7 +97,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-existing");
+        var key = new ShardKey<string>($"user-{Guid.NewGuid()}");
         var shard1 = new ShardId("shard-1");
         var shard2 = new ShardId("shard-2");
         await store.AssignShardToKeyAsync(key, shard1);
@@ -112,7 +116,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("non-existent-key");
+        var key = new ShardKey<string>($"non-existent-{Guid.NewGuid()}");
 
         // act
         var result = await store.TryGetShardIdForKeyAsync(key);
@@ -126,7 +130,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-sync");
+        var key = new ShardKey<string>($"user-sync-{Guid.NewGuid()}");
         var shard = new ShardId("shard-4");
         store.AssignShardToKey(key, shard);
 
@@ -143,7 +147,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("non-existent-sync");
+        var key = new ShardKey<string>($"non-existent-sync-{Guid.NewGuid()}");
 
         // act
         var found = store.TryGetShardIdForKey(key, out var retrievedShard);
@@ -158,7 +162,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-sync-new");
+        var key = new ShardKey<string>($"user-sync-new-{Guid.NewGuid()}");
         var shard = new ShardId("shard-5");
 
         // act
@@ -175,7 +179,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     {
         // arrange
         var store = new RedisShardMapStore<string>(_fixture.ConnectionString);
-        var key = new ShardKey<string>("user-sync-add");
+        var key = new ShardKey<string>($"user-sync-add-{Guid.NewGuid()}");
         var shard = new ShardId("shard-6");
 
         // act
