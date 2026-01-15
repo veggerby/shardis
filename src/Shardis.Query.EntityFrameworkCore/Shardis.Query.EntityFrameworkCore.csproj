@@ -1,24 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Package Metadata -->
   <PropertyGroup>
     <TargetFrameworks>net10.0</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <PackageId>Shardis.Query.EntityFrameworkCore</PackageId>
-    <Version>0.1.0</Version>
     <Description>Entity Framework Core query executor for Shardis (Where/Select pushdown, unordered streaming).</Description>
-    <PackageTags>shardis;sharding;EntityFrameworkCore;query;linq</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
+    <PackageTags>shardis sharding EntityFrameworkCore query linq</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
-    <None Include="README.md" Pack="true" PackagePath="" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />

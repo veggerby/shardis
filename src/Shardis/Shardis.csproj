@@ -1,24 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
+  <!-- Package Metadata -->
   <PropertyGroup>
     <PackageId>Shardis</PackageId>
-    <Version>0.1.0</Version>
     <Description>Deterministic sharding primitives for .NET: consistent hash routing, modulo router, broadcasting, metrics hooks, migration scaffold.</Description>
-    <PackageTags>shardis;sharding;consistent-hashing;partitioning;distributed-systems;dotnet;router</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
+    <PackageTags>shardis sharding consistent-hashing partitioning distributed-systems dotnet router</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
-    <None Include="README.md" Pack="true" PackagePath="" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />

@@ -1,19 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Package Metadata -->
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Shardis.Migration.Sql</PackageId>
     <Description>Durable SQL-backed components (checkpoint store, shard map + history) for Shardis migration.</Description>
-    <PackageTags>shardis;sharding;migration;checkpoint;sql</PackageTags>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <PackageTags>shardis sharding migration checkpoint sql</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
-    <None Include="README.md" Pack="true" PackagePath="" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Shardis.Migration/Shardis.Migration.csproj" />

@@ -7,6 +7,8 @@
     <PropertyGroup>
         <!-- Use latest C# language features -->
         <LangVersion>latest</LangVersion>
+        <!-- Enable implicit global usings for System, System.Collections.Generic, etc. -->
+        <ImplicitUsings>enable</ImplicitUsings>
         <!-- Enforce nullable reference types across libraries -->
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

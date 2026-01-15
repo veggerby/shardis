@@ -1,24 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
+  <!-- Package Metadata -->
   <PropertyGroup>
     <PackageId>Shardis.Marten</PackageId>
-    <Version>0.1.0</Version>
     <Description>Marten integration for Shardis: per-shard sessions and query execution adapter.</Description>
-    <PackageTags>shardis;sharding;marten;document-db;consistent-hashing;partitioning;dotnet</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Initial release. Full notes: https://github.com/veggerby/shardis/blob/main/CHANGELOG.md#010---2025-08-25</PackageReleaseNotes>
+    <PackageTags>shardis sharding marten document-db consistent-hashing partitioning dotnet</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="icon.png" Pack="true" PackagePath="" Condition="Exists('icon.png')" />
-    <None Include="README.md" Pack="true" PackagePath="" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Marten" />
