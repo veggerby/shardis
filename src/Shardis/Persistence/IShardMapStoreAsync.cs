@@ -42,4 +42,31 @@ public interface IShardMapStoreAsync<TKey> where TKey : notnull, IEquatable<TKey
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A tuple containing: (1) true if the mapping was created during this call, otherwise false; (2) resulting mapping (existing or newly created).</returns>
     ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryGetOrAddAsync(ShardKey<TKey> shardKey, Func<ShardId> valueFactory, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Attempts to get the existing shard assignment or atomically create it using the provided asynchronous factory when absent.
+    /// </summary>
+    /// <param name="shardKey">The shard key.</param>
+    /// <param name="asyncValueFactory">Asynchronous factory invoked to obtain a shard id when the key is not yet assigned.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A tuple containing: (1) true if the mapping was created during this call, otherwise false; (2) resulting mapping (existing or newly created).</returns>
+    /// <remarks>
+    /// The default implementation is non-atomic (uses a get-then-set pattern with a TOCTOU window).
+    /// Implementations backed by atomic stores (Redis NX, SQL INSERT-if-not-exists, etc.) should override this.
+    /// </remarks>
+    async ValueTask<(bool Created, ShardMap<TKey> ShardMap)> TryGetOrAddAsync(
+        ShardKey<TKey> shardKey,
+        Func<CancellationToken, ValueTask<ShardId>> asyncValueFactory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(asyncValueFactory);
+        var existing = await TryGetShardIdForKeyAsync(shardKey, cancellationToken).ConfigureAwait(false);
+        if (existing is not null)
+        {
+            return (false, new ShardMap<TKey>(shardKey, existing.Value));
+        }
+
+        var id = await asyncValueFactory(cancellationToken).ConfigureAwait(false);
+        return await TryAssignShardToKeyAsync(shardKey, id, cancellationToken).ConfigureAwait(false);
+    }
 }

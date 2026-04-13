@@ -5,6 +5,8 @@ using Shardis.Redis;
 
 using Xunit;
 
+#pragma warning disable CS0618 // Testing obsolete synchronous Redis methods intentionally
+
 namespace Shardis.Tests;
 
 /// <summary>

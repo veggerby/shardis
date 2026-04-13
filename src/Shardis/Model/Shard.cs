@@ -24,7 +24,7 @@ public class Shard<TSession> : IShard<TSession>
     /// <exception cref="ArgumentException">Thrown when <paramref name="shardId"/> is null or whitespace.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="factory"/> is null.</exception>
     /// <param name="queryExecutor">Optional query executor enabling LINQ broadcast operations.</param>
-    public Shard(ShardId shardId, IShardFactory<TSession> factory, IShardQueryExecutor<TSession>? queryExecutor = null)
+    public Shard(ShardId shardId, IShardFactory<TSession> factory, IShardLinqExecutor<TSession>? queryExecutor = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shardId.Value, nameof(shardId));
         ArgumentNullException.ThrowIfNull(factory, nameof(factory));
@@ -53,5 +53,5 @@ public class Shard<TSession> : IShard<TSession>
     public ValueTask<TSession> CreateSessionAsync(CancellationToken ct = default) => _factory.CreateAsync(ShardId, ct);
 
     /// <summary>Gets the configured query executor (or a no-op executor if none supplied).</summary>
-    public IShardQueryExecutor<TSession> QueryExecutor { get; }
+    public IShardLinqExecutor<TSession> QueryExecutor { get; }
 }

@@ -1,5 +1,6 @@
 using Shardis.Hashing;
 using Shardis.Instrumentation;
+using Shardis.Logging;
 using Shardis.Model;
 using Shardis.Persistence;
 
@@ -26,8 +27,8 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     private readonly IShardRingHasher _ringHasher;
     private readonly object _lock = new();
     private readonly IShardisMetrics _metrics;
+    private readonly IShardisLogger _log;
     private static readonly string RouterName = typeof(ConsistentHashShardRouter<TShard, TKey, TSession>).Name;
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, byte> _missRecorded = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConsistentHashShardRouter{TShard, TKey, TSession}"/> class.
@@ -38,6 +39,7 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     /// <param name="shardKeyHasher">Deterministic shard key hasher used to compute key positions.</param>
     /// <param name="ringHasher">Optional ring hasher; defaults to <see cref="DefaultShardRingHasher"/>.</param>
     /// <param name="metrics">Optional metrics sink; defaults to no-op.</param>
+    /// <param name="logger">Optional logger for diagnostics (e.g. ring collision warnings).</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="shardMapStore"/> or <paramref name="availableShards"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="replicationFactor"/> is less than or equal to zero or <paramref name="availableShards"/> is empty.</exception>
     /// <exception cref="ShardRoutingException">Thrown when <paramref name="replicationFactor"/> exceeds 10,000 or duplicate shard IDs are detected.</exception>
@@ -47,7 +49,8 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     IShardKeyHasher<TKey> shardKeyHasher,
     int replicationFactor = 100,
     IShardRingHasher? ringHasher = null,
-    IShardisMetrics? metrics = null)
+    IShardisMetrics? metrics = null,
+    IShardisLogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(shardMapStore, nameof(shardMapStore));
         ArgumentNullException.ThrowIfNull(availableShards, nameof(availableShards));
@@ -71,10 +74,11 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
         _replicationFactor = replicationFactor;
         _ringHasher = ringHasher ?? DefaultShardRingHasher.Instance;
         _metrics = metrics ?? NoOpShardisMetrics.Instance;
+        _log = logger ?? NullShardisLogger.Instance;
 
         var shardList = availableShards.ToList();
 
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(shardList.Count(), nameof(availableShards));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(shardList.Count, nameof(availableShards));
 
         var seen = new HashSet<ShardId>();
         foreach (var shard in shardList)
@@ -123,7 +127,8 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     }
 
     /// <summary>
-    /// Removes a shard from the ring if present and atomically rebuilds the snapshot.
+    /// Removes a shard from the ring if present and atomically swaps the key snapshot.
+    /// Only the virtual nodes belonging to the removed shard are deleted; the remaining ring entries are untouched.
     /// Keys previously assigned remain mapped via the map store until migrated.
     /// </summary>
     /// <returns><c>true</c> if the shard was removed; otherwise <c>false</c>.</returns>
@@ -131,17 +136,25 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     {
         lock (_lock)
         {
-            if (!_shardById.Remove(shardId, out var shard))
+            if (!_shardById.Remove(shardId, out _))
             {
                 return false;
             }
 
-            // rebuild ring excluding removed shard
-            _ring.Clear();
-
-            foreach (var s in _shardById.Values)
+            // Incremental removal: delete only the virtual nodes that belonged to the removed shard,
+            // rather than clearing and rebuilding the entire ring (O(replicationFactor) vs O(n * replicationFactor)).
+            var keysToRemove = new List<uint>(_replicationFactor);
+            foreach (var kvp in _ring)
             {
-                AddShardToRingInternal(s);
+                if (kvp.Value.ShardId == shardId)
+                {
+                    keysToRemove.Add(kvp.Key);
+                }
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                _ring.Remove(key);
             }
 
             RebuildKeySnapshot();
@@ -164,6 +177,8 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
 
     /// <summary>
     /// Adds a shard to the consistent hash ring with virtual nodes.
+    /// Hash collisions between virtual nodes are resolved by linear probing (incrementing the hash)
+    /// so every virtual node is placed rather than silently dropped.
     /// </summary>
     /// <param name="shard">The shard to add to the ring.</param>
     private void AddShardToRingInternal(TShard shard)
@@ -176,10 +191,14 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
             var virtualKey = $"{shard.ShardId}-replica-{i}";
             var hash = _ringHasher.Hash(virtualKey);
 
-            if (!_ring.ContainsKey(hash))
+            // Linear probe to resolve collisions so no virtual node is silently lost.
+            while (_ring.ContainsKey(hash))
             {
-                _ring[hash] = shard;
+                _log.Log(ShardisLogLevel.Warning, $"[ConsistentHashShardRouter] Virtual node hash collision at {hash:X8} for shard '{shard.ShardId.Value}' replica {i}; probing next slot.");
+                unchecked { hash++; }
             }
+
+            _ring[hash] = shard;
         }
     }
 
@@ -255,7 +274,7 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
 
         bool created = _shardMapStore.TryGetOrAdd(shardKey, () => PickShard().ShardId, out var map);
 
-        if (created && _missRecorded.TryAdd(shardKey, 0))
+        if (created)
         {
             _metrics.RouteMiss(RouterName);
         }
@@ -279,3 +298,4 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
         return (resolvedShard, !created);
     }
 }
+

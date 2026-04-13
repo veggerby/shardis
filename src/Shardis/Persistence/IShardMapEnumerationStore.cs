@@ -4,6 +4,7 @@ namespace Shardis.Persistence;
 
 /// <summary>
 /// Optional extension of <see cref="IShardMapStore{TKey}"/> that supports streaming enumeration of existing key→shard assignments.
+/// Implementations that also support async I/O should additionally implement <see cref="IShardMapStoreAsync{TKey}"/>.
 /// Implementations should provide a point-in-time (best effort) view. Backends may page internally.
 /// </summary>
 /// <remarks>

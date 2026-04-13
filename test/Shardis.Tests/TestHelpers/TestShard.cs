@@ -9,11 +9,11 @@ public class TestShard<TSession>(string id, TSession session) : IShard<TSession>
 {
     public ShardId ShardId { get; } = new ShardId(id);
     private readonly TSession _session = session;
-    public IShardQueryExecutor<TSession> QueryExecutor { get; } = new NoOpQueryExecutor();
+    public IShardLinqExecutor<TSession> QueryExecutor { get; } = new NoOpQueryExecutor();
 
     public TSession CreateSession() => _session;
 
-    private sealed class NoOpQueryExecutor : IShardQueryExecutor<TSession>
+    private sealed class NoOpQueryExecutor : IShardLinqExecutor<TSession>
     {
         public IAsyncEnumerable<T> Execute<T>(TSession session, Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull
             => throw new NotSupportedException();

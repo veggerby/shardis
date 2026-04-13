@@ -4,7 +4,7 @@ using Shardis.Querying.Linq;
 
 namespace Shardis.Model;
 
-internal sealed class NoOpQueryExecutor<TSession> : IShardQueryExecutor<TSession>
+internal sealed class NoOpQueryExecutor<TSession> : IShardLinqExecutor<TSession>
 {
     public static readonly NoOpQueryExecutor<TSession> Instance = new();
 

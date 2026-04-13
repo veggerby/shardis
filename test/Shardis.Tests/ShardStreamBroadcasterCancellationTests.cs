@@ -12,7 +12,7 @@ public class ShardStreamBroadcasterCancellationTests
         private readonly int _count = count;
 
         public string CreateSession() => string.Empty;
-        public IShardQueryExecutor<string> QueryExecutor { get; } = Substitute.For<IShardQueryExecutor<string>>();
+        public IShardLinqExecutor<string> QueryExecutor { get; } = Substitute.For<IShardLinqExecutor<string>>();
         public async IAsyncEnumerable<int> Produce([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
         {
             for (int i = 0; i < _count; i++)

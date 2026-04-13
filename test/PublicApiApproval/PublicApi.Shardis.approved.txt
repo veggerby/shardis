@@ -183,9 +183,10 @@ namespace Shardis.Model
 {
     public interface IShard<TSession>
     {
-        Shardis.Querying.Linq.IShardQueryExecutor<TSession> QueryExecutor { get; }
+        Shardis.Querying.Linq.IShardLinqExecutor<TSession> QueryExecutor { get; }
         Shardis.Model.ShardId ShardId { get; }
         TSession CreateSession();
+        System.Threading.Tasks.ValueTask<TSession> CreateSessionAsync(System.Threading.CancellationToken ct = default);
     }
     public interface ISimpleShard : Shardis.Model.IShard<string>
     {
@@ -214,8 +215,8 @@ namespace Shardis.Model
     }
     public class Shard<TSession> : Shardis.Model.IShard<TSession>
     {
-        public Shard(Shardis.Model.ShardId shardId, Shardis.Factories.IShardFactory<TSession> factory, Shardis.Querying.Linq.IShardQueryExecutor<TSession>? queryExecutor = null) { }
-        public Shardis.Querying.Linq.IShardQueryExecutor<TSession> QueryExecutor { get; }
+        public Shard(Shardis.Model.ShardId shardId, Shardis.Factories.IShardFactory<TSession> factory, Shardis.Querying.Linq.IShardLinqExecutor<TSession>? queryExecutor = null) { }
+        public Shardis.Querying.Linq.IShardLinqExecutor<TSession> QueryExecutor { get; }
         public Shardis.Model.ShardId ShardId { get; }
         public TSession CreateSession() { }
         public System.Threading.Tasks.ValueTask<TSession> CreateSessionAsync(System.Threading.CancellationToken ct = default) { }
@@ -223,9 +224,9 @@ namespace Shardis.Model
     }
     public sealed class SimpleShard : Shardis.Model.IShard<string>, Shardis.Model.ISimpleShard
     {
-        public SimpleShard(Shardis.Model.ShardId shardId, string connectionString, Shardis.Querying.Linq.IShardQueryExecutor<string>? queryExecutor = null) { }
+        public SimpleShard(Shardis.Model.ShardId shardId, string connectionString, Shardis.Querying.Linq.IShardLinqExecutor<string>? queryExecutor = null) { }
         public string ConnectionString { get; }
-        public Shardis.Querying.Linq.IShardQueryExecutor<string> QueryExecutor { get; }
+        public Shardis.Querying.Linq.IShardLinqExecutor<string> QueryExecutor { get; }
         public Shardis.Model.ShardId ShardId { get; }
         public string CreateSession() { }
         public override string ToString() { }
@@ -250,6 +251,10 @@ namespace Shardis.Persistence
                 "Created",
                 "ShardMap"})]
         System.Threading.Tasks.ValueTask<System.ValueTuple<bool, Shardis.Model.ShardMap<TKey>>> TryGetOrAddAsync(Shardis.Model.ShardKey<TKey> shardKey, System.Func<Shardis.Model.ShardId> valueFactory, System.Threading.CancellationToken cancellationToken = default);
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "Created",
+                "ShardMap"})]
+        System.Threading.Tasks.ValueTask<System.ValueTuple<bool, Shardis.Model.ShardMap<TKey>>> TryGetOrAddAsync(Shardis.Model.ShardKey<TKey> shardKey, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<Shardis.Model.ShardId>> asyncValueFactory, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.ValueTask<Shardis.Model.ShardId?> TryGetShardIdForKeyAsync(Shardis.Model.ShardKey<TKey> shardKey, System.Threading.CancellationToken cancellationToken = default);
     }
     public interface IShardMapStore<TKey>
@@ -376,7 +381,7 @@ namespace Shardis.Querying.Linq
 {
     public interface IOrderedShardQueryable<T> : Shardis.Querying.Linq.IShardQueryable<T> { }
     public interface ISelectShardQueryable<TSource, TResult> : Shardis.Querying.Linq.IShardQueryable<TResult> { }
-    public interface IShardQueryExecutor<TSession>
+    public interface IShardLinqExecutor<TSession>
     {
         System.Collections.Generic.IAsyncEnumerable<T> Execute<T>(TSession session, System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<T>, System.Linq.IQueryable<T>>> linqExpr)
             where T :  notnull;
@@ -442,7 +447,7 @@ namespace Shardis.Routing
         where TShard : Shardis.Model.IShard<TSession>
         where TKey :  notnull, System.IEquatable<TKey>
     {
-        public ConsistentHashShardRouter(Shardis.Persistence.IShardMapStore<TKey> shardMapStore, System.Collections.Generic.IEnumerable<TShard> availableShards, Shardis.Hashing.IShardKeyHasher<TKey> shardKeyHasher, int replicationFactor = 100, Shardis.Hashing.IShardRingHasher? ringHasher = null, Shardis.Instrumentation.IShardisMetrics? metrics = null) { }
+        public ConsistentHashShardRouter(Shardis.Persistence.IShardMapStore<TKey> shardMapStore, System.Collections.Generic.IEnumerable<TShard> availableShards, Shardis.Hashing.IShardKeyHasher<TKey> shardKeyHasher, int replicationFactor = 100, Shardis.Hashing.IShardRingHasher? ringHasher = null, Shardis.Instrumentation.IShardisMetrics? metrics = null, Shardis.Logging.IShardisLogger? logger = null) { }
         public void AddShard(TShard shard) { }
         public bool RemoveShard(Shardis.Model.ShardId shardId) { }
         public Shardis.ShardAssignmentResult<TSession> Route(Shardis.Model.ShardKey<TKey> shardKey) { }
@@ -458,7 +463,9 @@ namespace Shardis.Routing
     public interface IShardRouter<TKey, TSession>
         where TKey :  notnull, System.IEquatable<TKey>
     {
+        Shardis.ShardAssignmentResult<TSession> Route(Shardis.Model.ShardKey<TKey> shardKey);
         Shardis.Model.IShard<TSession> RouteToShard(Shardis.Model.ShardKey<TKey> shardKey);
+        System.Threading.Tasks.ValueTask<Shardis.Model.IShard<TSession>> RouteToShardAsync(Shardis.Model.ShardKey<TKey> shardKey, System.Threading.CancellationToken ct = default);
     }
 }
 namespace Shardis

@@ -30,7 +30,7 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
     private readonly Timer? _timer;
     private readonly object _lock = new();
     private readonly CancellationTokenSource _disposalCts = new();
-    private volatile bool _disposed;
+    private int _disposedFlag;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PeriodicShardHealthPolicy"/> class.
@@ -147,20 +147,19 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposedFlag, 1) != 0)
         {
             return;
         }
-        
+
         _timer?.Dispose();
         _disposalCts.Cancel();
         _disposalCts.Dispose();
-        _disposed = true;
     }
 
     private void PeriodicProbeCallback(object? state)
     {
-        if (_disposed || _disposalCts.IsCancellationRequested)
+        if (_disposedFlag != 0 || _disposalCts.IsCancellationRequested)
         {
             return;
         }

@@ -27,7 +27,7 @@ public class MetricsObserverTests
 
         public ShardId ShardId { get; } = new($"shard-{index}");
         public int CreateSession() => index;
-        public IShardQueryExecutor<int> QueryExecutor => DummyExecutor.Instance;
+        public IShardLinqExecutor<int> QueryExecutor => DummyExecutor.Instance;
         public async IAsyncEnumerable<int> Stream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
         {
             for (int i = 0; i < items; i++)
@@ -37,7 +37,7 @@ public class MetricsObserverTests
                 yield return i;
             }
         }
-        private sealed class DummyExecutor : IShardQueryExecutor<int>
+        private sealed class DummyExecutor : IShardLinqExecutor<int>
         {
             public static readonly DummyExecutor Instance = new();
             public IAsyncEnumerable<T> Execute<T>(int session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IQueryable<T>>> _) where T : notnull => throw new NotSupportedException();

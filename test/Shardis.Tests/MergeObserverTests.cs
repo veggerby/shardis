@@ -12,7 +12,7 @@ public class MergeObserverTests
     {
         public ShardId ShardId { get; } = new(id);
         public string CreateSession() => id;
-        public IShardQueryExecutor<string> QueryExecutor => new DummyExecutor();
+        public IShardLinqExecutor<string> QueryExecutor => new DummyExecutor();
         public async IAsyncEnumerable<int> Stream()
         {
             for (int i = 0; i < count; i++)
@@ -22,7 +22,7 @@ public class MergeObserverTests
             }
         }
 
-        private sealed class DummyExecutor : IShardQueryExecutor<string>
+        private sealed class DummyExecutor : IShardLinqExecutor<string>
         {
             public IAsyncEnumerable<T> Execute<T>(string session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull => throw new NotSupportedException();
             public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(string session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr, Func<T, TKey> keySelector) where T : notnull => throw new NotSupportedException();
@@ -216,7 +216,7 @@ public class MergeObserverTests
     {
         public ShardId ShardId { get; } = new(id);
         public string CreateSession() => id;
-        public IShardQueryExecutor<string> QueryExecutor => throw new NotSupportedException();
+        public IShardLinqExecutor<string> QueryExecutor => throw new NotSupportedException();
         public async IAsyncEnumerable<int> Stream()
         {
             var i = 0;
@@ -258,14 +258,14 @@ public class MergeObserverTests
     {
         public ShardId ShardId { get; } = new(id);
         public string CreateSession() => id;
-        public IShardQueryExecutor<string> QueryExecutor => new DummyExecutor();
+        public IShardLinqExecutor<string> QueryExecutor => new DummyExecutor();
         public async IAsyncEnumerable<int> Stream()
         {
             yield return 1;
             await Task.Yield();
             throw new InvalidOperationException("boom");
         }
-        private sealed class DummyExecutor : IShardQueryExecutor<string>
+        private sealed class DummyExecutor : IShardLinqExecutor<string>
         {
             public IAsyncEnumerable<T> Execute<T>(string session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull => throw new NotSupportedException();
             public IAsyncEnumerable<T> ExecuteOrdered<T, TKey>(string session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IOrderedQueryable<T>>> orderedExpr, Func<T, TKey> keySelector) where T : notnull => throw new NotSupportedException();

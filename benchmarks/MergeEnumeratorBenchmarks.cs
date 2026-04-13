@@ -183,7 +183,7 @@ public class MergeEnumeratorBenchmarks
 
         public ShardId ShardId { get; } = new(id);
         public int CreateSession() => index;
-        public Querying.Linq.IShardQueryExecutor<int> QueryExecutor => DummyExecutor.Instance;
+        public Querying.Linq.IShardLinqExecutor<int> QueryExecutor => DummyExecutor.Instance;
 
         // Enumerates strictly increasing integers with deterministic per-item delay.
         // The [EnumeratorCancellation] attribute enables cooperative cancellation if benchmarks add cancellation later.
@@ -196,7 +196,7 @@ public class MergeEnumeratorBenchmarks
             }
         }
 
-        private sealed class DummyExecutor : Querying.Linq.IShardQueryExecutor<int>
+        private sealed class DummyExecutor : Querying.Linq.IShardLinqExecutor<int>
         {
             public static readonly DummyExecutor Instance = new();
             public IAsyncEnumerable<T> Execute<T>(int session, System.Linq.Expressions.Expression<Func<IQueryable<T>, IQueryable<T>>> linqExpr) where T : notnull => throw new NotSupportedException();

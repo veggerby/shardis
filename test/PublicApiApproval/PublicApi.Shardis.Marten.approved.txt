@@ -10,7 +10,7 @@ namespace Shardis.Marten.Factories
 }
 namespace Shardis.Marten
 {
-    public sealed class MartenQueryExecutor : Shardis.Querying.Linq.IShardQueryExecutor<Marten.IDocumentSession>
+    public sealed class MartenQueryExecutor : Shardis.Querying.Linq.IShardLinqExecutor<Marten.IDocumentSession>
     {
         public static readonly Shardis.Marten.MartenQueryExecutor Instance;
         public System.Collections.Generic.IAsyncEnumerable<T> Execute<T>(Marten.IDocumentSession session, System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<T>, System.Linq.IQueryable<T>>> expr)
@@ -25,7 +25,7 @@ namespace Shardis.Marten
     public sealed class MartenShard : Shardis.Model.IShard<Marten.IDocumentSession>
     {
         public MartenShard(Shardis.Model.ShardId shardId, Marten.IDocumentStore store) { }
-        public Shardis.Querying.Linq.IShardQueryExecutor<Marten.IDocumentSession> QueryExecutor { get; }
+        public Shardis.Querying.Linq.IShardLinqExecutor<Marten.IDocumentSession> QueryExecutor { get; }
         public Shardis.Model.ShardId ShardId { get; }
         public Marten.IDocumentSession CreateSession() { }
     }

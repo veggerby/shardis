@@ -20,5 +20,5 @@ public sealed class MartenShard(ShardId shardId, IDocumentStore store) : IShard<
     public IDocumentSession CreateSession() => _store.LightweightSession();
 
     /// <inheritdoc />
-    public IShardQueryExecutor<IDocumentSession> QueryExecutor => MartenQueryExecutor.Instance;
+    public IShardLinqExecutor<IDocumentSession> QueryExecutor => MartenQueryExecutor.Instance;
 }
