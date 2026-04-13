@@ -26,8 +26,12 @@ public interface IShard<TSession>
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A value task that resolves to a new session.</returns>
-    ValueTask<TSession> CreateSessionAsync(CancellationToken ct = default) =>
-        ValueTask.FromResult(CreateSession());
+    ValueTask<TSession> CreateSessionAsync(CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        return ValueTask.FromResult(CreateSession());
+    }
 
     /// <summary>Optional query executor for provider-specific LINQ operations (legacy; pending consolidation).</summary>
     IShardLinqExecutor<TSession> QueryExecutor { get; }

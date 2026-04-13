@@ -46,11 +46,11 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
     public ConsistentHashShardRouter(
         IShardMapStore<TKey> shardMapStore,
         IEnumerable<TShard> availableShards,
-    IShardKeyHasher<TKey> shardKeyHasher,
-    int replicationFactor = 100,
-    IShardRingHasher? ringHasher = null,
-    IShardisMetrics? metrics = null,
-    IShardisLogger? logger = null)
+        IShardKeyHasher<TKey> shardKeyHasher,
+        int replicationFactor = 100,
+        IShardRingHasher? ringHasher = null,
+        IShardisMetrics? metrics = null,
+        IShardisLogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(shardMapStore, nameof(shardMapStore));
         ArgumentNullException.ThrowIfNull(availableShards, nameof(availableShards));
@@ -141,8 +141,9 @@ public class ConsistentHashShardRouter<TShard, TKey, TSession> : IShardRouter<TK
                 return false;
             }
 
-            // Incremental removal: delete only the virtual nodes that belonged to the removed shard,
-            // rather than clearing and rebuilding the entire ring (O(replicationFactor) vs O(n * replicationFactor)).
+            // Incremental removal: scan the current ring to find the virtual nodes that belonged to the removed shard,
+            // then remove only those entries instead of clearing and rebuilding the entire ring.
+            // This still requires iterating the full ring to collect keys to remove, so the scan is O(ringSize).
             var keysToRemove = new List<uint>(_replicationFactor);
             foreach (var kvp in _ring)
             {

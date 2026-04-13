@@ -159,7 +159,7 @@ public sealed class PeriodicShardHealthPolicy : IShardHealthPolicy, IDisposable
 
     private void PeriodicProbeCallback(object? state)
     {
-        if (_disposedFlag != 0 || _disposalCts.IsCancellationRequested)
+        if (Volatile.Read(ref _disposedFlag) != 0 || _disposalCts.IsCancellationRequested)
         {
             return;
         }

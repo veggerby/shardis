@@ -21,7 +21,7 @@ public class ShardisOptions<TShard, TKey, TSession>
     public IList<TShard> Shards { get; } = [];
 
     /// <summary>
-    /// When <c>true</c> a consistent hash ring router is used; when <c>false</c> (default for new installations)
+    /// When <c>true</c> a consistent hash ring router is used; when <c>false</c> (the default)
     /// the simpler modulo-based <see cref="DefaultShardRouter{TKey, TSession}"/> is used.
     /// Consistent hashing is recommended when the shard topology changes at runtime (adding/removing shards)
     /// because it minimises key reassignments. For static shard counts the default router has lower overhead.
