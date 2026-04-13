@@ -10,11 +10,8 @@ namespace Shardis.Querying.Linq;
 /// </summary>
 /// <typeparam name="TSession">The session type for the shard backend.</typeparam>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public interface IShardQueryExecutor<TSession>
+public interface IShardLinqExecutor<TSession>
 {
-    // TODO(Consolidation): This generic executor is slated for unification with the non-generic cross-shard
-    // query model executor surface (Execution.IShardQueryExecutor). Retained temporarily to avoid broad
-    // refactor of broadcaster & LINQ path in this stabilization step. Track in issue: pending.
     /// <summary>
     /// Executes a LINQ pipeline returning an unordered asynchronous stream of results.
     /// </summary>

@@ -19,4 +19,28 @@ public interface IShardRouter<TKey, TSession> where TKey : notnull, IEquatable<T
     /// <param name="shardKey">The logical shard key representing an aggregate instance.</param>
     /// <returns>The shard that should handle the given key.</returns>
     IShard<TSession> RouteToShard(ShardKey<TKey> shardKey);
+
+    /// <summary>
+    /// Resolves the shard and returns a <see cref="ShardAssignmentResult{TSession}"/> indicating whether the
+    /// assignment already existed prior to this call.
+    /// Implementations must report the existing-assignment flag accurately for the selected routing strategy.
+    /// </summary>
+    /// <param name="shardKey">The logical shard key representing an aggregate instance.</param>
+    /// <returns>Assignment result containing the resolved shard and whether it was pre-existing.</returns>
+    ShardAssignmentResult<TSession> Route(ShardKey<TKey> shardKey);
+
+    /// <summary>
+    /// Asynchronously resolves the shard responsible for the supplied <paramref name="shardKey"/>.
+    /// The default implementation calls <see cref="RouteToShard"/> synchronously and wraps the result.
+    /// Override when the backing store supports async I/O for meaningful async benefit.
+    /// </summary>
+    /// <param name="shardKey">The logical shard key representing an aggregate instance.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The shard that should handle the given key.</returns>
+    ValueTask<IShard<TSession>> RouteToShardAsync(ShardKey<TKey> shardKey, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        return ValueTask.FromResult(RouteToShard(shardKey));
+    }
 }

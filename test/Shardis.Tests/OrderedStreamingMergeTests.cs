@@ -20,7 +20,7 @@ public class OrderedStreamingMergeTests
     {
         public ShardId ShardId { get; } = new(id);
         public string CreateSession() => ShardId.Value; // use id as session
-        public IShardQueryExecutor<string> QueryExecutor => throw new NotSupportedException();
+        public IShardLinqExecutor<string> QueryExecutor => throw new NotSupportedException();
     }
 
     [Fact]

@@ -19,6 +19,20 @@ public interface IShard<TSession>
     /// <returns>A new session of type <typeparamref name="TSession"/>.</returns>
     TSession CreateSession();
 
+    /// <summary>
+    /// Asynchronously creates a new session for the shard.
+    /// Default implementation wraps <see cref="CreateSession"/> in a completed <see cref="ValueTask{T}"/>.
+    /// Implementations backed by async factories should override this for better performance.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A value task that resolves to a new session.</returns>
+    ValueTask<TSession> CreateSessionAsync(CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        return ValueTask.FromResult(CreateSession());
+    }
+
     /// <summary>Optional query executor for provider-specific LINQ operations (legacy; pending consolidation).</summary>
-    IShardQueryExecutor<TSession> QueryExecutor { get; }
+    IShardLinqExecutor<TSession> QueryExecutor { get; }
 }

@@ -10,7 +10,7 @@ public class BroadcasterExceptionTests
     {
         public ShardId ShardId { get; } = new("boom");
         public string CreateSession() => "sess";
-        public IShardQueryExecutor<string> QueryExecutor => throw new NotImplementedException();
+        public IShardLinqExecutor<string> QueryExecutor => throw new NotImplementedException();
     }
 
     [Fact]

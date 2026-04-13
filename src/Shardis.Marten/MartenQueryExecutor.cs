@@ -9,9 +9,9 @@ using Shardis.Querying.Linq;
 namespace Shardis.Marten;
 
 /// <summary>
-/// Marten implementation of <see cref="IShardQueryExecutor{TSession}"/> translating expression trees to Marten LINQ queries.
+/// Marten implementation of <see cref="IShardLinqExecutor{TSession}"/> translating expression trees to Marten LINQ queries.
 /// </summary>
-public sealed class MartenQueryExecutor : IShardQueryExecutor<IDocumentSession>
+public sealed class MartenQueryExecutor : IShardLinqExecutor<IDocumentSession>
 {
     /// <summary>
     /// Singleton instance to avoid repeated allocations.

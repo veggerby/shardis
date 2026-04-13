@@ -25,7 +25,7 @@ public sealed class SimpleShard : ISimpleShard
     /// <exception cref="ArgumentException">Thrown when <paramref name="shardId"/> is null or whitespace.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
     /// <param name="queryExecutor">Optional query executor enabling LINQ operations.</param>
-    public SimpleShard(ShardId shardId, string connectionString, IShardQueryExecutor<string>? queryExecutor = null)
+    public SimpleShard(ShardId shardId, string connectionString, IShardLinqExecutor<string>? queryExecutor = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shardId.Value, nameof(shardId));
         ArgumentNullException.ThrowIfNull(connectionString, nameof(connectionString));
@@ -47,5 +47,5 @@ public sealed class SimpleShard : ISimpleShard
     public string CreateSession() => ConnectionString;
 
     /// <summary>Gets the configured query executor (or a no-op executor if none supplied).</summary>
-    public IShardQueryExecutor<string> QueryExecutor { get; }
+    public IShardLinqExecutor<string> QueryExecutor { get; }
 }

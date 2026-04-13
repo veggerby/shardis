@@ -126,8 +126,6 @@ public class InMemoryShardMapStore<TKey> : IShardMapStoreAsync<TKey>, IShardMapE
         {
             cancellationToken.ThrowIfCancellationRequested();
             yield return new ShardMap<TKey>(kvp.Key, kvp.Value);
-            // No back-pressure logic needed for in-memory enumeration; if needed, introduce pacing in future.
-            await Task.CompletedTask; // keep method 'async' without allocation per item.
         }
     }
 }

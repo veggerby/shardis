@@ -28,8 +28,6 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
     private readonly IShardMapStore<TKey> _shardMapStore;
     private readonly IShardKeyHasher<TKey> _shardKeyHasher;
     private readonly IShardisMetrics _metrics;
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, byte> _missRecorded = new();
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<ShardKey<TKey>, object> _keyLocks = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DefaultShardRouter{TKey, TSession}"/> class.
@@ -53,7 +51,10 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
         _shardMapStore = shardMapStore;
         _shardKeyHasher = shardKeyHasher ?? DefaultShardKeyHasher<TKey>.Instance;
         _availableShards = availableShards.ToList();
-        // Validate uniqueness of shard IDs
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_availableShards.Count, nameof(availableShards));
+
+        // Validate uniqueness of shard IDs after confirming the list is non-empty.
         _shardById = new Dictionary<ShardId, IShard<TSession>>();
         foreach (var shard in _availableShards)
         {
@@ -70,8 +71,6 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
             _shardById[shard.ShardId] = shard;
         }
         _metrics = metrics ?? NoOpShardisMetrics.Instance;
-
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_availableShards.Count, nameof(availableShards));
     }
 
     /// <summary>
@@ -137,30 +136,22 @@ public class DefaultShardRouter<TKey, TSession> : IShardRouter<TKey, TSession>
             return (existingShard, true);
         }
 
-        var keyLock = _keyLocks.GetOrAdd(shardKey, _ => new object());
-        bool existing;
-        IShard<TSession> shard;
-        lock (keyLock)
+        var idx = CalculateShardIndex(shardKey, _availableShards.Count);
+        var shard = _availableShards[(int)idx];
+        var created = _shardMapStore.TryAssignShardToKey(shardKey, shard.ShardId, out var map);
+
+        // If a concurrent writer won the race, use the winner's shard.
+        if (!created && _shardById.TryGetValue(map.ShardId, out var winner))
         {
-            if (_shardMapStore.TryGetShardIdForKey(shardKey, out var existingId) && _shardById.TryGetValue(existingId, out var existingShard2))
-            {
-                shard = existingShard2;
-                existing = true;
-            }
-            else
-            {
-                var idx = CalculateShardIndex(shardKey, _availableShards.Count);
-                shard = _availableShards[(int)idx];
-                var created = _shardMapStore.TryAssignShardToKey(shardKey, shard.ShardId, out _);
-
-                if (created && _missRecorded.TryAdd(shardKey, 0))
-                {
-                    _metrics.RouteMiss(RouterName);
-                }
-
-                existing = !created;
-            }
+            shard = winner;
         }
+
+        if (created)
+        {
+            _metrics.RouteMiss(RouterName);
+        }
+
+        bool existing = !created;
 
         _metrics.RouteHit(RouterName, shard.ShardId.Value, existing);
         sw.Stop();

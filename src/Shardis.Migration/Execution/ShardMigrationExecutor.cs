@@ -72,8 +72,8 @@ public sealed class ShardMigrationExecutor<TKey>(
         // States map tracks the per-key state machine. If a checkpoint exists we resume
         // from the persisted states, otherwise initialize all keys as Planned.
         var states = checkpoint?.States is { Count: > 0 }
-            ? new Dictionary<ShardKey<TKey>, KeyMoveState>(checkpoint.States)
-            : plan.Moves.ToDictionary(m => m.Key, _ => KeyMoveState.Planned);
+            ? new ConcurrentDictionary<ShardKey<TKey>, KeyMoveState>(checkpoint.States)
+            : new ConcurrentDictionary<ShardKey<TKey>, KeyMoveState>(plan.Moves.ToDictionary(m => m.Key, _ => KeyMoveState.Planned));
 
         // Only increment the planned counter when this is the first run (no checkpoint).
         if (checkpoint is null)
@@ -183,7 +183,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     failedKeys.TryAdd(move.Key, 0);
                     states[move.Key] = KeyMoveState.Failed;
                     _metrics.IncFailed();
-                    transitionSinceFlush++;
+                    Interlocked.Increment(ref transitionSinceFlush);
                     UpdateLastProcessed(move.Key);
                     return;
                 }
@@ -219,7 +219,7 @@ public sealed class ShardMigrationExecutor<TKey>(
         {
             if (!force)
             {
-                if (transitionSinceFlush < _options.CheckpointFlushEveryTransitions && _now() - lastFlushAt < _options.CheckpointFlushInterval)
+                if (Volatile.Read(ref transitionSinceFlush) < _options.CheckpointFlushEveryTransitions && _now() - lastFlushAt < _options.CheckpointFlushInterval)
                 {
                     return;
                 }
@@ -227,7 +227,7 @@ public sealed class ShardMigrationExecutor<TKey>(
 
             var cp = new MigrationCheckpoint<TKey>(plan.PlanId, CheckpointVersion, _now(), states, lastProcessedIndex);
             await _checkpointStore.PersistAsync(cp, token).ConfigureAwait(false);
-            transitionSinceFlush = 0;
+            Interlocked.Exchange(ref transitionSinceFlush, 0);
             lastFlushAt = _now();
         }
 
@@ -278,7 +278,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                             _metrics.IncCopied();
                             var elapsedMs = ElapsedMs(copyStarted);
                             _metrics.ObserveCopyDuration(elapsedMs);
-                            transitionSinceFlush++;
+                            Interlocked.Increment(ref transitionSinceFlush);
                         }
                     }
                     finally
@@ -409,7 +409,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                     states[move.Key] = KeyMoveState.Verified;
                     _metrics.IncVerified();
                     _metrics.ObserveVerifyDuration(ElapsedMs(verifyStarted));
-                    transitionSinceFlush++;
+                    Interlocked.Increment(ref transitionSinceFlush);
                     UpdateLastProcessed(move.Key);
                 }
             }
@@ -448,7 +448,7 @@ public sealed class ShardMigrationExecutor<TKey>(
                 {
                     states[m.Key] = KeyMoveState.Done;
                     _metrics.IncSwapped();
-                    transitionSinceFlush++;
+                    Interlocked.Increment(ref transitionSinceFlush);
                     UpdateLastProcessed(m.Key);
                 }
             }

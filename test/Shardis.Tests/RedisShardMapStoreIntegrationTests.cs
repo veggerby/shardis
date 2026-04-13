@@ -126,6 +126,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     }
 
     [Fact]
+#pragma warning disable CS0618 // Testing obsolete synchronous Redis methods intentionally
     public void TryGetShardIdForKey_SyncVersion_CanRetrieveKey()
     {
         // arrange
@@ -136,6 +137,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
 
         // act
         var found = store.TryGetShardIdForKey(key, out var retrievedShard);
+#pragma warning restore CS0618
 
         // assert
         found.Should().BeTrue();
@@ -143,6 +145,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     }
 
     [Fact]
+#pragma warning disable CS0618 // Testing obsolete synchronous Redis methods intentionally
     public void TryGetShardIdForKey_ReturnsFalseForNonExistentKey()
     {
         // arrange
@@ -151,6 +154,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
 
         // act
         var found = store.TryGetShardIdForKey(key, out var retrievedShard);
+#pragma warning restore CS0618
 
         // assert
         found.Should().BeFalse();
@@ -158,6 +162,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     }
 
     [Fact]
+#pragma warning disable CS0618 // Testing obsolete synchronous Redis methods intentionally
     public void TryAssignShardToKey_SyncVersion_ReturnsCreatedTrueForNewKey()
     {
         // arrange
@@ -167,6 +172,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
 
         // act
         var created = store.TryAssignShardToKey(key, shard, out var map);
+#pragma warning restore CS0618
 
         // assert
         created.Should().BeTrue();
@@ -175,6 +181,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
     }
 
     [Fact]
+#pragma warning disable CS0618 // Testing obsolete synchronous Redis methods intentionally
     public void TryGetOrAdd_SyncVersion_CreatesNewAssignmentWhenKeyDoesNotExist()
     {
         // arrange
@@ -184,6 +191,7 @@ public sealed class RedisShardMapStoreIntegrationTests : IClassFixture<RedisCont
 
         // act
         var created = store.TryGetOrAdd(key, () => shard, out var map);
+#pragma warning restore CS0618
 
         // assert
         created.Should().BeTrue();

@@ -12,7 +12,7 @@ public class ShardQueryAnyFirstTests
         private readonly IEnumerable<int> _data = data;
 
         public string CreateSession() => string.Empty;
-        public IShardQueryExecutor<string> QueryExecutor { get; } = Substitute.For<IShardQueryExecutor<string>>();
+        public IShardLinqExecutor<string> QueryExecutor { get; } = Substitute.For<IShardLinqExecutor<string>>();
     }
 
     private static IShardStreamBroadcaster<string> CreateBroadcaster(params (string id, IEnumerable<int> data)[] shards)
