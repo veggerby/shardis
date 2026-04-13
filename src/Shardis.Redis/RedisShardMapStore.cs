@@ -19,7 +19,7 @@ public class RedisShardMapStore<TKey> : IShardMapStoreAsync<TKey>, IShardMapStor
 {
     private readonly IDatabase _database;
     private readonly ConnectionMultiplexer? _ownedMultiplexer;
-    private bool _disposed;
+    private int _disposedFlag;
     private const string ShardMapKeyPrefix = "shardmap:";
 
     /// <summary>
@@ -208,12 +208,11 @@ public class RedisShardMapStore<TKey> : IShardMapStoreAsync<TKey>, IShardMapStor
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposedFlag, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
         _ownedMultiplexer?.Dispose();
     }
 }
